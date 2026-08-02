@@ -22,7 +22,11 @@ public class StoreConfig {
 
     private boolean autoAcceptOrder;
     private boolean allowPreOrder;
-    private String timezone;
+
+    private LocalTime openingTime;
+    private LocalTime closingTime;
+
+    private String timeZone;
     private String currency;
     private Integer preparationTimeMinutes;
     private Integer maxOrdersPerDay;
@@ -32,26 +36,55 @@ public class StoreConfig {
 
     public static StoreConfig newConfig(Boolean autoAcceptOrder,
                                         Boolean allowPreOrder,
+                                        LocalTime openingTime,
+                                        LocalTime closingTime,
                                         String timeZone,
                                         String currency,
                                         Integer preparationTimeMinutes,
                                         Integer maxOrdersPerDay) {
         return StoreConfig.builder()
-                .allowPreOrder(autoAcceptOrder)
+                .autoAcceptOrder(autoAcceptOrder)
                 .allowPreOrder(allowPreOrder)
-                .timezone(timeZone)
+                .openingTime(openingTime)
+                .closingTime(closingTime)
+                .timeZone(timeZone)
                 .currency(currency)
                 .preparationTimeMinutes(preparationTimeMinutes)
                 .maxOrdersPerDay(maxOrdersPerDay)
                 .createdAt(Instant.now())
-                .createdAt(Instant.now())
+                .updatedAt(Instant.now())
                 .build();
+    }
+
+    public void updateConfig(Boolean autoAcceptOrder,
+                             Boolean allowPreOrder,
+                             LocalTime openingTime,
+                             LocalTime closingTime,
+                             String timeZone,
+                             String currency,
+                             Integer preparationTimeMinutes,
+                             Integer maxOrdersPerDay) {
+        if (null != openingTime && null != closingTime) {
+            if (openingTime.isAfter(closingTime) || openingTime.equals(closingTime)) {
+                throw new IllegalArgumentException("Opening time must be before closing time");
+            }
+        }
+
+        this.autoAcceptOrder = autoAcceptOrder;
+        this.allowPreOrder = allowPreOrder;
+        this.openingTime = openingTime;
+        this.closingTime = closingTime;
+        this.timeZone = timeZone;
+        this.currency = currency;
+        this.preparationTimeMinutes = preparationTimeMinutes;
+        this.maxOrdersPerDay = maxOrdersPerDay;
+        this.updatedAt = Instant.now();
     }
 
     public boolean isOpen(
             Instant now,
             List<BusinessHour> hours) {
-        ZonedDateTime local = now.atZone(ZoneId.of(timezone));
+        ZonedDateTime local = now.atZone(ZoneId.of(timeZone));
         DayOfWeek day = local.getDayOfWeek();
         LocalTime current = local.toLocalTime();
 

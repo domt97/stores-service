@@ -47,7 +47,10 @@ public class StoreConfigEntity {
 
     private LocalTime openingTime;
     private LocalTime closingTime;
-    private String timezone;
+
+    @Column(name = "timezone")
+    private String timeZone;
+
     private String currency;
     private Integer maxOrdersPerDay;
     private Integer preparationTimeMinutes;

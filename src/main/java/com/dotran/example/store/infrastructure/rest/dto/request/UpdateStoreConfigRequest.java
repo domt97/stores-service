@@ -9,15 +9,20 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.time.LocalTime;
+
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class StoreConfigRequest {
+public class UpdateStoreConfigRequest {
 
-    private boolean autoAcceptOrder;
+    private Boolean autoAcceptOrder;
 
-    private boolean allowPreOrder;
+    private Boolean allowPreOrder;
+
+    private LocalTime openingTime;
+    private LocalTime closingTime;
 
     @NotBlank
     private String timeZone;

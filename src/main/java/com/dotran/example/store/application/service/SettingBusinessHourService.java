@@ -1,11 +1,10 @@
 package com.dotran.example.store.application.service;
 
-import com.dotran.example.store.application.command.BusinessHourCmd;
 import com.dotran.example.store.application.command.UpdateBusinessHourCmd;
 import com.dotran.example.store.application.dto.StoreDetailDto;
 import com.dotran.example.store.application.mapper.StoreDataMapper;
 import com.dotran.example.store.application.repository.StoreRepository;
-import com.dotran.example.store.application.usecase.SettingStoreConfigUseCase;
+import com.dotran.example.store.application.usecase.SettingStoreBusinessHourUseCase;
 import com.dotran.example.store.common.annotation.WebAdapter;
 import com.dotran.example.store.common.domain.valueobject.StoreId;
 import com.dotran.example.store.common.domain.valueobject.TenantId;
@@ -25,7 +24,7 @@ import static com.dotran.example.store.common.constants.ErrorMsgConstant.ERROR_M
 
 @WebAdapter
 @RequiredArgsConstructor
-public class SettingBusinessHourService implements SettingStoreConfigUseCase {
+public class SettingBusinessHourService implements SettingStoreBusinessHourUseCase {
 
     private final StoreRepository storeRepository;
     private final StoreDataMapper storeDataMapper;
