@@ -18,6 +18,7 @@ import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
 
 import java.time.Instant;
+import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -108,6 +109,18 @@ public class Store extends AggregateRoot<StoreId> {
         }
         this.updatedAt = Instant.now();
         this.status = StoreStatus.ACTIVE;
+    }
+
+    public void updateConfig(Boolean autoAcceptOrder,
+                             Boolean allowPreOrder,
+                             LocalTime openingTime,
+                             LocalTime closingTime,
+                             String timeZone,
+                             String currency,
+                             Integer preparationTimeMinutes,
+                             Integer maxOrdersPerDay) {
+        this.config.updateConfig(autoAcceptOrder, allowPreOrder, openingTime, closingTime, timeZone, currency, preparationTimeMinutes, maxOrdersPerDay);
+        this.updatedAt = Instant.now();
     }
 
     public boolean isOpen(Instant now) {

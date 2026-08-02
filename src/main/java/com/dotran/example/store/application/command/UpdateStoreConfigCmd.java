@@ -1,4 +1,4 @@
-package com.dotran.example.store.application.dto;
+package com.dotran.example.store.application.command;
 
 import lombok.Builder;
 import lombok.Data;
@@ -7,7 +7,7 @@ import java.time.LocalTime;
 
 @Data
 @Builder
-public class ConfigDto {
+public class UpdateStoreConfigCmd {
 
     private boolean autoAcceptOrder;
     private boolean allowPreOrder;
