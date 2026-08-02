@@ -5,13 +5,13 @@ import com.dotran.example.store.application.command.CreateStoreCmd;
 import com.dotran.example.store.application.command.GetStoreCmd;
 import com.dotran.example.store.application.command.ReopenStoreCmd;
 import com.dotran.example.store.application.dto.StoreDetailDto;
-import com.dotran.example.store.application.mapper.StoreDataMapper;
 import com.dotran.example.store.application.usecase.CloseStoreUseCase;
 import com.dotran.example.store.application.usecase.CreateStoreUseCase;
 import com.dotran.example.store.application.usecase.GetStoreUseCase;
 import com.dotran.example.store.application.usecase.ReopenStoreUseCase;
 import com.dotran.example.store.common.annotation.WebAdapter;
 import com.dotran.example.store.infrastructure.rest.dto.request.CreateStoreRequest;
+import com.dotran.example.store.infrastructure.rest.mapper.StoreRestMapper;
 import com.dotran.example.store.infrastructure.rest.response.StoreDetailResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -32,7 +32,7 @@ import java.util.UUID;
 @Slf4j
 public class StoreController {
 
-    private final StoreDataMapper storeDataMapper;
+    private final StoreRestMapper storeRestMapper;
     private final CreateStoreUseCase createStoreUseCase;
     private final GetStoreUseCase getStoreUseCase;
     private final CloseStoreUseCase closeStoreUseCase;
@@ -40,7 +40,7 @@ public class StoreController {
 
     @PostMapping
     public StoreDetailResponse createStore(@RequestBody CreateStoreRequest createStoreRequest) {
-        CreateStoreCmd createStoreCmd = storeDataMapper.fromRequestToCmd(createStoreRequest);
+        CreateStoreCmd createStoreCmd = storeRestMapper.fromRequestToCmd(createStoreRequest);
 
         StoreDetailDto storeDetailDto = createStoreUseCase.create(createStoreCmd);
 
