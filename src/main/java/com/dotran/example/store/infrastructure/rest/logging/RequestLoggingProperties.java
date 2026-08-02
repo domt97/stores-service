@@ -1,4 +1,4 @@
-package com.dotran.example.store.infrastructure.rest;
+package com.dotran.example.store.infrastructure.rest.logging;
 
 import lombok.Getter;
 import lombok.Setter;
