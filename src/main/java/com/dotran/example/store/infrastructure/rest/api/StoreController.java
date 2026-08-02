@@ -1,4 +1,4 @@
-package com.dotran.example.store.infrastructure.rest;
+package com.dotran.example.store.infrastructure.rest.api;
 
 import com.dotran.example.store.application.command.CloseStoreCmd;
 import com.dotran.example.store.application.command.CreateStoreCmd;
