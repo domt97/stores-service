@@ -49,7 +49,9 @@ public class StoreController {
 
     @GetMapping("/{tenantId}/{id}")
     public StoreDetailResponse getStore(@PathVariable UUID tenantId, @PathVariable UUID id) {
+        log.info("StoreController - getStore: START");
         StoreDetailDto storeDetailDto = getStoreUseCase.getStoreByTenantIdAndStoreId(new GetStoreCmd(tenantId, id));
+        log.info("StoreController - getStore: END");
 
         return new StoreDetailResponse(storeDetailDto);
     }
