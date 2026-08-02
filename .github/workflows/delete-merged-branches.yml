@@ -1,0 +1,60 @@
+name: Delete merged feature branches
+
+on:
+  pull_request:
+    types:
+      - closed
+
+permissions:
+  contents: write
+  pull-requests: read
+
+jobs:
+  delete-branch:
+    if: github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Delete merged feature branch
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const head = context.payload.pull_request.head.ref;
+
+            // List of protected branches that should not be deleted
+            const protectedBranches = [
+              "main",
+              "master",
+              "develop"
+            ];
+
+            if (protectedBranches.includes(head)) {
+              console.log(`Skip protected branch: ${head}`);
+              return;
+            }
+
+            if (head.startsWith("release/")) {
+              console.log(`Skip release branch: ${head}`);
+              return;
+            }
+
+            const deletablePrefixes = [
+              "feature/",
+              "bugfix/",
+              "hotfix/"
+            ];
+
+            const shouldDelete = deletablePrefixes.some(p => head.startsWith(p));
+
+            if (!shouldDelete) {
+              console.log(`Skip branch: ${head}`);
+              return;
+            }
+
+            await github.rest.git.deleteRef({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              ref: `heads/${head}`
+            });
+
+            console.log(`Deleted ${head}`);
