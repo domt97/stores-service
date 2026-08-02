@@ -2,7 +2,6 @@ package com.dotran.example.store.application.mapper;
 
 import com.dotran.example.store.application.command.AddressCmd;
 import com.dotran.example.store.application.command.BusinessHourCmd;
-import com.dotran.example.store.application.command.CreateStoreCmd;
 import com.dotran.example.store.application.command.StoreConfigCmd;
 import com.dotran.example.store.application.command.UpdateBusinessHourCmd;
 import com.dotran.example.store.application.dto.BusinessHourDto;
@@ -13,8 +12,6 @@ import com.dotran.example.store.common.dto.AddressDto;
 import com.dotran.example.store.domain.model.BusinessHour;
 import com.dotran.example.store.domain.model.Store;
 import com.dotran.example.store.domain.valueobject.StoreConfig;
-import com.dotran.example.store.infrastructure.rest.dto.request.CreateStoreRequest;
-import com.dotran.example.store.infrastructure.rest.dto.request.UpdateBusinessHourRequest;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.Named;
@@ -23,12 +20,6 @@ import java.util.List;
 
 @Mapper(componentModel = "spring")
 public abstract class StoreDataMapper {
-
-    public abstract CreateStoreCmd fromRequestToCmd(CreateStoreRequest request);
-
-    public abstract UpdateBusinessHourCmd fromRequestToUpdateBusinessHourCmd(UpdateBusinessHourRequest request);
-
-    public abstract List<UpdateBusinessHourCmd> fromListRequestToUpdateBusinessHourCmd(List<UpdateBusinessHourRequest> request);
 
     public abstract Address fromAddressCmdToAddress(AddressCmd cmd);
 

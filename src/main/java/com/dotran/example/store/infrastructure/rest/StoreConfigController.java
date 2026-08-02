@@ -3,12 +3,12 @@ package com.dotran.example.store.infrastructure.rest;
 import com.dotran.example.store.application.command.CreateStoreCmd;
 import com.dotran.example.store.application.command.UpdateBusinessHourCmd;
 import com.dotran.example.store.application.dto.StoreDetailDto;
-import com.dotran.example.store.application.mapper.StoreDataMapper;
 import com.dotran.example.store.application.usecase.SettingStoreConfigUseCase;
 import com.dotran.example.store.common.annotation.WebAdapter;
 import com.dotran.example.store.infrastructure.rest.dto.request.CreateStoreRequest;
 import com.dotran.example.store.infrastructure.rest.dto.request.StoreConfigRequest;
 import com.dotran.example.store.infrastructure.rest.dto.request.UpdateBusinessHourRequest;
+import com.dotran.example.store.infrastructure.rest.mapper.StoreRestMapper;
 import com.dotran.example.store.infrastructure.rest.response.StoreDetailResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -30,13 +30,13 @@ import java.util.UUID;
 public class StoreConfigController {
 
     private final SettingStoreConfigUseCase settingStoreConfigUseCase;
-    private final StoreDataMapper storeDataMapper;
+    private final StoreRestMapper storeRestMapper;
 
     @PutMapping("/{tenantId}/{storeId}/business-hour")
     public StoreDetailResponse updateStoreConfig(@PathVariable UUID tenantId,
                                                  @PathVariable UUID storeId,
                                                  @RequestBody List<UpdateBusinessHourRequest> updateBusinessHourRequests) {
-        List<UpdateBusinessHourCmd> updateBusinessHourCmds = storeDataMapper.fromListRequestToUpdateBusinessHourCmd(updateBusinessHourRequests);
+        List<UpdateBusinessHourCmd> updateBusinessHourCmds = storeRestMapper.fromListRequestToUpdateBusinessHourCmd(updateBusinessHourRequests);
 
         StoreDetailDto storeDetailDto = settingStoreConfigUseCase.setupBusinessHour(tenantId, storeId, updateBusinessHourCmds);
 

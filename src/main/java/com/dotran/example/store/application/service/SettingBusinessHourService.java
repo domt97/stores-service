@@ -45,7 +45,8 @@ public class SettingBusinessHourService implements SettingStoreConfigUseCase {
             UpdateBusinessHourCmd updateBusinessHourCmd = updateBusinessHourCmdMap.get(businessHour.getId());
 
             if (null == updateBusinessHourCmd) {
-                throw new BusinessException(String.format(ERROR_MSG_STORE_MISSING_BUSINESS_HOUR_CONFIG, businessHour.getId()));
+                throw new BusinessException(String.format(ERROR_MSG_STORE_MISSING_BUSINESS_HOUR_CONFIG,
+                        businessHour.getDayOfWeek().toString()));
             }
 
             businessHour.updateBusinessHour(
