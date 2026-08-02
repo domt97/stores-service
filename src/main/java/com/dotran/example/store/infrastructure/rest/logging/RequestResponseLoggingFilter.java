@@ -1,4 +1,4 @@
-package com.dotran.example.store.infrastructure.rest;
+package com.dotran.example.store.infrastructure.rest.logging;
 
 import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;

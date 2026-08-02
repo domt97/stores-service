@@ -58,18 +58,6 @@ Project structure (high level)
 
 This structure keeps business logic isolated from frameworks and makes testing easier. Use the `application` layer to orchestrate domain objects and keep controllers thin.
 
-
-Configuration (example)
------------------------
-See src/main/resources/application.yml (or add one) and configure:
-
-app:
-  logging:
-    http:
-      enabled: true
-      sensitive-headers: [Authorization, Cookie, X-API-Key]
-      sensitive-query-params: [token, access_token]
-
 Development notes
 -----------------
 - Uses Lombok; IDEs may need Lombok plugin.
