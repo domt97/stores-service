@@ -1,6 +1,5 @@
-package com.dotran.example.store.infrastructure.config;
+package com.dotran.example.store.infrastructure.cloud.dynamodb;
 
-import com.dotran.example.store.infrastructure.cloud.dynamodb.TenantInfoItem;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
