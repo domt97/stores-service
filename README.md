@@ -24,6 +24,15 @@ Base path: /v1/store
 - PUT /v1/store/{tenantId}/{id}/close — close store
 - PUT /v1/store/{tenantId}/{id}/reopen — reopen store
 
+Interactive API Documentation (Swagger UI)
+-------------------------------------------
+After starting the server, access the interactive API documentation:
+
+- **Swagger UI:** http://localhost:8048/swagger-ui.html
+- **OpenAPI JSON:** http://localhost:8048/api-docs
+
+The Swagger UI provides a browser-based interface to explore and test all API endpoints. You can see request/response schemas, try endpoints directly, and view detailed parameter descriptions.
+
 Logging and security
 --------------------
 This project includes an HTTP logging filter that records request/response metadata (method, URI, headers, status, duration).
