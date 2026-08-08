@@ -23,6 +23,28 @@ spring:
     locations: classpath:db/migration
     url: jdbc:postgresql://localhost:5432/store?currentSchema=store
 
+app:
+  dynamodb:
+    # For local development with LocalStack
+    # endpoint: http://localhost:4566
+    endpoint: ""
+    region: eu-west-1
+    access-key: ""
+    secret-key: ""
+    table:
+      tenant-info: tenant_info
+
+springdoc:
+  api-docs:
+    path: /api-docs
+
+  swagger-ui:
+    operationsSorter: method
+    tagsSorter: alpha
+    display-request-duration: true
+    try-it-out-enabled: true
+    enabled: true
+
 logging:
   level:
     root: INFO

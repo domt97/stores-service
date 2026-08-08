@@ -1,16 +1,20 @@
 package com.dotran.example.store.application.mapper;
 
+import com.dotran.example.store.application.command.AddStoreAvailabilityCmd;
 import com.dotran.example.store.application.command.AddressCmd;
 import com.dotran.example.store.application.command.BusinessHourCmd;
 import com.dotran.example.store.application.command.StoreConfigCmd;
 import com.dotran.example.store.application.command.UpdateBusinessHourCmd;
 import com.dotran.example.store.application.dto.BusinessHourDto;
 import com.dotran.example.store.application.dto.ConfigDto;
+import com.dotran.example.store.application.dto.StoreAvailabilityDto;
 import com.dotran.example.store.application.dto.StoreDetailDto;
 import com.dotran.example.store.common.domain.valueobject.Address;
+import com.dotran.example.store.common.domain.valueobject.StoreId;
 import com.dotran.example.store.common.dto.AddressDto;
 import com.dotran.example.store.domain.model.BusinessHour;
 import com.dotran.example.store.domain.model.Store;
+import com.dotran.example.store.domain.model.StoreAvailability;
 import com.dotran.example.store.domain.valueobject.StoreConfig;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
@@ -33,6 +37,10 @@ public abstract class StoreDataMapper {
 
     public abstract List<BusinessHour> fromListUpdateBusinessHourCmdToListBusinessHour(List<UpdateBusinessHourCmd> updateBusinessHourCmds);
 
+    @Mapping(target = "storeId", source = "storeId")
+    @Mapping(target = "cancelled", constant = "false")
+    public abstract StoreAvailability fromCmdToStoreAvailability(AddStoreAvailabilityCmd cmd, StoreId storeId);
+
     @Mapping(target = "id", source = "id.value")
     @Mapping(target = "tenantId", source = "tenantId.value")
     @Mapping(target = "ownerId", source = "ownerId.value")
@@ -40,6 +48,10 @@ public abstract class StoreDataMapper {
     @Mapping(target = "config", source = "config", qualifiedByName = "toConfigDto")
     @Mapping(target = "businessHours", source = "businessHours", qualifiedByName = "toListBusinessHourDto")
     public abstract StoreDetailDto toStoreDetailDto(Store store);
+
+    @Mapping(target = "id", source = "id.value")
+    @Mapping(target = "storeId", source = "storeId.value")
+    public abstract StoreAvailabilityDto toStoreAvailabilityDto(StoreAvailability storeAvailability);
 
     @Named("toAddressDto")
     public abstract AddressDto toAddressDto(Address address);

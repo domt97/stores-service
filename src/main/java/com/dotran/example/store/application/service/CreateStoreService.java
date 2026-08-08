@@ -4,11 +4,13 @@ import com.dotran.example.store.application.command.CreateStoreCmd;
 import com.dotran.example.store.application.dto.StoreDetailDto;
 import com.dotran.example.store.application.mapper.StoreDataMapper;
 import com.dotran.example.store.application.repository.StoreRepository;
+import com.dotran.example.store.application.repository.TenantRepository;
 import com.dotran.example.store.application.usecase.CreateStoreUseCase;
 import com.dotran.example.store.common.annotation.UseCase;
 import com.dotran.example.store.common.domain.valueobject.CustomerId;
 import com.dotran.example.store.common.domain.valueobject.TenantId;
 import com.dotran.example.store.domain.model.Store;
+import com.dotran.example.store.domain.model.TenantInfo;
 import lombok.RequiredArgsConstructor;
 
 @UseCase
@@ -16,11 +18,14 @@ import lombok.RequiredArgsConstructor;
 public class CreateStoreService implements CreateStoreUseCase {
 
     private final StoreRepository storeRepository;
+    private final TenantRepository tenantRepository;
     private final StoreDataMapper storeDataMapper;
 
     @Override
     public StoreDetailDto create(CreateStoreCmd cmd) {
-        Store store = Store.initStore(TenantId.of(cmd.getTenantId()),
+        TenantInfo tenantInfo = tenantRepository.findByTenantId(TenantId.of(cmd.getTenantId()))
+                .orElseThrow(() -> new IllegalArgumentException("Tenant not found with ID: " + cmd.getTenantId()));
+        Store store = Store.initStore(tenantInfo.getId(),
                 cmd.getName(),
                 cmd.getCode(),
                 CustomerId.of(cmd.getOwnerId()),
