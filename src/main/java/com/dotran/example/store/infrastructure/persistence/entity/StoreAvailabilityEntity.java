@@ -24,6 +24,7 @@ public class StoreAvailabilityEntity {
 
     @Id
     @GeneratedValue
+    @EqualsAndHashCode.Include
     private UUID id;
 
     @Column(name = "store_id", nullable = false)

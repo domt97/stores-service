@@ -27,6 +27,7 @@ dependencies {
 	implementation("org.hibernate:hibernate-validator:8.0.3.Final")
 	implementation 'org.mapstruct:mapstruct:1.6.3'
 	implementation 'org.projectlombok:lombok'
+	implementation("org.apache.commons:commons-lang3:3.18.0")
 
 	// AWS
 	implementation platform("software.amazon.awssdk:bom:2.31.76")
