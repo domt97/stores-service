@@ -3,7 +3,7 @@ server:
 
 spring:
   application:
-    name: store
+    name: stores-service
 
   datasource:
     url: jdbc:postgresql://localhost:5432/store?currentSchema=store
