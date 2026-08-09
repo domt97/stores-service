@@ -1,5 +1,6 @@
 package com.dotran.example.store.infrastructure.mapper;
 
+import com.dotran.example.store.common.domain.valueobject.SKU;
 import com.dotran.example.store.common.mapper.IdMapper;
 import com.dotran.example.store.domain.model.ProductImage;
 import com.dotran.example.store.domain.model.ProductSku;
@@ -98,6 +99,7 @@ public abstract class StoreProductPersistenceMapper {
     @AfterMapping
     protected void afterMapping(ProductSkuEntity entity, @MappingTarget ProductSku productSku) {
         productSku.setId(idMapper.toProductSkuId(entity.getId()));
+        productSku.setSku(SKU.of(entity.getSku()));
         productSku.setProductId(idMapper.toProductId(entity.getProduct().getId()));
     }
 

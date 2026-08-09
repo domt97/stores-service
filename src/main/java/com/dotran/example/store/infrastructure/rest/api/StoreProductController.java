@@ -30,7 +30,7 @@ public class StoreProductController {
     private final CreateStoreProductUseCase createStoreProductUseCase;
     private final StoreProductMapper mapper;
 
-    @PostMapping("{tenantId}/store/{storeId}/product")
+    @PostMapping("/{tenantId}/{storeId}")
     @ResponseStatus(HttpStatus.CREATED)
     public StoreProductResponse create(@PathVariable String tenantId, @PathVariable String storeId,
                                        @RequestBody @Valid CreateStoreProductRequest request) {

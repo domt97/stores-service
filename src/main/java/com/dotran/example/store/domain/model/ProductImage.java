@@ -23,4 +23,8 @@ public class ProductImage {
     private Integer displayOrder;
 
     private Instant createdAt;
+
+    public void init() {
+        createdAt = Instant.now();
+    }
 }

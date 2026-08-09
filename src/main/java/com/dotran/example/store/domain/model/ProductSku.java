@@ -39,4 +39,9 @@ public class ProductSku extends BaseDomain<ProductSkuId> {
 
     private Instant createdAt;
     private Instant updatedAt;
+
+    public void init() {
+        this.status = ProductSkuStatus.ACTIVE;
+        this.createdAt = this.updatedAt = Instant.now();
+    }
 }

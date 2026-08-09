@@ -19,6 +19,7 @@ public class CreateStoreProductUseCaseService implements CreateStoreProductUseCa
     @Override
     public StoreProductDetailDto createProduct(CreateStoreProductCmd createStoreProductCmd) {
         StoreProduct storeProduct = storeProductMapper.fromCreateStoreProductCmd(createStoreProductCmd);
+        storeProduct.initState();
 
         StoreProduct createdStoreProduct = storeProductRepository.create(storeProduct);
 

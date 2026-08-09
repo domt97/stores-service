@@ -38,6 +38,11 @@ public class StoreProduct extends BaseDomain<StoreProductId> {
     private Instant createdAt;
     private Instant updatedAt;
 
+    public void initState() {
+        this.status = ProductStatus.ACTIVE;
+        this.createdAt = this.updatedAt = Instant.now();
+    }
+
     public void activate() {
         this.status = ProductStatus.ACTIVE;
         this.updatedAt = Instant.now();

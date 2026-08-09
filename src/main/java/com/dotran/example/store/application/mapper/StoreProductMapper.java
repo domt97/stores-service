@@ -1,6 +1,8 @@
 package com.dotran.example.store.application.mapper;
 
 import com.dotran.example.store.application.command.CreateStoreProductCmd;
+import com.dotran.example.store.application.command.ProductImageCmd;
+import com.dotran.example.store.application.command.ProductSkuCmd;
 import com.dotran.example.store.application.dto.ProductImageDto;
 import com.dotran.example.store.application.dto.ProductSkuDto;
 import com.dotran.example.store.application.dto.StoreProductDetailDto;
@@ -22,14 +24,29 @@ public abstract class StoreProductMapper {
 
     @Mapping(target = "storeId", source = "storeId")
     @Mapping(target = "categoryId", source = "categoryId")
-    @Mapping(target = "skus", source = "skus")
-    @Mapping(target = "images", source = "images")
+    @Mapping(target = "skus", source = "skus", qualifiedByName = "fromProductSkuCmds")
+    @Mapping(target = "images", source = "images", qualifiedByName = "fromProductImageCmds")
     public abstract StoreProduct fromCreateStoreProductCmd(CreateStoreProductCmd cmd);
 
     // mapping helpers for nested command -> domain
-    public abstract ProductSku fromProductSkuCmd(com.dotran.example.store.application.command.ProductSkuCmd cmd);
-    public abstract ProductImage fromProductImageCmd(com.dotran.example.store.application.command.ProductImageCmd cmd);
+    public abstract ProductSku fromProductSkuCmd(ProductSkuCmd cmd);
+    public abstract ProductImage fromProductImageCmd(ProductImageCmd cmd);
 
+    @Named("fromProductSkuCmds")
+    public List<ProductSku> fromProductSkuCmds(List<ProductSkuCmd> cmds) {
+        return cmds.stream()
+                .map(this::fromProductSkuCmd)
+                .peek(ProductSku::init)
+                .toList();
+    }
+
+    @Named("fromProductImageCmds")
+    public List<ProductImage> fromProductImageCmds(List<ProductImageCmd> cmds) {
+        return cmds.stream()
+                .map(this::fromProductImageCmd)
+                .peek(ProductImage::init)
+                .toList();
+    }
 
     @Mapping(target = "id", source = "id.value")
     @Mapping(target = "storeId", source = "storeId.value")

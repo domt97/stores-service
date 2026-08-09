@@ -19,7 +19,7 @@ public class ProductSkuDto {
     private UUID id;
     private UUID productId;
 
-    private UUID sku;
+    private String sku;
     private String name;
 
     private BigDecimal price;
