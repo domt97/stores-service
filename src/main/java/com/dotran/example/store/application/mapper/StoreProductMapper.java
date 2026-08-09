@@ -7,6 +7,8 @@ import com.dotran.example.store.application.dto.ProductImageDto;
 import com.dotran.example.store.application.dto.ProductSkuDto;
 import com.dotran.example.store.application.dto.StoreProductDetailDto;
 import com.dotran.example.store.common.domain.valueobject.CategoryId;
+import com.dotran.example.store.common.domain.valueobject.SKU;
+import com.dotran.example.store.common.domain.valueobject.StoreId;
 import com.dotran.example.store.domain.model.ProductImage;
 import com.dotran.example.store.domain.model.ProductSku;
 import com.dotran.example.store.domain.model.StoreProduct;
@@ -79,15 +81,15 @@ public abstract class StoreProductMapper {
     }
 
     // helper mappings used by MapStruct to convert simple types
-    protected com.dotran.example.store.common.domain.valueobject.StoreId map(java.util.UUID id) {
-        return id == null ? null : com.dotran.example.store.common.domain.valueobject.StoreId.of(id);
+    protected StoreId map(java.util.UUID id) {
+        return id == null ? null : StoreId.of(id);
     }
 
     protected CategoryId mapCatalog(java.util.UUID id) {
         return id == null ? null : CategoryId.of(id);
     }
 
-    protected com.dotran.example.store.common.domain.valueobject.SKU mapSku(java.lang.String sku) {
-        return sku == null ? null : com.dotran.example.store.common.domain.valueobject.SKU.of(sku);
+    protected SKU mapSku(java.lang.String sku) {
+        return sku == null ? null : SKU.of(sku);
     }
 }
