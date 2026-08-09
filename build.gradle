@@ -27,6 +27,7 @@ dependencies {
 	implementation("org.hibernate:hibernate-validator:8.0.3.Final")
 	implementation 'org.mapstruct:mapstruct:1.6.3'
 	implementation 'org.projectlombok:lombok'
+	implementation("org.apache.commons:commons-lang3:3.18.0")
 
 	// AWS
 	implementation platform("software.amazon.awssdk:bom:2.31.76")
@@ -55,9 +56,6 @@ dependencies {
 	testCompileOnly 'org.projectlombok:lombok'
 	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 	testAnnotationProcessor 'org.projectlombok:lombok'
-
-	implementation 'org.apache.commons:commons-csv:1.14.1'
-	implementation 'org.apache.poi:poi-ooxml:5.4.1'
 }
 
 tasks.named('test') {

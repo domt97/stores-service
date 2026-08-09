@@ -30,7 +30,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         this.logError(ex);
 
         return ErrorResponse.builder()
-                .error(ex.getMessage())
+                .error("Internal Server Error")
                 .timestamp(Instant.now())
                 .status(HttpStatus.INTERNAL_SERVER_ERROR.value())
                 .path(request.getRequestURI())
