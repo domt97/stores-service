@@ -1,7 +1,5 @@
 package com.dotran.example.store.application.dto;
 
-import com.dotran.example.store.common.domain.valueobject.CustomerId;
-import com.dotran.example.store.common.domain.valueobject.TenantId;
 import com.dotran.example.store.common.dto.AddressDto;
 import com.dotran.example.store.domain.enums.StoreStatus;
 import lombok.AllArgsConstructor;

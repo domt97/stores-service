@@ -1,7 +1,7 @@
 package com.dotran.example.store.domain.model;
 
 import com.dotran.example.store.common.domain.BaseDomain;
-import com.dotran.example.store.common.domain.valueobject.CatalogId;
+import com.dotran.example.store.common.domain.valueobject.CategoryId;
 import com.dotran.example.store.common.domain.valueobject.StoreId;
 import com.dotran.example.store.common.domain.valueobject.StoreProductId;
 import com.dotran.example.store.domain.enums.ProductStatus;
@@ -28,7 +28,7 @@ public class StoreProduct extends BaseDomain<StoreProductId> {
     private String name;
     private String description;
 
-    private CatalogId categoryId;
+    private CategoryId categoryId;
 
     private ProductStatus status;
 

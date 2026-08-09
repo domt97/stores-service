@@ -44,8 +44,6 @@ public class StoreProductEntity {
 
     private UUID categoryId;
 
-    private UUID brandId;
-
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 30)
     private ProductStatus status;
