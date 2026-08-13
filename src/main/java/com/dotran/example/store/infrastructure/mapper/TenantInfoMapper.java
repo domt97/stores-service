@@ -11,11 +11,8 @@ import org.mapstruct.Mapping;
 @Mapper(componentModel = "spring")
 public interface TenantInfoMapper {
 
-    @Mapping(target = "code", source = "code")
-    @Mapping(target = "name", source = "name")
-    @Mapping(target = "status", source = "status")
-    @Mapping(target = "createdAt", source = "createdAt")
-    @Mapping(target = "updatedAt", source = "updatedAt")
+    @Mapping(target = "id", expression = "java(com.dotran.example.store.common.domain.valueobject.TenantId.of(item.getPk()))")
+    @Mapping(target = "settings", source = "settings")
     TenantInfo fromItemToTenantInfo(TenantInfoItem item);
 
     @Mapping(target = "pk", source = "id")
@@ -26,13 +23,7 @@ public interface TenantInfoMapper {
     TenantSettingsItem fromSettingsToItem(TenantSetting settings);
 
     default TenantInfo mapTenantInfoItem(TenantInfoItem item) {
-        if (item == null) {
-            return null;
-        }
-        TenantInfo tenantInfo = fromItemToTenantInfo(item);
-        tenantInfo.setId(TenantId.of(item.getPk()));
-        tenantInfo.setSettings(fromItemToSettings(item.getSettings()));
-        return tenantInfo;
+        return item == null ? null : fromItemToTenantInfo(item);
     }
 
     default java.util.UUID mapTenantIdToPk(TenantId tenantId) {
