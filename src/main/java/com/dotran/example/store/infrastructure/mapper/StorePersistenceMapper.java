@@ -9,7 +9,6 @@ import com.dotran.example.store.infrastructure.persistence.entity.BusinessHourEn
 import com.dotran.example.store.infrastructure.persistence.entity.StoreAddressEntity;
 import com.dotran.example.store.infrastructure.persistence.entity.StoreConfigEntity;
 import com.dotran.example.store.infrastructure.persistence.entity.StoreEntity;
-import org.mapstruct.AfterMapping;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.MappingTarget;
@@ -87,7 +86,6 @@ public abstract class StorePersistenceMapper {
         if (null == businessHours || businessHours.isEmpty()) {
             return new ArrayList<>();
         }
-
         return businessHours.stream()
                 .map(bh -> this.fromBusinessHourToEntity(bh, storeEntity))
                 .collect(Collectors.toList());
@@ -109,6 +107,9 @@ public abstract class StorePersistenceMapper {
     // Entity -> Domain
     //
 
+    @Mapping(target = "id", expression = "java(idMapper.toStoreId(storeEntity.getId()))")
+    @Mapping(target = "tenantId", expression = "java(idMapper.toTenantId(storeEntity.getTenantId()))")
+    @Mapping(target = "ownerId", expression = "java(idMapper.toCustomerId(storeEntity.getOwnerId()))")
     @Mapping(target = "address", source = "address", qualifiedByName = "fromStoreAddressEntityToAddress")
     @Mapping(target = "config", source = "config", qualifiedByName = "fromStoreConfigEntityToStoreConfig")
     @Mapping(target = "businessHours", source = "businessHours", qualifiedByName = "fromListBusinessHourEntityToBusinessHours")
@@ -128,20 +129,8 @@ public abstract class StorePersistenceMapper {
         if (null == businessHourEntities || businessHourEntities.isEmpty()) {
             return new ArrayList<>();
         }
-
         return businessHourEntities.stream()
                 .map(this::fromBusinessHourEntityToBusinessHour)
                 .collect(Collectors.toList());
-    }
-
-
-    //
-    // Helper
-    //
-
-    @AfterMapping
-    protected void afterMapping(StoreEntity entity,
-                                @MappingTarget Store store) {
-        store.setId(idMapper.toStoreId(entity.getId()));
     }
 }

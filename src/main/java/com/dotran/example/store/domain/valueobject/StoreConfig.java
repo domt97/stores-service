@@ -5,7 +5,7 @@ import com.dotran.example.store.domain.model.BusinessHour;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
-import lombok.Data;
+import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 import java.time.DayOfWeek;
@@ -15,23 +15,20 @@ import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.util.List;
 
-@Data
+@Getter
 @Builder
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
-@NoArgsConstructor
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class StoreConfig {
 
     private boolean autoAcceptOrder;
     private boolean allowPreOrder;
-
     private LocalTime openingTime;
     private LocalTime closingTime;
-
     private String timeZone;
     private String currency;
     private Integer preparationTimeMinutes;
     private Integer maxOrdersPerDay;
-
     private Instant createdAt;
     private Instant updatedAt;
 
@@ -70,7 +67,6 @@ public class StoreConfig {
                 throw new BusinessException("Opening time must be before closing time");
             }
         }
-
         this.autoAcceptOrder = autoAcceptOrder;
         this.allowPreOrder = allowPreOrder;
         this.openingTime = openingTime;
@@ -82,9 +78,7 @@ public class StoreConfig {
         this.updatedAt = Instant.now();
     }
 
-    public boolean isOpen(
-            Instant now,
-            List<BusinessHour> hours) {
+    public boolean isOpen(Instant now, List<BusinessHour> hours) {
         ZonedDateTime local = now.atZone(ZoneId.of(timeZone));
         DayOfWeek day = local.getDayOfWeek();
         LocalTime current = local.toLocalTime();

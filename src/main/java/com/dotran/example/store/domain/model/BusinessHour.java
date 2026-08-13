@@ -3,7 +3,7 @@ package com.dotran.example.store.domain.model;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
-import lombok.Data;
+import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 import java.time.DayOfWeek;
@@ -12,10 +12,10 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
 
-@Data
+@Getter
 @Builder
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
-@NoArgsConstructor
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class BusinessHour {
 
     private Long id;
@@ -56,11 +56,7 @@ public class BusinessHour {
     }
 
     public boolean isOpen(LocalTime current) {
-        if (closed) {
-            return false;
-        }
-
-        return !current.isBefore(openingTime)
-                && !current.isAfter(closingTime);
+        if (closed) return false;
+        return !current.isBefore(openingTime) && !current.isAfter(closingTime);
     }
 }

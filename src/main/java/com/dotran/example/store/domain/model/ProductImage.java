@@ -5,26 +5,24 @@ import com.dotran.example.store.common.domain.valueobject.ProductImageId;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
-import lombok.Data;
+import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 import java.time.Instant;
 
-@Data
+@Getter
 @Builder
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
-@NoArgsConstructor
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class ProductImage {
 
     private ProductImageId id;
     private ProductId productId;
-
     private String imageUrl;
     private Integer displayOrder;
-
     private Instant createdAt;
 
     public void init() {
-        createdAt = Instant.now();
+        this.createdAt = Instant.now();
     }
 }

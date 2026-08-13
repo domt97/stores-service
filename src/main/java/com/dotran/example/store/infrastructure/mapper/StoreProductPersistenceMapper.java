@@ -8,10 +8,8 @@ import com.dotran.example.store.domain.model.StoreProduct;
 import com.dotran.example.store.infrastructure.persistence.entity.ProductImageEntity;
 import com.dotran.example.store.infrastructure.persistence.entity.ProductSkuEntity;
 import com.dotran.example.store.infrastructure.persistence.entity.StoreProductEntity;
-import org.mapstruct.AfterMapping;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
-import org.mapstruct.MappingTarget;
 import org.mapstruct.Named;
 import org.springframework.beans.factory.annotation.Autowired;
 
@@ -25,7 +23,11 @@ import java.util.stream.Collectors;
 public abstract class StoreProductPersistenceMapper {
 
     @Autowired
-    private IdMapper idMapper;
+    protected IdMapper idMapper;
+
+    //
+    // Domain -> Entity
+    //
 
     @Mapping(target = "id", source = "id.value")
     @Mapping(target = "storeId", source = "storeProduct.storeId.value")
@@ -60,14 +62,20 @@ public abstract class StoreProductPersistenceMapper {
                 .collect(Collectors.toList());
     }
 
-    @Mapping(target = "storeId", ignore = true)
-    @Mapping(target = "categoryId", ignore = true)
+    //
+    // Entity -> Domain
+    //
+
+    @Mapping(target = "id", expression = "java(idMapper.toStoreProductId(entity.getId()))")
+    @Mapping(target = "storeId", expression = "java(idMapper.toStoreId(entity.getStoreId()))")
+    @Mapping(target = "categoryId", expression = "java(idMapper.toCategoryId(entity.getCategoryId()))")
     @Mapping(target = "skus", source = "skus", qualifiedByName = "fromProductSkuEntities")
     @Mapping(target = "images", source = "images", qualifiedByName = "fromProductImageEntities")
     public abstract StoreProduct fromEntity(StoreProductEntity entity);
 
-    @Mapping(target = "productId", ignore = true)
-    @Mapping(target = "sku", ignore = true)
+    @Mapping(target = "id", expression = "java(idMapper.toProductSkuId(entity.getId()))")
+    @Mapping(target = "sku", expression = "java(com.dotran.example.store.common.domain.valueobject.SKU.of(entity.getSku()))")
+    @Mapping(target = "productId", expression = "java(idMapper.toProductId(entity.getProduct().getId()))")
     public abstract ProductSku fromProductSkuEntity(ProductSkuEntity entity);
 
     @Named("fromProductSkuEntities")
@@ -77,8 +85,8 @@ public abstract class StoreProductPersistenceMapper {
                 .collect(Collectors.toList());
     }
 
-    @Mapping(target = "id", ignore = true)
-    @Mapping(target = "productId", ignore = true)
+    @Mapping(target = "id", expression = "java(idMapper.toProductImageId(entity.getId()))")
+    @Mapping(target = "productId", expression = "java(idMapper.toProductId(entity.getProduct().getId()))")
     public abstract ProductImage fromProductImageEntity(ProductImageEntity entity);
 
     @Named("fromProductImageEntities")
@@ -86,26 +94,5 @@ public abstract class StoreProductPersistenceMapper {
         return entities.stream()
                 .map(this::fromProductImageEntity)
                 .collect(Collectors.toList());
-    }
-
-
-    @AfterMapping
-    protected void afterMapping(StoreProductEntity entity, @MappingTarget StoreProduct storeProduct) {
-        storeProduct.setId(idMapper.toStoreProductId(entity.getId()));
-        storeProduct.setStoreId(idMapper.toStoreId(entity.getStoreId()));
-        storeProduct.setCategoryId(idMapper.toCategoryId(entity.getCategoryId()));
-    }
-
-    @AfterMapping
-    protected void afterMapping(ProductSkuEntity entity, @MappingTarget ProductSku productSku) {
-        productSku.setId(idMapper.toProductSkuId(entity.getId()));
-        productSku.setSku(SKU.of(entity.getSku()));
-        productSku.setProductId(idMapper.toProductId(entity.getProduct().getId()));
-    }
-
-    @AfterMapping
-    protected void afterMapping(ProductImageEntity entity, @MappingTarget ProductImage productImage) {
-        productImage.setId(idMapper.toProductImageId(entity.getId()));
-        productImage.setProductId(idMapper.toProductId(entity.getProduct().getId()));
     }
 }

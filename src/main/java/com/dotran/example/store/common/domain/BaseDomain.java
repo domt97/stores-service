@@ -1,12 +1,12 @@
 package com.dotran.example.store.common.domain;
 
 import lombok.Getter;
-import lombok.Setter;
+import lombok.experimental.SuperBuilder;
 
 import java.util.Objects;
 
-@Setter
 @Getter
+@SuperBuilder
 public abstract class BaseDomain<ID> {
 
     protected ID id;
@@ -18,7 +18,6 @@ public abstract class BaseDomain<ID> {
         BaseDomain<?> that = (BaseDomain<?>) obj;
         return id.equals(that.id);
     }
-
 
     @Override
     public int hashCode() {

@@ -1,6 +1,5 @@
 package com.dotran.example.store.domain.model;
 
-
 import com.dotran.example.store.common.domain.AggregateRoot;
 import com.dotran.example.store.common.domain.valueobject.Address;
 import com.dotran.example.store.common.domain.valueobject.CustomerId;
@@ -10,12 +9,9 @@ import com.dotran.example.store.domain.enums.StoreStatus;
 import com.dotran.example.store.domain.exception.BusinessException;
 import com.dotran.example.store.domain.exception.StoreAlreadyClosedException;
 import com.dotran.example.store.domain.valueobject.StoreConfig;
-import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
 import lombok.EqualsAndHashCode;
-import lombok.NoArgsConstructor;
+import lombok.Getter;
+import lombok.experimental.SuperBuilder;
 
 import java.time.Instant;
 import java.time.LocalTime;
@@ -24,11 +20,9 @@ import java.util.List;
 
 import static com.dotran.example.store.common.constants.Constants.ERROR_MSG_STORE_IS_NOT_CLOSED;
 
-@Data
-@Builder
+@Getter
+@SuperBuilder
 @EqualsAndHashCode(callSuper = true)
-@AllArgsConstructor(access = AccessLevel.PRIVATE)
-@NoArgsConstructor
 public class Store extends AggregateRoot<StoreId> {
 
     private TenantId tenantId;
@@ -40,10 +34,8 @@ public class Store extends AggregateRoot<StoreId> {
     private StoreStatus status;
 
     private Address address;
-
     private StoreConfig config;
-
-    private List<BusinessHour> businessHours = new ArrayList<>();
+    private List<BusinessHour> businessHours;
 
     private Instant createdAt;
     private Instant updatedAt;
@@ -54,7 +46,8 @@ public class Store extends AggregateRoot<StoreId> {
                                   CustomerId ownerId,
                                   String email,
                                   String phone) {
-        Store store = Store.builder()
+        return Store.builder()
+                .id(StoreId.newStoreId())
                 .tenantId(tenantId)
                 .name(name)
                 .code(code)
@@ -62,13 +55,10 @@ public class Store extends AggregateRoot<StoreId> {
                 .email(email)
                 .phone(phone)
                 .status(StoreStatus.ACTIVE)
+                .businessHours(new ArrayList<>())
                 .createdAt(Instant.now())
                 .updatedAt(Instant.now())
                 .build();
-
-        store.setId(StoreId.newStoreId());
-
-        return store;
     }
 
     public void addAddress(Address address) {
@@ -126,5 +116,4 @@ public class Store extends AggregateRoot<StoreId> {
     public boolean isOpen(Instant now) {
         return config.isOpen(now, businessHours);
     }
-
 }
