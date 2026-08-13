@@ -11,6 +11,7 @@ import com.dotran.example.store.common.domain.valueobject.TenantId;
 import com.dotran.example.store.domain.exception.StoreNotFoundException;
 import com.dotran.example.store.domain.model.Store;
 import lombok.RequiredArgsConstructor;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.UUID;
 
@@ -22,6 +23,7 @@ public class SettingStoreConfigService implements SettingStoreConfigUseCase {
     private final StoreDataMapper storeDataMapper;
 
     @Override
+    @Transactional
     public StoreDetailDto setupStoreConfig(UUID tenantIdString, UUID storeIdString, UpdateStoreConfigCmd cmd) {
         TenantId tenantId = TenantId.of(tenantIdString);
         StoreId storeId = StoreId.of(storeIdString);

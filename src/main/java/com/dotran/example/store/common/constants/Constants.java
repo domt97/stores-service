@@ -3,7 +3,12 @@ package com.dotran.example.store.common.constants;
 import lombok.NoArgsConstructor;
 
 @NoArgsConstructor
-public class ErrorMsgConstant {
+public class Constants {
+
+    // Resource
+    public static final String TENANT = "Tenant";
+    public static final String STORE = "Store";
+    public static final String PRODUCT = "Product";
 
     // Common error
 

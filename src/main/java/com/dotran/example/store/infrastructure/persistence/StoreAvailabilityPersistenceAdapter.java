@@ -9,7 +9,6 @@ import com.dotran.example.store.infrastructure.mapper.StoreAvailabilityPersisten
 import com.dotran.example.store.infrastructure.persistence.entity.StoreAvailabilityEntity;
 import com.dotran.example.store.infrastructure.persistence.jpa.SpringDataStoreAvailabilityRepository;
 import lombok.RequiredArgsConstructor;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Optional;
 
@@ -21,7 +20,6 @@ public class StoreAvailabilityPersistenceAdapter implements StoreAvailabilityRep
     private final StoreAvailabilityPersistenceMapper mapper;
 
     @Override
-    @Transactional
     public StoreAvailability save(StoreAvailability storeAvailability) {
         StoreAvailabilityEntity entity = mapper.fromDomainToEntity(storeAvailability);
         StoreAvailabilityEntity savedEntity = repository.save(entity);

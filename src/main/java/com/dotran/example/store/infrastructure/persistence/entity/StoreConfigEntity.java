@@ -9,20 +9,23 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.OneToOne;
 import jakarta.persistence.SequenceGenerator;
 import jakarta.persistence.Table;
-import lombok.Data;
 import lombok.EqualsAndHashCode;
+import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.Setter;
+import lombok.ToString;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
 import java.time.Instant;
 import java.time.LocalTime;
-import java.util.UUID;
 
 @Entity
 @Table(name = "store_configs")
-@Data
+@Getter
+@Setter
 @EqualsAndHashCode(onlyExplicitlyIncluded = true)
+@ToString(exclude = {"store"})
 @NoArgsConstructor
 public class StoreConfigEntity {
 
@@ -37,7 +40,7 @@ public class StoreConfigEntity {
     private Long id;
 
     @OneToOne
-    @JoinColumn(name = "store_id")
+    @JoinColumn(name = "store_id", nullable = false)
     private StoreEntity store;
 
     private boolean autoAcceptOrder;
