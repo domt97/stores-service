@@ -32,12 +32,12 @@ public class StoreProductController {
 
     @PostMapping("/{tenantId}/{storeId}")
     @ResponseStatus(HttpStatus.CREATED)
-    public StoreProductResponse create(@PathVariable String tenantId, @PathVariable String storeId,
+    public StoreProductResponse create(@PathVariable UUID tenantId, @PathVariable UUID storeId,
                                        @RequestBody @Valid CreateStoreProductRequest request) {
         CreateStoreProductCmd createStoreProductCmd = mapper.fromCreateRequestToCmd(request);
         // set path variables
-        createStoreProductCmd.setTenantId(UUID.fromString(tenantId));
-        createStoreProductCmd.setStoreId(UUID.fromString(storeId));
+        createStoreProductCmd.setTenantId(tenantId);
+        createStoreProductCmd.setStoreId(storeId);
 
         StoreProductDetailDto storeProductDetailDto = createStoreProductUseCase.createProduct(createStoreProductCmd);
 

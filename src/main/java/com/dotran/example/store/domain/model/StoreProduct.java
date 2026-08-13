@@ -1,6 +1,6 @@
 package com.dotran.example.store.domain.model;
 
-import com.dotran.example.store.common.domain.BaseDomain;
+import com.dotran.example.store.common.domain.AggregateRoot;
 import com.dotran.example.store.common.domain.valueobject.CategoryId;
 import com.dotran.example.store.common.domain.valueobject.StoreId;
 import com.dotran.example.store.common.domain.valueobject.StoreProductId;
@@ -21,7 +21,7 @@ import java.util.List;
 @EqualsAndHashCode(callSuper = true)
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
 @NoArgsConstructor
-public class StoreProduct extends BaseDomain<StoreProductId> {
+public class StoreProduct extends AggregateRoot<StoreProductId> {
 
     private StoreId storeId;
 

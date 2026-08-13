@@ -1,6 +1,6 @@
 package com.dotran.example.store.domain.model;
 
-import com.dotran.example.store.common.domain.BaseDomain;
+import com.dotran.example.store.common.domain.AggregateRoot;
 import com.dotran.example.store.common.domain.valueobject.StoreAvailabilityId;
 import com.dotran.example.store.common.domain.valueobject.StoreId;
 import com.dotran.example.store.domain.enums.AvailabilityType;
@@ -19,7 +19,7 @@ import java.time.Instant;
 @EqualsAndHashCode(callSuper = true)
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
 @NoArgsConstructor
-public class StoreAvailability extends BaseDomain<StoreAvailabilityId> {
+public class StoreAvailability extends AggregateRoot<StoreAvailabilityId> {
 
     private StoreId storeId;
 
@@ -39,6 +39,12 @@ public class StoreAvailability extends BaseDomain<StoreAvailabilityId> {
 
     public void generateId() {
         super.id = StoreAvailabilityId.generateId();
+    }
+
+    public void newStoreAvailability() {
+        generateId();
+        cancelled = false;
+        createdAt = updatedAt = Instant.now();
     }
 
     public boolean isActive(Instant now) {

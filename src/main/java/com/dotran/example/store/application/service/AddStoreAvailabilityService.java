@@ -12,8 +12,6 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.Instant;
-
 @UseCase
 @RequiredArgsConstructor
 @Slf4j
@@ -26,14 +24,9 @@ public class AddStoreAvailabilityService implements AddStoreAvailabilityUseCase 
     @Transactional
     public StoreAvailabilityDto add(AddStoreAvailabilityCmd cmd) {
         log.info("AddStoreAvailabilityService - add: START for storeId={}", cmd.getStoreId());
-
-        Instant now = Instant.now();
         
         StoreAvailability storeAvailability = storeDataMapper.fromCmdToStoreAvailability(cmd, StoreId.of(cmd.getStoreId()));
-        storeAvailability.generateId();
-        storeAvailability.setCancelled(false);
-        storeAvailability.setCreatedAt(now);
-        storeAvailability.setUpdatedAt(now);
+        storeAvailability.newStoreAvailability();
 
         StoreAvailability savedAvailability = storeAvailabilityRepository.save(storeAvailability);
 
