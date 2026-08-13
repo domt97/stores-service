@@ -2,7 +2,7 @@ CREATE TABLE IF NOT EXISTS stores (
     id          UUID PRIMARY KEY,
     tenant_id   UUID         NOT NULL,
     name        VARCHAR(255) NOT NULL,
-    code        VARCHAR(50)  NOT NULL UNIQUE,
+    code        VARCHAR(50)  NOT NULL,
     owner_id    UUID         NOT NULL,
     email       VARCHAR(255),
     phone       VARCHAR(50),

@@ -1,5 +1,6 @@
 package com.dotran.example.store.infrastructure.rest.exception;
 
+import com.dotran.example.store.common.exception.NotFoundException;
 import com.dotran.example.store.domain.exception.BusinessException;
 import com.dotran.example.store.domain.exception.StoreAlreadyClosedException;
 import com.dotran.example.store.domain.exception.StoreNotFoundException;
@@ -26,6 +27,7 @@ import java.util.List;
 public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 
     @ExceptionHandler(Exception.class)
+    @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
     public ErrorResponse handleUnexpected(Exception ex, HttpServletRequest request) {
         this.logError(ex);
 
@@ -37,9 +39,9 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
                 .build();
     }
 
-    @ExceptionHandler(value = {StoreNotFoundException.class})
+    @ExceptionHandler(value = {StoreNotFoundException.class, NotFoundException.class})
     @ResponseStatus(HttpStatus.NOT_FOUND)
-    public ErrorResponse notFoundException(StoreNotFoundException ex, HttpServletRequest request) {
+    public ErrorResponse notFoundException(Exception ex, HttpServletRequest request) {
         this.logError(ex);
 
         return ErrorResponse.builder()

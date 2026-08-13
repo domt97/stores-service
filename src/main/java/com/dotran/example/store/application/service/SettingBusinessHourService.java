@@ -5,7 +5,7 @@ import com.dotran.example.store.application.dto.StoreDetailDto;
 import com.dotran.example.store.application.mapper.StoreDataMapper;
 import com.dotran.example.store.application.repository.StoreRepository;
 import com.dotran.example.store.application.usecase.SettingStoreBusinessHourUseCase;
-import com.dotran.example.store.common.annotation.WebAdapter;
+import com.dotran.example.store.common.annotation.UseCase;
 import com.dotran.example.store.common.domain.valueobject.StoreId;
 import com.dotran.example.store.common.domain.valueobject.TenantId;
 import com.dotran.example.store.domain.exception.BusinessException;
@@ -23,7 +23,7 @@ import java.util.stream.Collectors;
 
 import static com.dotran.example.store.common.constants.Constants.ERROR_MSG_STORE_MISSING_BUSINESS_HOUR_CONFIG;
 
-@WebAdapter
+@UseCase
 @RequiredArgsConstructor
 public class SettingBusinessHourService implements SettingStoreBusinessHourUseCase {
 
