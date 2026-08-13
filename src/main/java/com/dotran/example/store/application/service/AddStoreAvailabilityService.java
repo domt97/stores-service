@@ -10,6 +10,7 @@ import com.dotran.example.store.common.domain.valueobject.StoreId;
 import com.dotran.example.store.domain.model.StoreAvailability;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 
@@ -22,6 +23,7 @@ public class AddStoreAvailabilityService implements AddStoreAvailabilityUseCase 
     private final StoreDataMapper storeDataMapper;
 
     @Override
+    @Transactional
     public StoreAvailabilityDto add(AddStoreAvailabilityCmd cmd) {
         log.info("AddStoreAvailabilityService - add: START for storeId={}", cmd.getStoreId());
 

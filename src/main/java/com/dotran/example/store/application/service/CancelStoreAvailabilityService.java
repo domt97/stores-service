@@ -9,6 +9,7 @@ import com.dotran.example.store.common.exception.NotFoundException;
 import com.dotran.example.store.domain.model.StoreAvailability;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.UUID;
 
@@ -20,6 +21,7 @@ public class CancelStoreAvailabilityService implements CancelStoreAvailabilityUs
     private final StoreAvailabilityRepository storeAvailabilityRepository;
 
     @Override
+    @Transactional
     public void cancel(UUID storeAvailabilityId, UUID storeId) {
         log.info("CancelStoreAvailabilityService - cancel: START for storeId={}", storeId);
 

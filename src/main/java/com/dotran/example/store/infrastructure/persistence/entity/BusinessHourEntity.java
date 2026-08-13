@@ -11,17 +11,21 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.SequenceGenerator;
 import jakarta.persistence.Table;
-import lombok.Data;
 import lombok.EqualsAndHashCode;
+import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.Setter;
+import lombok.ToString;
 
 import java.time.DayOfWeek;
 import java.time.LocalTime;
 
 @Entity
 @Table(name = "store_business_hours")
-@Data
+@Getter
+@Setter
 @EqualsAndHashCode(onlyExplicitlyIncluded = true)
+@ToString(exclude = {"store"})
 @NoArgsConstructor
 public class BusinessHourEntity {
 
@@ -36,7 +40,7 @@ public class BusinessHourEntity {
     private Long id;
 
     @ManyToOne
-    @JoinColumn(name = "store_id")
+    @JoinColumn(name = "store_id", nullable = false)
     private StoreEntity store;
 
     @Enumerated(EnumType.STRING)

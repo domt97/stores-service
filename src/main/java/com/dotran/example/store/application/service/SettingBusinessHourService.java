@@ -13,6 +13,7 @@ import com.dotran.example.store.domain.exception.StoreNotFoundException;
 import com.dotran.example.store.domain.model.BusinessHour;
 import com.dotran.example.store.domain.model.Store;
 import lombok.RequiredArgsConstructor;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Map;
@@ -20,7 +21,7 @@ import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-import static com.dotran.example.store.common.constants.ErrorMsgConstant.ERROR_MSG_STORE_MISSING_BUSINESS_HOUR_CONFIG;
+import static com.dotran.example.store.common.constants.Constants.ERROR_MSG_STORE_MISSING_BUSINESS_HOUR_CONFIG;
 
 @WebAdapter
 @RequiredArgsConstructor
@@ -30,6 +31,7 @@ public class SettingBusinessHourService implements SettingStoreBusinessHourUseCa
     private final StoreDataMapper storeDataMapper;
 
     @Override
+    @Transactional
     public StoreDetailDto setupBusinessHour(UUID tenantIdString, UUID storeIdString, List<UpdateBusinessHourCmd> updateBusinessHourCmds) {
         TenantId tenantId = TenantId.of(tenantIdString);
         StoreId storeId = StoreId.of(storeIdString);

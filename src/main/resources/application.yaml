@@ -16,6 +16,9 @@ spring:
       connection-timeout: 20000
       max-lifetime: 1800000
 
+  jpa:
+    open-in-view: false
+
   flyway:
     enabled: true
     validate-on-migrate: true

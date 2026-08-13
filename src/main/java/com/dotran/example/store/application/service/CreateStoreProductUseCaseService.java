@@ -8,6 +8,7 @@ import com.dotran.example.store.application.usecase.CreateStoreProductUseCase;
 import com.dotran.example.store.common.annotation.UseCase;
 import com.dotran.example.store.domain.model.StoreProduct;
 import lombok.RequiredArgsConstructor;
+import org.springframework.transaction.annotation.Transactional;
 
 @UseCase
 @RequiredArgsConstructor
@@ -17,6 +18,7 @@ public class CreateStoreProductUseCaseService implements CreateStoreProductUseCa
     private final StoreProductMapper storeProductMapper;
 
     @Override
+    @Transactional
     public StoreProductDetailDto createProduct(CreateStoreProductCmd createStoreProductCmd) {
         StoreProduct storeProduct = storeProductMapper.fromCreateStoreProductCmd(createStoreProductCmd);
         storeProduct.initState();

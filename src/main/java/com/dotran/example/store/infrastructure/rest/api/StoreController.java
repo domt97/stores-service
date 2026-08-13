@@ -19,6 +19,7 @@ import com.dotran.example.store.infrastructure.rest.dto.request.CreateStoreReque
 import com.dotran.example.store.infrastructure.rest.mapper.StoreRestMapper;
 import com.dotran.example.store.infrastructure.rest.response.StoreAvailabilityResponse;
 import com.dotran.example.store.infrastructure.rest.response.StoreDetailResponse;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -50,7 +51,7 @@ public class StoreController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public StoreDetailResponse createStore(@RequestBody CreateStoreRequest createStoreRequest) {
+    public StoreDetailResponse createStore(@RequestBody @Valid CreateStoreRequest createStoreRequest) {
         CreateStoreCmd createStoreCmd = storeRestMapper.fromRequestToCmd(createStoreRequest);
 
         StoreDetailDto storeDetailDto = createStoreUseCase.create(createStoreCmd);
@@ -89,7 +90,7 @@ public class StoreController {
     public StoreAvailabilityResponse addStoreAvailability(
             @PathVariable UUID tenantId,
             @PathVariable UUID id,
-            @RequestBody AddStoreAvailabilityRequest request) {
+            @RequestBody @Valid AddStoreAvailabilityRequest request) {
         log.info("StoreController - addStoreAvailability: START for storeId={}", id);
 
         AddStoreAvailabilityCmd cmd = storeRestMapper.fromRequestToAddStoreAvailabilityCmd(request);

@@ -11,6 +11,7 @@ import com.dotran.example.store.common.domain.valueobject.TenantId;
 import com.dotran.example.store.domain.exception.StoreNotFoundException;
 import com.dotran.example.store.domain.model.Store;
 import lombok.RequiredArgsConstructor;
+import org.springframework.transaction.annotation.Transactional;
 
 @UseCase
 @RequiredArgsConstructor
@@ -20,6 +21,7 @@ public class ReopenStoreService implements ReopenStoreUseCase {
     private final StoreDataMapper storeDataMapper;
 
     @Override
+    @Transactional
     public StoreDetailDto reopen(ReopenStoreCmd cmd) {
         Store store = storeRepository.findByTenantIdAndStoreId(TenantId.of(cmd.getTenantId()), StoreId.of(cmd.getStoreId()))
                 .orElseThrow(StoreNotFoundException::new);

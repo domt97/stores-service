@@ -22,7 +22,7 @@ import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.List;
 
-import static com.dotran.example.store.common.constants.ErrorMsgConstant.ERROR_MSG_STORE_IS_NOT_CLOSED;
+import static com.dotran.example.store.common.constants.Constants.ERROR_MSG_STORE_IS_NOT_CLOSED;
 
 @Data
 @Builder

@@ -1,5 +1,6 @@
 package com.dotran.example.store.domain.valueobject;
 
+import com.dotran.example.store.domain.exception.BusinessException;
 import com.dotran.example.store.domain.model.BusinessHour;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
@@ -66,7 +67,7 @@ public class StoreConfig {
                              Integer maxOrdersPerDay) {
         if (null != openingTime && null != closingTime) {
             if (openingTime.isAfter(closingTime) || openingTime.equals(closingTime)) {
-                throw new IllegalArgumentException("Opening time must be before closing time");
+                throw new BusinessException("Opening time must be before closing time");
             }
         }
 
