@@ -1,25 +1,27 @@
 package com.dotran.example.store.infrastructure.rest.response;
 
-import com.dotran.example.store.application.dto.StoreProductDetailDto;
-import lombok.Data;
-import lombok.EqualsAndHashCode;
-import lombok.NoArgsConstructor;
+import com.dotran.example.store.application.dto.ProductImageDto;
+import com.dotran.example.store.application.dto.ProductSkuDto;
+import com.dotran.example.store.domain.enums.ProductStatus;
+import lombok.Builder;
+import lombok.Getter;
 
-@Data
-@EqualsAndHashCode(callSuper = true)
-@NoArgsConstructor
-public class StoreProductResponse extends StoreProductDetailDto {
+import java.time.Instant;
+import java.util.List;
+import java.util.UUID;
 
-    public StoreProductResponse(StoreProductDetailDto dto) {
-        this.setId(dto.getId());
-        this.setStoreId(dto.getStoreId());
-        this.setName(dto.getName());
-        this.setDescription(dto.getDescription());
-        this.setCategoryId(dto.getCategoryId());
-        this.setStatus(dto.getStatus());
-        this.setSkus(dto.getSkus());
-        this.setImages(dto.getImages());
-        this.setCreatedAt(dto.getCreatedAt());
-        this.setUpdatedAt(dto.getUpdatedAt());
-    }
+@Getter
+@Builder
+public class StoreProductResponse {
+
+    private UUID id;
+    private UUID storeId;
+    private String name;
+    private String description;
+    private UUID categoryId;
+    private ProductStatus status;
+    private List<ProductSkuDto> skus;
+    private List<ProductImageDto> images;
+    private Instant createdAt;
+    private Instant updatedAt;
 }

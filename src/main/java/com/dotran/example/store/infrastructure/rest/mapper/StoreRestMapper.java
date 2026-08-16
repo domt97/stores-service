@@ -4,10 +4,14 @@ import com.dotran.example.store.application.command.AddStoreAvailabilityCmd;
 import com.dotran.example.store.application.command.CreateStoreCmd;
 import com.dotran.example.store.application.command.UpdateBusinessHourCmd;
 import com.dotran.example.store.application.command.UpdateStoreConfigCmd;
+import com.dotran.example.store.application.dto.StoreAvailabilityDto;
+import com.dotran.example.store.application.dto.StoreDetailDto;
 import com.dotran.example.store.infrastructure.rest.dto.request.AddStoreAvailabilityRequest;
 import com.dotran.example.store.infrastructure.rest.dto.request.CreateStoreRequest;
 import com.dotran.example.store.infrastructure.rest.dto.request.UpdateBusinessHourRequest;
 import com.dotran.example.store.infrastructure.rest.dto.request.UpdateStoreConfigRequest;
+import com.dotran.example.store.infrastructure.rest.response.StoreAvailabilityResponse;
+import com.dotran.example.store.infrastructure.rest.response.StoreDetailResponse;
 import org.mapstruct.Mapper;
 
 import java.util.List;
@@ -24,4 +28,8 @@ public interface StoreRestMapper {
     UpdateStoreConfigCmd fromUpdateStoreConfigToCmd(UpdateStoreConfigRequest updateStoreConfigRequest);
 
     AddStoreAvailabilityCmd fromRequestToAddStoreAvailabilityCmd(AddStoreAvailabilityRequest request);
+
+    StoreDetailResponse toStoreDetailResponse(StoreDetailDto dto);
+
+    StoreAvailabilityResponse toStoreAvailabilityResponse(StoreAvailabilityDto dto);
 }

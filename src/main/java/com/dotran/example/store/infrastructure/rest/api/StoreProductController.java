@@ -2,10 +2,10 @@ package com.dotran.example.store.infrastructure.rest.api;
 
 import com.dotran.example.store.application.command.CreateStoreProductCmd;
 import com.dotran.example.store.application.dto.StoreProductDetailDto;
-import com.dotran.example.store.application.mapper.StoreProductMapper;
 import com.dotran.example.store.application.usecase.CreateStoreProductUseCase;
 import com.dotran.example.store.common.annotation.WebAdapter;
 import com.dotran.example.store.infrastructure.rest.dto.request.CreateStoreProductRequest;
+import com.dotran.example.store.infrastructure.rest.mapper.StoreProductRestMapper;
 import com.dotran.example.store.infrastructure.rest.response.StoreProductResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -28,19 +28,18 @@ import java.util.UUID;
 public class StoreProductController {
 
     private final CreateStoreProductUseCase createStoreProductUseCase;
-    private final StoreProductMapper mapper;
+    private final StoreProductRestMapper storeProductRestMapper;
 
     @PostMapping("/{tenantId}/{storeId}")
     @ResponseStatus(HttpStatus.CREATED)
     public StoreProductResponse create(@PathVariable UUID tenantId, @PathVariable UUID storeId,
                                        @RequestBody @Valid CreateStoreProductRequest request) {
-        CreateStoreProductCmd createStoreProductCmd = mapper.fromCreateRequestToCmd(request);
-        // set path variables
+        CreateStoreProductCmd createStoreProductCmd = storeProductRestMapper.fromCreateRequestToCmd(request);
         createStoreProductCmd.setTenantId(tenantId);
         createStoreProductCmd.setStoreId(storeId);
 
         StoreProductDetailDto storeProductDetailDto = createStoreProductUseCase.createProduct(createStoreProductCmd);
 
-        return new StoreProductResponse(storeProductDetailDto);
+        return storeProductRestMapper.toStoreProductResponse(storeProductDetailDto);
     }
 }

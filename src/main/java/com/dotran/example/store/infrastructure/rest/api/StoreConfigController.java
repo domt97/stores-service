@@ -39,21 +39,16 @@ public class StoreConfigController {
                                                   @Valid @RequestBody List<UpdateBusinessHourRequest> updateBusinessHourRequests) {
         List<UpdateBusinessHourCmd> updateBusinessHourCmds = storeRestMapper
                 .fromListRequestToUpdateBusinessHourCmd(updateBusinessHourRequests);
-
         StoreDetailDto storeDetailDto = settingStoreBusinessHourUseCase.setupBusinessHour(tenantId, storeId, updateBusinessHourCmds);
-
-        return new StoreDetailResponse(storeDetailDto);
+        return storeRestMapper.toStoreDetailResponse(storeDetailDto);
     }
 
     @PutMapping("/{tenantId}/{storeId}")
     public StoreDetailResponse updateBaseConfig(@PathVariable UUID tenantId,
                                                 @PathVariable UUID storeId,
                                                 @Valid @RequestBody UpdateStoreConfigRequest updateStoreConfigRequest) {
-        UpdateStoreConfigCmd cmd = storeRestMapper
-                .fromUpdateStoreConfigToCmd(updateStoreConfigRequest);
-
+        UpdateStoreConfigCmd cmd = storeRestMapper.fromUpdateStoreConfigToCmd(updateStoreConfigRequest);
         StoreDetailDto storeDetailDto = settingStoreConfigUseCase.setupStoreConfig(tenantId, storeId, cmd);
-
-        return new StoreDetailResponse(storeDetailDto);
+        return storeRestMapper.toStoreDetailResponse(storeDetailDto);
     }
 }
