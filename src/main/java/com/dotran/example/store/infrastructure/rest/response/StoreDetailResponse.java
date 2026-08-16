@@ -1,29 +1,31 @@
 package com.dotran.example.store.infrastructure.rest.response;
 
-import com.dotran.example.store.application.dto.StoreDetailDto;
-import lombok.Data;
-import lombok.EqualsAndHashCode;
-import lombok.NoArgsConstructor;
+import com.dotran.example.store.common.dto.AddressDto;
+import com.dotran.example.store.application.dto.BusinessHourDto;
+import com.dotran.example.store.application.dto.ConfigDto;
+import com.dotran.example.store.domain.enums.StoreStatus;
+import lombok.Builder;
+import lombok.Getter;
 
-@Data
-@EqualsAndHashCode(callSuper = true)
-@NoArgsConstructor
-public class StoreDetailResponse extends StoreDetailDto {
+import java.time.Instant;
+import java.util.List;
+import java.util.UUID;
 
-    public StoreDetailResponse(StoreDetailDto dto) {
-        this.setId(dto.getId());
-        this.setTenantId(dto.getTenantId());
-        this.setName(dto.getName());
-        this.setCode(dto.getCode());
-        this.setOwnerId(dto.getOwnerId());
-        this.setEmail(dto.getEmail());
-        this.setPhone(dto.getPhone());
-        this.setStatus(dto.getStatus());
-        this.setAddress(dto.getAddress());
-        this.setConfig(dto.getConfig());
-        this.setBusinessHours(dto.getBusinessHours());
-        this.setCreatedAt(dto.getCreatedAt());
-        this.setUpdatedAt(dto.getUpdatedAt());
-    }
+@Getter
+@Builder
+public class StoreDetailResponse {
 
+    private UUID id;
+    private String tenantId;
+    private String name;
+    private String code;
+    private String ownerId;
+    private String email;
+    private String phone;
+    private StoreStatus status;
+    private AddressDto address;
+    private ConfigDto config;
+    private List<BusinessHourDto> businessHours;
+    private Instant createdAt;
+    private Instant updatedAt;
 }

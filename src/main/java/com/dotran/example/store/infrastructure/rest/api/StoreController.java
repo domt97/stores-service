@@ -53,10 +53,8 @@ public class StoreController {
     @ResponseStatus(HttpStatus.CREATED)
     public StoreDetailResponse createStore(@RequestBody @Valid CreateStoreRequest createStoreRequest) {
         CreateStoreCmd createStoreCmd = storeRestMapper.fromRequestToCmd(createStoreRequest);
-
         StoreDetailDto storeDetailDto = createStoreUseCase.create(createStoreCmd);
-
-        return new StoreDetailResponse(storeDetailDto);
+        return storeRestMapper.toStoreDetailResponse(storeDetailDto);
     }
 
     @GetMapping("/{tenantId}/{id}")
@@ -65,24 +63,21 @@ public class StoreController {
         log.info("StoreController - getStore: START");
         StoreDetailDto storeDetailDto = getStoreUseCase.getStoreByTenantIdAndStoreId(new GetStoreCmd(tenantId, id));
         log.info("StoreController - getStore: END");
-
-        return new StoreDetailResponse(storeDetailDto);
+        return storeRestMapper.toStoreDetailResponse(storeDetailDto);
     }
 
     @PutMapping("/{tenantId}/{id}/close")
     @ResponseStatus(HttpStatus.OK)
     public StoreDetailResponse closeStore(@PathVariable UUID tenantId, @PathVariable UUID id) {
         StoreDetailDto storeDetailDto = closeStoreUseCase.close(new CloseStoreCmd(tenantId, id));
-
-        return new StoreDetailResponse(storeDetailDto);
+        return storeRestMapper.toStoreDetailResponse(storeDetailDto);
     }
 
     @PutMapping("/{tenantId}/{id}/reopen")
     @ResponseStatus(HttpStatus.OK)
     public StoreDetailResponse reopenStore(@PathVariable UUID tenantId, @PathVariable UUID id) {
         StoreDetailDto storeDetailDto = reopenStoreUseCase.reopen(new ReopenStoreCmd(tenantId, id));
-
-        return new StoreDetailResponse(storeDetailDto);
+        return storeRestMapper.toStoreDetailResponse(storeDetailDto);
     }
 
     @PostMapping("/{tenantId}/{id}/availability")
@@ -100,8 +95,7 @@ public class StoreController {
         StoreAvailabilityDto storeAvailabilityDto = addStoreAvailabilityUseCase.add(cmd);
 
         log.info("StoreController - addStoreAvailability: END");
-
-        return new StoreAvailabilityResponse(storeAvailabilityDto);
+        return storeRestMapper.toStoreAvailabilityResponse(storeAvailabilityDto);
     }
 
     @PostMapping("/{tenantId}/{id}/availability/{storeAvailabilityId}/cancel")
@@ -111,9 +105,7 @@ public class StoreController {
             @PathVariable UUID id,
             @PathVariable UUID storeAvailabilityId) {
         log.info("StoreController - cancelStoreAvailability: START for storeId={}", id);
-
         cancelStoreAvailabilityUseCase.cancel(storeAvailabilityId, id);
-
         log.info("StoreController - cancelStoreAvailability: END");
     }
 }

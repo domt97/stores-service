@@ -1,25 +1,23 @@
 package com.dotran.example.store.infrastructure.rest.response;
 
-import com.dotran.example.store.application.dto.StoreAvailabilityDto;
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.EqualsAndHashCode;
-import lombok.NoArgsConstructor;
+import com.dotran.example.store.domain.enums.AvailabilityType;
+import lombok.Builder;
+import lombok.Getter;
 
-@Data
-@EqualsAndHashCode(callSuper = false)
-@NoArgsConstructor
-public class StoreAvailabilityResponse extends StoreAvailabilityDto {
+import java.time.Instant;
+import java.util.UUID;
 
-    public StoreAvailabilityResponse(StoreAvailabilityDto dto) {
-        this.setId(dto.getId());
-        this.setStoreId(dto.getStoreId());
-        this.setType(dto.getType());
-        this.setStartTime(dto.getStartTime());
-        this.setEndTime(dto.getEndTime());
-        this.setReason(dto.getReason());
-        this.setCancelled(dto.isCancelled());
-        this.setCreatedAt(dto.getCreatedAt());
-        this.setUpdatedAt(dto.getUpdatedAt());
-    }
+@Getter
+@Builder
+public class StoreAvailabilityResponse {
+
+    private UUID id;
+    private UUID storeId;
+    private AvailabilityType type;
+    private Instant startTime;
+    private Instant endTime;
+    private String reason;
+    private boolean cancelled;
+    private Instant createdAt;
+    private Instant updatedAt;
 }
