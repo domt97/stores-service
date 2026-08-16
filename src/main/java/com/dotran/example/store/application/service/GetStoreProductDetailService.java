@@ -7,6 +7,7 @@ import com.dotran.example.store.application.repository.StoreRepository;
 import com.dotran.example.store.application.repository.TenantRepository;
 import com.dotran.example.store.application.usecase.GetStoreProductDetailUseCase;
 import com.dotran.example.store.common.annotation.UseCase;
+import com.dotran.example.store.common.constants.Constants;
 import com.dotran.example.store.common.domain.valueobject.ProductId;
 import com.dotran.example.store.common.domain.valueobject.StoreId;
 import com.dotran.example.store.common.domain.valueobject.TenantId;
@@ -32,13 +33,13 @@ public class GetStoreProductDetailService implements GetStoreProductDetailUseCas
     @Transactional
     public StoreProductDetailDto getProductById(UUID tenantId, UUID storeId, UUID productId) {
         TenantInfo tenantInfo = tenantRepository.findByTenantId(TenantId.of(tenantId))
-                .orElseThrow(() -> new NotFoundException("Tenant not found"));
+                .orElseThrow(() -> new NotFoundException(Constants.ERROR_MSG_TENANT_NOT_FOUND));
 
         Store store = storeRepository.findByTenantIdAndStoreId(tenantInfo.getId(), StoreId.of(storeId))
-                .orElseThrow(() -> new NotFoundException("Store not found"));
+                .orElseThrow(() -> new NotFoundException(Constants.ERROR_MSG_STORE_NOT_FOUND));
 
         StoreProduct storeProduct = repository.getByStoreIdAndProductId(store.getId(), ProductId.of(productId))
-                .orElseThrow(() -> new NotFoundException("Product not found"));
+                .orElseThrow(() -> new NotFoundException(Constants.ERROR_MSG_PRODUCT_NOT_FOUND));
 
         return mapper.fromStoreProduct(storeProduct);
     }

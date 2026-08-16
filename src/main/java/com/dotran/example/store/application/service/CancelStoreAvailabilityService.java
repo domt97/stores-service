@@ -3,6 +3,7 @@ package com.dotran.example.store.application.service;
 import com.dotran.example.store.application.repository.StoreAvailabilityRepository;
 import com.dotran.example.store.application.usecase.CancelStoreAvailabilityUseCase;
 import com.dotran.example.store.common.annotation.UseCase;
+import com.dotran.example.store.common.constants.Constants;
 import com.dotran.example.store.common.domain.valueobject.StoreAvailabilityId;
 import com.dotran.example.store.common.domain.valueobject.StoreId;
 import com.dotran.example.store.common.exception.NotFoundException;
@@ -28,7 +29,7 @@ public class CancelStoreAvailabilityService implements CancelStoreAvailabilityUs
         StoreAvailability storeAvailability = storeAvailabilityRepository.findByIdAndStoreId(
                 StoreAvailabilityId.of(storeAvailabilityId),
                 StoreId.of(storeId)
-        ).orElseThrow(() -> new NotFoundException("Store availability not found"));
+        ).orElseThrow(() -> new NotFoundException(Constants.ERROR_MSG_STORE_AVAILABILITY_NOT_FOUND));
 
         storeAvailability.cancel();
 
