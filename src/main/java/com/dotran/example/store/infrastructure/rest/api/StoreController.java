@@ -36,7 +36,7 @@ import java.util.UUID;
 
 @WebAdapter
 @RestController
-@RequestMapping(value = "/v1/store")
+@RequestMapping(value = "/v1")
 @RequiredArgsConstructor
 @Slf4j
 public class StoreController {
@@ -49,7 +49,7 @@ public class StoreController {
     private final AddStoreAvailabilityUseCase addStoreAvailabilityUseCase;
     private final CancelStoreAvailabilityUseCase cancelStoreAvailabilityUseCase;
 
-    @PostMapping
+    @PostMapping("/tenants/{tenantId}/stores")
     @ResponseStatus(HttpStatus.CREATED)
     public StoreDetailResponse createStore(@RequestBody @Valid CreateStoreRequest createStoreRequest) {
         CreateStoreCmd createStoreCmd = storeRestMapper.fromRequestToCmd(createStoreRequest);
@@ -57,7 +57,7 @@ public class StoreController {
         return storeRestMapper.toStoreDetailResponse(storeDetailDto);
     }
 
-    @GetMapping("/{tenantId}/{id}")
+    @GetMapping("/tenants/{tenantId}/stores/{id}")
     @ResponseStatus(HttpStatus.OK)
     public StoreDetailResponse getStore(@PathVariable UUID tenantId, @PathVariable UUID id) {
         log.info("StoreController - getStore: START");
@@ -66,21 +66,21 @@ public class StoreController {
         return storeRestMapper.toStoreDetailResponse(storeDetailDto);
     }
 
-    @PutMapping("/{tenantId}/{id}/close")
+    @PutMapping("/tenants/{tenantId}/stores/{id}/close")
     @ResponseStatus(HttpStatus.OK)
     public StoreDetailResponse closeStore(@PathVariable UUID tenantId, @PathVariable UUID id) {
         StoreDetailDto storeDetailDto = closeStoreUseCase.close(new CloseStoreCmd(tenantId, id));
         return storeRestMapper.toStoreDetailResponse(storeDetailDto);
     }
 
-    @PutMapping("/{tenantId}/{id}/reopen")
+    @PutMapping("/tenants/{tenantId}/stores/{id}/reopen")
     @ResponseStatus(HttpStatus.OK)
     public StoreDetailResponse reopenStore(@PathVariable UUID tenantId, @PathVariable UUID id) {
         StoreDetailDto storeDetailDto = reopenStoreUseCase.reopen(new ReopenStoreCmd(tenantId, id));
         return storeRestMapper.toStoreDetailResponse(storeDetailDto);
     }
 
-    @PostMapping("/{tenantId}/{id}/availability")
+    @PostMapping("/tenants/{tenantId}/stores/{id}/availability")
     @ResponseStatus(HttpStatus.CREATED)
     public StoreAvailabilityResponse addStoreAvailability(
             @PathVariable UUID tenantId,
@@ -98,7 +98,7 @@ public class StoreController {
         return storeRestMapper.toStoreAvailabilityResponse(storeAvailabilityDto);
     }
 
-    @PostMapping("/{tenantId}/{id}/availability/{storeAvailabilityId}/cancel")
+    @PostMapping("/tenants/{tenantId}/stores/{id}/availability/{storeAvailabilityId}/cancel")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void cancelStoreAvailability(
             @PathVariable UUID tenantId,
