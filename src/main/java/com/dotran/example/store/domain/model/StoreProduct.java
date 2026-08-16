@@ -9,9 +9,11 @@ import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.experimental.SuperBuilder;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 @Getter
 @SuperBuilder
@@ -21,6 +23,7 @@ public class StoreProduct extends AggregateRoot<StoreProductId> {
     private StoreId storeId;
     private String name;
     private String description;
+    private String thumbnailUrl;
     private CategoryId categoryId;
     private ProductStatus status;
     private List<ProductSku> skus;
@@ -53,5 +56,38 @@ public class StoreProduct extends AggregateRoot<StoreProductId> {
     public void addImage(ProductImage image) {
         this.images.add(image);
         this.updatedAt = Instant.now();
+    }
+
+    public BigDecimal getMinPrice() {
+        return Optional.ofNullable(skus)
+                .orElseGet(List::of)
+                .stream()
+                .map(ProductSku::getPrice)
+                .min(BigDecimal::compareTo)
+                .orElse(BigDecimal.ZERO);
+    }
+
+    public BigDecimal getMaxPrice() {
+        return Optional.ofNullable(skus)
+                .orElseGet(List::of)
+                .stream()
+                .map(ProductSku::getPrice)
+                .max(BigDecimal::compareTo)
+                .orElse(BigDecimal.ZERO);
+    }
+
+    public String getCurrency() {
+        return Optional.ofNullable(skus)
+                .orElseGet(List::of)
+                .stream()
+                .map(ProductSku::getCurrency)
+                .findFirst()
+                .orElse(null);
+    }
+
+    public int getSkuCount() {
+        return Optional.ofNullable(skus)
+                .orElseGet(List::of)
+                .size();
     }
 }

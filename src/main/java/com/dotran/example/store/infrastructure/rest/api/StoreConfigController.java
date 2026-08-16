@@ -24,7 +24,7 @@ import java.util.UUID;
 
 @WebAdapter
 @RestController
-@RequestMapping(value = "/v1/store/configs")
+@RequestMapping(value = "/v1")
 @RequiredArgsConstructor
 @Slf4j
 public class StoreConfigController {
@@ -33,7 +33,7 @@ public class StoreConfigController {
     private final SettingStoreConfigUseCase settingStoreConfigUseCase;
     private final StoreRestMapper storeRestMapper;
 
-    @PutMapping("/{tenantId}/{storeId}/business-hour")
+    @PutMapping("/tenants/{tenantId}/stores/{storeId}/business-hours")
     public StoreDetailResponse updateBusinessHour(@PathVariable UUID tenantId,
                                                   @PathVariable UUID storeId,
                                                   @Valid @RequestBody List<UpdateBusinessHourRequest> updateBusinessHourRequests) {
@@ -43,7 +43,7 @@ public class StoreConfigController {
         return storeRestMapper.toStoreDetailResponse(storeDetailDto);
     }
 
-    @PutMapping("/{tenantId}/{storeId}")
+    @PutMapping("/tenants/{tenantId}/stores/{storeId}/configs")
     public StoreDetailResponse updateBaseConfig(@PathVariable UUID tenantId,
                                                 @PathVariable UUID storeId,
                                                 @Valid @RequestBody UpdateStoreConfigRequest updateStoreConfigRequest) {

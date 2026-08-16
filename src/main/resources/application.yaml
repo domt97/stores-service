@@ -18,6 +18,14 @@ spring:
 
   jpa:
     open-in-view: false
+    properties:
+      hibernate:
+        default_batch_fetch_size: 50
+        query:
+          in_clause_parameter_padding: true
+        show_sql: true
+        jdbc:
+          batch_size: 50
 
   flyway:
     enabled: true

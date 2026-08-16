@@ -15,6 +15,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.ToString;
+import org.hibernate.annotations.BatchSize;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
@@ -46,6 +47,9 @@ public class StoreProductEntity {
     @Column(columnDefinition = "TEXT")
     private String description;
 
+    @Column(name = "thumbnail_url", length = 255)
+    private String thumbnailUrl;
+
     private UUID categoryId;
 
     @Enumerated(EnumType.STRING)
@@ -57,6 +61,7 @@ public class StoreProductEntity {
             cascade = CascadeType.ALL,
             orphanRemoval = true
     )
+    @BatchSize(size = 50)
     private List<ProductSkuEntity> skus = new ArrayList<>();
 
     @OneToMany(
@@ -64,6 +69,7 @@ public class StoreProductEntity {
             cascade = CascadeType.ALL,
             orphanRemoval = true
     )
+    @BatchSize(size = 50)
     private List<ProductImageEntity> images = new ArrayList<>();
 
     @CreationTimestamp

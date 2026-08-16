@@ -6,6 +6,7 @@ import com.dotran.example.store.application.command.ProductSkuCmd;
 import com.dotran.example.store.application.dto.ProductImageDto;
 import com.dotran.example.store.application.dto.ProductSkuDto;
 import com.dotran.example.store.application.dto.StoreProductDetailDto;
+import com.dotran.example.store.application.dto.StoreProductReviewDto;
 import com.dotran.example.store.common.domain.valueobject.CategoryId;
 import com.dotran.example.store.common.domain.valueobject.SKU;
 import com.dotran.example.store.common.domain.valueobject.StoreId;
@@ -79,6 +80,14 @@ public abstract class StoreProductMapper {
                 .map(this::fromProductImage)
                 .toList();
     }
+
+    @Mapping(target = "id", source = "id.value")
+    @Mapping(target = "storeId", source = "storeId.value")
+    @Mapping(target = "minPrice", source = "minPrice")
+    @Mapping(target = "maxPrice", source = "maxPrice")
+    @Mapping(target = "currency", source = "currency")
+    @Mapping(target = "skuCount", source = "skuCount")
+    public abstract StoreProductReviewDto fromStoreProductToPreview(StoreProduct storeProduct);
 
     // helper mappings used by MapStruct to convert simple types
     protected StoreId map(java.util.UUID id) {
