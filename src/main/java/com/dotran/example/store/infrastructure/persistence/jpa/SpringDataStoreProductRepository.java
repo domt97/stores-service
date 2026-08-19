@@ -4,6 +4,7 @@ import com.dotran.example.store.infrastructure.persistence.entity.StoreProductEn
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -13,4 +14,6 @@ public interface SpringDataStoreProductRepository extends JpaRepository<StorePro
     Optional<StoreProductEntity> findByIdAndStoreId(UUID id, UUID storeId);
 
     List<StoreProductEntity> findByStoreId(UUID storeId, Pageable pageable);
+
+    List<StoreProductEntity> findAllByIdIn(Collection<UUID> ids);
 }

@@ -2,8 +2,8 @@ package com.dotran.example.store.domain.model;
 
 import com.dotran.example.store.common.domain.AggregateRoot;
 import com.dotran.example.store.common.domain.valueobject.CategoryId;
+import com.dotran.example.store.common.domain.valueobject.ProductId;
 import com.dotran.example.store.common.domain.valueobject.StoreId;
-import com.dotran.example.store.common.domain.valueobject.StoreProductId;
 import com.dotran.example.store.domain.enums.ProductStatus;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
@@ -18,7 +18,7 @@ import java.util.Optional;
 @Getter
 @SuperBuilder
 @EqualsAndHashCode(callSuper = true)
-public class StoreProduct extends AggregateRoot<StoreProductId> {
+public class StoreProduct extends AggregateRoot<ProductId> {
 
     private StoreId storeId;
     private String name;

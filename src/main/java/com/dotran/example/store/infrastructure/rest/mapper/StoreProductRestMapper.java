@@ -4,8 +4,8 @@ import com.dotran.example.store.application.command.CreateStoreProductCmd;
 import com.dotran.example.store.application.dto.StoreProductDetailDto;
 import com.dotran.example.store.application.dto.StoreProductReviewDto;
 import com.dotran.example.store.infrastructure.rest.dto.request.CreateStoreProductRequest;
-import com.dotran.example.store.infrastructure.rest.response.StoreProductPreviewResponse;
-import com.dotran.example.store.infrastructure.rest.response.StoreProductResponse;
+import com.dotran.example.store.infrastructure.rest.dto.response.StoreProductPreviewResponse;
+import com.dotran.example.store.infrastructure.rest.dto.response.StoreProductResponse;
 import org.mapstruct.Mapper;
 
 import java.util.List;

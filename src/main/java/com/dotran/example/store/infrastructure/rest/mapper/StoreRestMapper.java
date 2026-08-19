@@ -10,8 +10,8 @@ import com.dotran.example.store.infrastructure.rest.dto.request.AddStoreAvailabi
 import com.dotran.example.store.infrastructure.rest.dto.request.CreateStoreRequest;
 import com.dotran.example.store.infrastructure.rest.dto.request.UpdateBusinessHourRequest;
 import com.dotran.example.store.infrastructure.rest.dto.request.UpdateStoreConfigRequest;
-import com.dotran.example.store.infrastructure.rest.response.StoreAvailabilityResponse;
-import com.dotran.example.store.infrastructure.rest.response.StoreDetailResponse;
+import com.dotran.example.store.infrastructure.rest.dto.response.StoreAvailabilityResponse;
+import com.dotran.example.store.infrastructure.rest.dto.response.StoreDetailResponse;
 import org.mapstruct.Mapper;
 
 import java.util.List;

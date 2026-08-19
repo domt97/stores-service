@@ -10,20 +10,18 @@ import com.dotran.example.store.application.dto.StoreProductReviewDto;
 import com.dotran.example.store.common.domain.valueobject.CategoryId;
 import com.dotran.example.store.common.domain.valueobject.SKU;
 import com.dotran.example.store.common.domain.valueobject.StoreId;
+import com.dotran.example.store.common.mapper.IdMapper;
 import com.dotran.example.store.domain.model.ProductImage;
 import com.dotran.example.store.domain.model.ProductSku;
 import com.dotran.example.store.domain.model.StoreProduct;
-import com.dotran.example.store.infrastructure.rest.dto.request.CreateStoreProductRequest;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.Named;
 
 import java.util.List;
 
-@Mapper(componentModel = "spring", uses = {com.dotran.example.store.common.mapper.IdMapper.class})
+@Mapper(componentModel = "spring", uses = {IdMapper.class})
 public abstract class StoreProductMapper {
-
-    public abstract CreateStoreProductCmd fromCreateRequestToCmd(CreateStoreProductRequest request);
 
     @Mapping(target = "storeId", source = "storeId")
     @Mapping(target = "categoryId", source = "categoryId")

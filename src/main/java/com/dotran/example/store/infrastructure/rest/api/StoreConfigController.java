@@ -9,7 +9,7 @@ import com.dotran.example.store.common.annotation.WebAdapter;
 import com.dotran.example.store.infrastructure.rest.dto.request.UpdateBusinessHourRequest;
 import com.dotran.example.store.infrastructure.rest.dto.request.UpdateStoreConfigRequest;
 import com.dotran.example.store.infrastructure.rest.mapper.StoreRestMapper;
-import com.dotran.example.store.infrastructure.rest.response.StoreDetailResponse;
+import com.dotran.example.store.infrastructure.rest.dto.response.StoreDetailResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
