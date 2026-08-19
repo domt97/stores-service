@@ -1,4 +1,4 @@
-package com.dotran.example.store.infrastructure.rest.response;
+package com.dotran.example.store.infrastructure.rest.dto.response;
 
 import com.dotran.example.store.common.dto.AddressDto;
 import com.dotran.example.store.application.dto.BusinessHourDto;

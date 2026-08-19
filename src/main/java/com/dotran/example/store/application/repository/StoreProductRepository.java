@@ -15,4 +15,6 @@ public interface StoreProductRepository {
     Optional<StoreProduct> getByStoreIdAndProductId(StoreId storeId, ProductId productId);
 
     List<StoreProduct> getListByStoreId(StoreId storeId, DomainPageRequest pageRequest);
+
+    List<StoreProduct> getProductsByListOfProductIds(List<ProductId> productIds);
 }

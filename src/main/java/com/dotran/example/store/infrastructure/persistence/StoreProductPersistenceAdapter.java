@@ -12,6 +12,7 @@ import com.dotran.example.store.infrastructure.persistence.jpa.SpringDataStorePr
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
@@ -43,6 +44,18 @@ public class StoreProductPersistenceAdapter implements StoreProductRepository {
     @Override
     public List<StoreProduct> getListByStoreId(StoreId storeId, DomainPageRequest pageRequest) {
         return repository.findByStoreId(storeId.getValue(), pageRequest.toPageRequest())
+                .stream()
+                .map(mapper::fromEntity)
+                .toList();
+    }
+
+    @Override
+    public List<StoreProduct> getProductsByListOfProductIds(List<ProductId> productIds) {
+        if (null == productIds || productIds.isEmpty()) {
+            return new ArrayList<>();
+        }
+
+        return repository.findAllByIdIn(productIds.stream().map(ProductId::getValue).toList())
                 .stream()
                 .map(mapper::fromEntity)
                 .toList();

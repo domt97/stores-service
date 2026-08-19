@@ -7,6 +7,7 @@ import com.dotran.example.store.application.repository.StoreRepository;
 import com.dotran.example.store.application.repository.TenantRepository;
 import com.dotran.example.store.application.usecase.GetListStoreProductUseCase;
 import com.dotran.example.store.common.annotation.UseCase;
+import com.dotran.example.store.common.constants.Constants;
 import com.dotran.example.store.common.domain.valueobject.StoreId;
 import com.dotran.example.store.common.domain.valueobject.TenantId;
 import com.dotran.example.store.common.dto.DomainPageRequest;
@@ -33,10 +34,10 @@ public class GetListStoreProductService implements GetListStoreProductUseCase {
     @Transactional
     public List<StoreProductReviewDto> getListProductByStoreId(UUID tenantId, UUID storeId, DomainPageRequest pageRequest) {
         TenantInfo tenantInfo = tenantRepository.findByTenantId(TenantId.of(tenantId))
-                .orElseThrow(() -> new NotFoundException("Tenant not found"));
+                .orElseThrow(() -> new NotFoundException(Constants.ERROR_MSG_TENANT_NOT_FOUND));
 
         Store store = storeRepository.findByTenantIdAndStoreId(tenantInfo.getId(), StoreId.of(storeId))
-                .orElseThrow(() -> new NotFoundException("Store not found"));
+                .orElseThrow(() -> new NotFoundException(Constants.ERROR_MSG_STORE_NOT_FOUND));
 
         List<StoreProduct> storeProducts = storeProductRepository.getListByStoreId(store.getId(), pageRequest);
 

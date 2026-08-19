@@ -6,8 +6,8 @@ import com.dotran.example.store.common.domain.valueobject.ProductId;
 import com.dotran.example.store.common.domain.valueobject.ProductImageId;
 import com.dotran.example.store.common.domain.valueobject.ProductSkuId;
 import com.dotran.example.store.common.domain.valueobject.StoreAvailabilityId;
+import com.dotran.example.store.common.domain.valueobject.StoreCollectionId;
 import com.dotran.example.store.common.domain.valueobject.StoreId;
-import com.dotran.example.store.common.domain.valueobject.StoreProductId;
 import com.dotran.example.store.common.domain.valueobject.TenantId;
 import org.mapstruct.Mapper;
 import org.mapstruct.Named;
@@ -25,11 +25,6 @@ public interface IdMapper {
     @Named("toStoreAvailabilityId")
     default StoreAvailabilityId toStoreAvailabilityId(UUID id) {
         return id == null ? null : new StoreAvailabilityId(id);
-    }
-
-    @Named("toStoreProductId")
-    default StoreProductId toStoreProductId(UUID id) {
-        return id == null ? null : new StoreProductId(id);
     }
 
     @Named("toProductSkuId")
@@ -52,10 +47,17 @@ public interface IdMapper {
         return id == null ? null : new CategoryId(id);
     }
 
+    @Named("toStoreCollectionId")
+    default StoreCollectionId toStoreCollectionId(UUID id) {
+        return id == null ? null : new StoreCollectionId(id);
+    }
+
+    @Named("toTenantId")
     default TenantId toTenantId(UUID id) {
         return id == null ? null : new TenantId(id);
     }
 
+    @Named("toCustomerId")
     default CustomerId toCustomerId(UUID id) {
         return id == null ? null : new CustomerId(id);
     }

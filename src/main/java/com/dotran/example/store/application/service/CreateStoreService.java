@@ -7,6 +7,7 @@ import com.dotran.example.store.application.repository.StoreRepository;
 import com.dotran.example.store.application.repository.TenantRepository;
 import com.dotran.example.store.application.usecase.CreateStoreUseCase;
 import com.dotran.example.store.common.annotation.UseCase;
+import com.dotran.example.store.common.constants.Constants;
 import com.dotran.example.store.common.domain.valueobject.CustomerId;
 import com.dotran.example.store.common.domain.valueobject.TenantId;
 import com.dotran.example.store.common.exception.NotFoundException;
@@ -27,7 +28,7 @@ public class CreateStoreService implements CreateStoreUseCase {
     @Transactional
     public StoreDetailDto create(CreateStoreCmd cmd) {
         TenantInfo tenantInfo = tenantRepository.findByTenantId(TenantId.of(cmd.getTenantId()))
-                .orElseThrow(() -> new NotFoundException("Tenant not found with ID: " + cmd.getTenantId()));
+                .orElseThrow(() -> new NotFoundException(Constants.ERROR_MSG_TENANT_NOT_FOUND));
         Store store = Store.initStore(tenantInfo.getId(),
                 cmd.getName(),
                 cmd.getCode(),
