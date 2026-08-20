@@ -2,9 +2,13 @@ package com.dotran.example.store.infrastructure.rest.api;
 
 import com.dotran.example.store.application.command.AddProductCollectionCmd;
 import com.dotran.example.store.application.command.CreateStoreCollectionCmd;
+import com.dotran.example.store.application.command.GetCollectionDetailCmd;
+import com.dotran.example.store.application.command.RemoveProductCollectionCmd;
 import com.dotran.example.store.application.dto.StoreCollectionDto;
 import com.dotran.example.store.application.usecase.AddProductCollectionUseCase;
 import com.dotran.example.store.application.usecase.CreateStoreCollectionUseCase;
+import com.dotran.example.store.application.usecase.GetStoreCollectionUseCase;
+import com.dotran.example.store.application.usecase.RemoveProductFromCollectionUseCase;
 import com.dotran.example.store.common.annotation.WebAdapter;
 import com.dotran.example.store.common.domain.valueobject.ProductId;
 import com.dotran.example.store.common.domain.valueobject.StoreCollectionId;
@@ -17,6 +21,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -36,7 +41,9 @@ import java.util.UUID;
 public class StoreCollectionController {
 
     private final CreateStoreCollectionUseCase createStoreCollectionUseCase;
+    private final GetStoreCollectionUseCase getStoreCollectionUseCase;
     private final AddProductCollectionUseCase addProductCollectionUseCase;
+    private final RemoveProductFromCollectionUseCase removeProductCollectionUseCase;
     private final StoreCollectionRestMapper restMapper;
 
     @PostMapping("/tenants/{tenantId}/stores/{storeId}/collections")
@@ -49,6 +56,22 @@ public class StoreCollectionController {
         cmd.setStoreId(StoreId.of(storeId));
 
         StoreCollectionDto storeCollectionDto = createStoreCollectionUseCase.create(cmd);
+
+        return restMapper.fromDtoToResponse(storeCollectionDto);
+    }
+
+    @GetMapping("/tenants/{tenantId}/stores/{storeId}/collections/{collectionId}")
+    @ResponseStatus(HttpStatus.OK)
+    public StoreCollectionResponse getDetails(@PathVariable UUID tenantId,
+                                              @PathVariable UUID storeId,
+                                              @PathVariable UUID collectionId) {
+        GetCollectionDetailCmd cmd = GetCollectionDetailCmd.builder()
+                .tenantId(TenantId.of(tenantId))
+                .storeId(StoreId.of(storeId))
+                .storeCollectionId(StoreCollectionId.of(collectionId))
+                .build();
+
+        StoreCollectionDto storeCollectionDto = getStoreCollectionUseCase.getCollectionById(cmd);
 
         return restMapper.fromDtoToResponse(storeCollectionDto);
     }
@@ -68,6 +91,25 @@ public class StoreCollectionController {
                 .build();
 
         StoreCollectionDto storeCollectionDto = addProductCollectionUseCase.addProductsToCollection(cmd);
+
+        return restMapper.fromDtoToResponse(storeCollectionDto);
+    }
+
+    @PostMapping("/tenants/{tenantId}/stores/{storeId}/collections/{collectionId}/remove-products")
+    @ResponseStatus(HttpStatus.OK)
+    public StoreCollectionResponse removeProducts(@PathVariable UUID tenantId,
+                                                  @PathVariable UUID storeId,
+                                                  @PathVariable UUID collectionId,
+                                                  @RequestParam List<UUID> productIds) {
+        RemoveProductCollectionCmd cmd = RemoveProductCollectionCmd.builder()
+                .tenantId(TenantId.of(tenantId))
+                .storeId(StoreId.of(storeId))
+                .storeCollectionId(StoreCollectionId.of(collectionId))
+                .productIds(productIds.stream()
+                        .map(ProductId::of).toList())
+                .build();
+
+        StoreCollectionDto storeCollectionDto = removeProductCollectionUseCase.removeProducts(cmd);
 
         return restMapper.fromDtoToResponse(storeCollectionDto);
     }

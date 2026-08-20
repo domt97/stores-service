@@ -13,5 +13,7 @@ public interface StoreCollectionRepository {
 
     StoreCollection addProducts(StoreCollection storeCollection, List<ProductId> productIds);
 
+    StoreCollection removeProducts(StoreCollection storeCollection, List<ProductId> toRemoveProductIds);
+
     Optional<StoreCollection> getById(StoreCollectionId storeCollectionId);
 }
