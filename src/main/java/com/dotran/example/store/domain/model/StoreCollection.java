@@ -50,15 +50,11 @@ public class StoreCollection extends AggregateRoot<StoreCollectionId> {
         this.updatedAt = Instant.now();
     }
 
-    public void addProducts(List<StoreProduct> products) {
-        for (StoreProduct product : products) {
-            this.addProduct(product);
+    public boolean canAddProductsToCollection(List<ProductId> newProductIds) {
+        if(null == newProductIds || newProductIds.isEmpty()) {
+            throw new BusinessException("Product list cannot be null or empty");
         }
 
-        this.updatedAt = Instant.now();
-    }
-
-    public boolean canAddProductsToCollection(List<ProductId> newProductIds) {
         for(ProductId newProductId : newProductIds) {
             if (this.productIds.contains(newProductId)) {
                 throw new BusinessException("Product already exists in the collection");
@@ -66,6 +62,27 @@ public class StoreCollection extends AggregateRoot<StoreCollectionId> {
         }
 
         return true;
+    }
+
+    public boolean canRemoveProductsFromCollection(List<ProductId> productIdsToRemove) {
+        if(null == productIdsToRemove || productIdsToRemove.isEmpty()) {
+            throw new BusinessException("Product list cannot be null or empty");
+        }
+
+        for(ProductId productIdToRemove : productIdsToRemove) {
+            if (!this.productIds.contains(productIdToRemove)) {
+                throw new BusinessException("Product does not exist in the collection");
+            }
+        }
+
+        return true;
+    }
+
+    public void removeProduct(List<ProductId> productIdsToRemove) {
+        for(ProductId productId : productIdsToRemove) {
+            this.removeProduct(productId);
+        }
+        this.updatedAt = Instant.now();
     }
 
     public void removeProduct(ProductId productId) {

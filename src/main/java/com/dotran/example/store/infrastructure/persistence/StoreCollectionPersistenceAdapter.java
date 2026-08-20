@@ -6,6 +6,7 @@ import com.dotran.example.store.common.domain.valueobject.BaseId;
 import com.dotran.example.store.common.domain.valueobject.ProductId;
 import com.dotran.example.store.common.domain.valueobject.StoreCollectionId;
 import com.dotran.example.store.common.exception.NotFoundException;
+import com.dotran.example.store.common.utils.CollectionUtils;
 import com.dotran.example.store.domain.model.StoreCollection;
 import com.dotran.example.store.infrastructure.mapper.StoreCollectionPersistenceMapper;
 import com.dotran.example.store.infrastructure.persistence.entity.ProductCollectionEntity;
@@ -18,6 +19,9 @@ import lombok.RequiredArgsConstructor;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
+import java.util.UUID;
+import java.util.stream.Collectors;
 
 @PersistenceAdapter
 @RequiredArgsConstructor
@@ -51,14 +55,39 @@ public class StoreCollectionPersistenceAdapter implements StoreCollectionReposit
         List<ProductCollectionEntity> newProductCollections =
                 this.createProductCollectionList(storeCollectionEntity, productIds);
 
-        if (null == storeCollectionEntity.getProducts() || storeCollectionEntity.getProducts().isEmpty()) {
+        if (CollectionUtils.isEmpty(storeCollectionEntity.getProducts())) {
             storeCollectionEntity.setProducts(new ArrayList<>());
         }
+
         storeCollectionEntity.getProducts().addAll(newProductCollections);
 
         StoreCollectionEntity updatedCollection = storeCollectionRepository.saveAndFlush(storeCollectionEntity);
 
         return storeCollectionPersistenceMapper.toStoreCollection(updatedCollection);
+    }
+
+    @Override
+    public StoreCollection removeProducts(StoreCollection storeCollection, List<ProductId> toRemoveProductIds) {
+        StoreCollectionEntity storeCollectionEntity = storeCollectionRepository
+                .findById(storeCollection.getId().getValue())
+                .orElseThrow(NotFoundException::new);
+
+        if (CollectionUtils.isEmpty(storeCollectionEntity.getProducts())
+                || CollectionUtils.isEmpty(toRemoveProductIds)) {
+            return storeCollectionPersistenceMapper.toStoreCollection(storeCollectionEntity);
+        }
+
+        Set<UUID> toRemoveProductIdsSet = toRemoveProductIds.stream()
+                .map(BaseId::getValue)
+                .collect(Collectors.toSet());
+
+        storeCollectionEntity.getProducts().removeIf(productCollectionEntity ->
+                toRemoveProductIdsSet.contains(productCollectionEntity.getProductId())
+        );
+
+        StoreCollectionEntity updatedStoreCollectionEntity = storeCollectionRepository.saveAndFlush(storeCollectionEntity);
+
+        return storeCollectionPersistenceMapper.toStoreCollection(updatedStoreCollectionEntity);
     }
 
     @Override
