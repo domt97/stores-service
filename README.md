@@ -1,81 +1,306 @@
-stores-service
-=============
+# Stores Service
 
-Lightweight Spring Boot service for managing stores (domt97/stores-service).
+A multi-tenant store management system built with Spring Boot 3.2.3 and Java 17, following **DDD (Domain-Driven Design)** and **Hexagonal Architecture** principles.
 
-Quick start
------------
-Requirements: Java 17+, Gradle
+[![Java](https://img.shields.io/badge/Java-17-blue.svg)](https://openjdk.org/projects/jdk/17/)
+[![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.2.3-brightgreen.svg)](https://spring.io/projects/spring-boot)
+[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-blue.svg)](https://www.postgresql.org/)
 
-Build:
+## 📋 Table of Contents
 
-  ./gradlew build
+- [Overview](#overview)
+- [Key Features](#key-features)
+- [Technology Stack](#technology-stack)
+- [Architecture](#architecture)
+- [Getting Started](#getting-started)
+- [API Documentation](#api-documentation)
+- [Project Structure](#project-structure)
+- [Database](#database)
+- [Configuration](#configuration)
+- [Development](#development)
 
-Run (dev):
+## 🎯 Overview
 
-  ./gradlew bootRun
+Stores Service is a comprehensive store management platform designed for multi-tenant environments. It provides robust APIs for managing stores, products, collections, and operational configurations with full support for business hours, availability schedules, and product variants (SKUs).
 
-API
----
-Base path: /v1/store
+**Domain Model:**
+- **Store**: Multi-tenant stores with lifecycle management (open/close)
+- **Store Products**: Products with multiple SKUs, images, and pricing
+- **Store Collections**: Product grouping for merchandising
+- **Store Availability**: Time-based availability schedules
+- **Store Configuration**: Business hours and operational settings
+- **Tenant Info**: Multi-tenant support with DynamoDB integration
 
-- POST /v1/store — create store
-- GET /v1/store/{tenantId}/{id} — get store
-- PUT /v1/store/{tenantId}/{id}/close — close store
-- PUT /v1/store/{tenantId}/{id}/reopen — reopen store
+## ✨ Key Features
 
-Interactive API Documentation (Swagger UI)
--------------------------------------------
+### Store Management
+- ✅ Create, retrieve, close, and reopen stores
+- ✅ Multi-tenant isolation by tenant ID
+- ✅ Store-level configuration and business hours
+- ✅ Availability schedule management
+
+### Product Management
+- ✅ Product creation with multiple SKUs and images
+- ✅ Product variants with individual pricing
+- ✅ Thumbnail and image gallery support
+- ✅ Pagination support for product listings
+
+### Collection Management
+- ✅ Create and manage product collections
+- ✅ Add/remove products from collections
+- ✅ Collection-based product organization
+
+### Technical Features
+- ✅ **Immutable Domain Models** using Lombok `@SuperBuilder`
+- ✅ **Value Objects** for type-safe identifiers
+- ✅ **Aggregate Roots** following DDD patterns
+- ✅ **MapStruct** for DTO/Entity mapping
+- ✅ **Batch fetching** optimization with `@BatchSize`
+- ✅ **Swagger/OpenAPI 3.0** documentation
+- ✅ **Flyway** database migrations
+- ✅ **Multi-database** support (PostgreSQL + DynamoDB)
+
+## 🛠 Technology Stack
+
+### Core Framework
+- **Java 17** - LTS with modern language features
+- **Spring Boot 3.2.3** - Application framework
+- **Spring Data JPA** - ORM and repository abstraction
+- **Hibernate 6.4** - JPA implementation with batch optimization
+
+### Database
+- **PostgreSQL** - Primary relational database
+- **DynamoDB** - Tenant information storage
+- **Flyway** - Database version control
+
+### API & Documentation
+- **Spring Web** - RESTful API
+- **SpringDoc OpenAPI 3.0** - Interactive API documentation
+- **Jakarta Validation** - Request validation
+
+### Code Quality & Productivity
+- **Lombok** - Boilerplate reduction
+- **MapStruct 1.6.3** - Type-safe bean mapping
+- **Hibernate Validator 8.0** - Bean validation
+
+### Build & Testing
+- **Gradle** - Build automation
+- **JUnit 5** - Testing framework
+
+## 🏗 Architecture
+
+### DDD Hexagonal Architecture
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    Infrastructure Layer                      │
+│  ┌──────────────┐  ┌─────────────┐  ┌──────────────────┐   │
+│  │ REST API     │  │ Persistence │  │ Cloud Services   │   │
+│  │ Controllers  │  │ Adapters    │  │ (DynamoDB)       │   │
+│  └──────┬───────┘  └──────┬──────┘  └────────┬─────────┘   │
+│         │                 │                   │              │
+└─────────┼─────────────────┼───────────────────┼──────────────┘
+          │                 │                   │
+┌─────────┼─────────────────┼───────────────────┼──────────────┐
+│         │   Application Layer (Use Cases)     │              │
+│         │                 │                   │              │
+│  ┌──────▼─────┐  ┌────────▼────┐  ┌───────────▼────────┐   │
+│  │  Commands  │  │  DTOs       │  │  Port Interfaces   │   │
+│  └────────────┘  └─────────────┘  └────────────────────┘   │
+└──────────────────────────┬───────────────────────────────────┘
+                           │
+┌──────────────────────────▼───────────────────────────────────┐
+│                     Domain Layer                              │
+│  ┌────────────────┐  ┌─────────────┐  ┌──────────────────┐  │
+│  │ Aggregates     │  │ Entities    │  │ Value Objects    │  │
+│  │ (Store,        │  │             │  │ (StoreId,        │  │
+│  │  StoreProduct) │  │             │  │  TenantId, etc.) │  │
+│  └────────────────┘  └─────────────┘  └──────────────────┘  │
+└───────────────────────────────────────────────────────────────┘
+```
+
+### Design Principles
+
+**Domain Layer** (Pure Business Logic)
+- Immutable entities with `@SuperBuilder`
+- Value objects for type-safe IDs
+- No framework dependencies
+- Business rules enforcement
+
+**Application Layer** (Use Cases)
+- Orchestrates domain logic
+- Defines port interfaces (repositories, clients)
+- Command/Query separation
+- DTO transformations
+
+**Infrastructure Layer** (Technical Details)
+- REST controllers with Swagger annotations
+- JPA entities and repositories
+- MapStruct mappers
+- External client adapters
+
+## 🚀 Getting Started
+
+### Prerequisites
+
+- **Java 17+** ([Download OpenJDK](https://adoptium.net/))
+- **Gradle** (included via wrapper)
+- **PostgreSQL 12+** ([Download PostgreSQL](https://www.postgresql.org/download/))
+- **AWS CLI** (optional, for DynamoDB)
+
+### Database Setup
+
+1. **Create PostgreSQL database:**
+```sql
+CREATE DATABASE store;
+CREATE SCHEMA store;
+```
+
+2. **Update credentials in `application.yaml`:**
+```yaml
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/store?currentSchema=store
+    username: your_username
+    password: your_password
+```
+
+3. **Flyway migrations run automatically on startup** ✅
+
+### Build & Run
+
+**Build the project:**
+```bash
+./gradlew build
+```
+
+**Run the application:**
+```bash
+./gradlew bootRun
+```
+
+**Run in dev profile:**
+```bash
+./gradlew bootRun --args='--spring.profiles.active=localdev'
+```
+
+The application starts on **http://localhost:8048**
+
+## 📖 API Documentation
+
+### Swagger UI
 After starting the server, access the interactive API documentation:
 
 - **Swagger UI:** http://localhost:8048/swagger-ui.html
 - **OpenAPI JSON:** http://localhost:8048/api-docs
 
-The Swagger UI provides a browser-based interface to explore and test all API endpoints. You can see request/response schemas, try endpoints directly, and view detailed parameter descriptions.
+## 🗄 Database
 
-Logging and security
---------------------
-This project includes an HTTP logging filter that records request/response metadata (method, URI, headers, status, duration).
-- Request/response bodies are NOT logged by default.
-- Sensitive headers and query parameters are redacted (configurable).
-- Logging settings are configurable under application properties prefixed with `app.logging.http`.
+### PostgreSQL Schema
 
-Design overview
----------------
-- Architecture: Hexagonal / Clean architecture separating application, domain, and infrastructure layers. Controllers live under infrastructure.rest; use cases are in application.usecase; domain models are in domain.
-- HTTP layer: Spring Boot REST controllers expose /v1/store endpoints. Request/response metadata logging and redaction are handled by RequestResponseLoggingFilter.
-- Application layer: Use cases encapsulate business logic and orchestrate domain models and persistence adapters.
-- Persistence: Adapters under infrastructure.persistence handle data storage; adapters are replaceable.
-- Error handling: Infrastructure layer maps domain exceptions to HTTP responses (see infrastructure.rest.exception).
-- Configuration: Centralized in application.yml; logging and redaction lists are configurable under app.logging.http.
-- Security considerations: Logging redacts common sensitive headers and query params; do not log secrets elsewhere. Enforce HTTPS and secure secret storage.
+**Primary Tables:**
+- `store` - Store entities
+- `store_availability` - Availability schedules
+- `store_product` - Product catalog
+- `store_product_sku` - Product variants
+- `store_product_image` - Product images
+- `store_product_collection` - Product collections
+- `store_product_collection_item` - Collection-product relationships
 
-Project structure (high level)
-------------------------------
-- src/main/java/com/dotran/example/store
-  - application/      # Use cases, commands, DTOs
-  - domain/           # Core domain models and business logic
-  - infrastructure/
-    - rest/           # Controllers, filters, REST mappers, responses
-    - persistence/    # Persistence adapters and repositories
-    - client/         # External HTTP clients
-    - mapper/         # Mapping helpers
-    - message/        # Integration messages/events
-  - common/           # Shared utilities, annotations
-- src/main/resources  # application.yml, static config
-- src/test            # Unit and integration tests
+**Key Constraints:**
+- `store.store_code` - Unique globally (cross-tenant)
+- Multi-tenant isolation via `tenant_id` column
+- Foreign key cascades for aggregate consistency
 
-This structure keeps business logic isolated from frameworks and makes testing easier. Use the `application` layer to orchestrate domain objects and keep controllers thin.
+### DynamoDB
 
-Development notes
------------------
-- Uses Lombok; IDEs may need Lombok plugin.
-- Tests are in src/test (run with `./gradlew test`).
+**Table:** `tenant_info`
+- Stores tenant metadata
+- Configured via `app.dynamodb.*` properties
 
-Contributing
-------------
-Open issues/PRs. Keep changes small and add tests where appropriate.
+### Migrations
 
-License
--------
+Flyway manages schema evolution automatically:
+```bash
+# Migrations run on application startup
+# Located in: src/main/resources/db/migration/
+```
+
+
+### Performance Optimizations
+
+✅ **Batch Fetching** - `@BatchSize(size = 30)` on collections prevents N+1 queries  
+✅ **Connection Pooling** - HikariCP with tuned settings  
+✅ **IN Clause Padding** - Optimizes query plan caching  
+✅ **Open-in-View: false** - Prevents lazy loading anti-pattern
+
+## 💻 Development
+
+### IDE Setup
+
+**IntelliJ IDEA / Eclipse:**
+1. Install **Lombok plugin**
+2. Enable **annotation processing**
+3. Import as Gradle project
+
+### Code Style
+
+**Domain Models:**
+- Use `@Getter` + `@SuperBuilder` for immutability
+- No public setters in domain layer
+- Value objects are immutable
+
+**Mappers:**
+- Use MapStruct for all transformations
+- Expression syntax for complex mappings
+- Separate mappers per layer
+
+**Controllers:**
+- Thin controllers - delegate to use cases
+- Swagger annotations on all endpoints
+- Consistent response codes
+
+### Running Tests
+
+```bash
+# Run all tests
+./gradlew test
+
+# Run with coverage
+./gradlew test jacocoTestReport
+```
+
+### Build for Production
+
+```bash
+# Create executable JAR
+./gradlew bootJar
+
+# Run the JAR
+java -jar build/libs/stores-0.0.1-SNAPSHOT.jar
+```
+
+## 🔒 Security Considerations
+
+- **Multi-tenancy:** Tenant ID isolation in all queries
+- **Input Validation:** Jakarta Validation on all request DTOs
+- **SQL Injection:** JPA parameterized queries
+- **Secrets Management:** Externalize credentials (environment variables)
+- **HTTPS:** Configure SSL/TLS in production
+
+## 📝 Contributing
+
+1. Follow existing code structure and naming conventions
+2. Add tests for new features
+3. Update API documentation (Swagger annotations)
+4. Keep domain logic pure (no framework dependencies)
+5. Use value objects for type safety
+
+## 📄 License
+
 MIT-style (no license file provided). Feel free to add a LICENSE file.
+
+---
+
+**Repository:** [domt97/stores-service](https://github.com/domt97/stores-service)  
+**Documentation:** See [docs/review](docs/review) for architectural review notes
