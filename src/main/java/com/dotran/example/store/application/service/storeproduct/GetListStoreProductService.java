@@ -5,7 +5,7 @@ import com.dotran.example.store.application.mapper.StoreProductMapper;
 import com.dotran.example.store.application.repository.StoreProductRepository;
 import com.dotran.example.store.application.repository.StoreRepository;
 import com.dotran.example.store.application.repository.TenantRepository;
-import com.dotran.example.store.application.usecase.GetListStoreProductUseCase;
+import com.dotran.example.store.application.usecase.storeproduct.GetListStoreProductUseCase;
 import com.dotran.example.store.common.annotation.UseCase;
 import com.dotran.example.store.common.constants.Constants;
 import com.dotran.example.store.common.domain.valueobject.StoreId;

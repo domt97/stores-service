@@ -4,7 +4,7 @@ import com.dotran.example.store.application.command.storeproduct.CreateStoreProd
 import com.dotran.example.store.application.dto.StoreProductDetailDto;
 import com.dotran.example.store.application.mapper.StoreProductMapper;
 import com.dotran.example.store.application.repository.StoreProductRepository;
-import com.dotran.example.store.application.usecase.CreateStoreProductUseCase;
+import com.dotran.example.store.application.usecase.storeproduct.CreateStoreProductUseCase;
 import com.dotran.example.store.common.annotation.UseCase;
 import com.dotran.example.store.domain.model.StoreProduct;
 import lombok.RequiredArgsConstructor;

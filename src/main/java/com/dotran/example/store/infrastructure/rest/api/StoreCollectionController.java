@@ -5,10 +5,10 @@ import com.dotran.example.store.application.command.collection.CreateStoreCollec
 import com.dotran.example.store.application.command.collection.GetCollectionDetailCmd;
 import com.dotran.example.store.application.command.collection.RemoveProductCollectionCmd;
 import com.dotran.example.store.application.dto.StoreCollectionDto;
-import com.dotran.example.store.application.usecase.AddProductCollectionUseCase;
-import com.dotran.example.store.application.usecase.CreateStoreCollectionUseCase;
-import com.dotran.example.store.application.usecase.GetStoreCollectionUseCase;
-import com.dotran.example.store.application.usecase.RemoveProductFromCollectionUseCase;
+import com.dotran.example.store.application.usecase.collection.AddProductCollectionUseCase;
+import com.dotran.example.store.application.usecase.collection.CreateStoreCollectionUseCase;
+import com.dotran.example.store.application.usecase.collection.GetStoreCollectionUseCase;
+import com.dotran.example.store.application.usecase.collection.RemoveProductFromCollectionUseCase;
 import com.dotran.example.store.common.annotation.WebAdapter;
 import com.dotran.example.store.common.domain.valueobject.ProductId;
 import com.dotran.example.store.common.domain.valueobject.StoreCollectionId;

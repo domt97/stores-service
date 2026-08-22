@@ -4,7 +4,7 @@ import com.dotran.example.store.application.command.storeconfig.AddStoreAvailabi
 import com.dotran.example.store.application.dto.StoreAvailabilityDto;
 import com.dotran.example.store.application.mapper.StoreDataMapper;
 import com.dotran.example.store.application.repository.StoreAvailabilityRepository;
-import com.dotran.example.store.application.usecase.AddStoreAvailabilityUseCase;
+import com.dotran.example.store.application.usecase.storeconfig.AddStoreAvailabilityUseCase;
 import com.dotran.example.store.common.annotation.UseCase;
 import com.dotran.example.store.common.domain.valueobject.StoreId;
 import com.dotran.example.store.domain.model.StoreAvailability;
