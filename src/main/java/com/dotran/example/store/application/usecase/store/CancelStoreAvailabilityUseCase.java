@@ -1,4 +1,4 @@
-package com.dotran.example.store.application.usecase.storeconfig;
+package com.dotran.example.store.application.usecase.store;
 
 import java.util.UUID;
 
