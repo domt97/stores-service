@@ -1,12 +1,15 @@
 package com.dotran.example.store.infrastructure.rest.api;
 
 import com.dotran.example.store.application.command.storeproduct.CreateStoreProductCmd;
+import com.dotran.example.store.application.command.storeproduct.SearchProductCmd;
 import com.dotran.example.store.application.dto.StoreProductDetailDto;
 import com.dotran.example.store.application.dto.StoreProductReviewDto;
 import com.dotran.example.store.application.usecase.storeproduct.CreateStoreProductUseCase;
-import com.dotran.example.store.application.usecase.storeproduct.GetListStoreProductUseCase;
 import com.dotran.example.store.application.usecase.storeproduct.GetStoreProductDetailUseCase;
+import com.dotran.example.store.application.usecase.storeproduct.SearchProductUseCase;
 import com.dotran.example.store.common.annotation.WebAdapter;
+import com.dotran.example.store.common.domain.valueobject.StoreId;
+import com.dotran.example.store.common.domain.valueobject.TenantId;
 import com.dotran.example.store.common.dto.DomainPageRequest;
 import com.dotran.example.store.common.dto.PagedResult;
 import com.dotran.example.store.infrastructure.rest.dto.request.CreateStoreProductRequest;
@@ -45,7 +48,7 @@ public class StoreProductController {
 
     private final CreateStoreProductUseCase createStoreProductUseCase;
     private final GetStoreProductDetailUseCase getStoreProductDetailUseCase;
-    private final GetListStoreProductUseCase getListStoreProductUseCase;
+    private final SearchProductUseCase searchProductUseCase;
     private final StoreProductRestMapper storeProductRestMapper;
 
     @Operation(summary = "Create a new product", description = "Creates a new product in the specified store with SKUs and images")
@@ -88,24 +91,34 @@ public class StoreProductController {
         return storeProductRestMapper.toStoreProductResponse(storeProductDetailDto);
     }
 
-    @Operation(summary = "List store products", description = "Retrieves a paginated list of products for a specific store")
+    @Operation(summary = "Search list store products", description = "Retrieves a paginated list of products for a specific store")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Products retrieved successfully",
                     content = @Content(mediaType = "application/json", schema = @Schema(implementation = PagedResult.class))),
             @ApiResponse(responseCode = "404", description = "Store not found", content = @Content)
     })
-    @GetMapping("/tenants/{tenantId}/stores/{storeId}/products")
+    @GetMapping("/tenants/{tenantId}/stores/{storeId}/products/search")
     @ResponseStatus(HttpStatus.OK)
     public PagedResult<StoreProductPreviewResponse> getStoreProducts(
             @Parameter(description = "Tenant ID", required = true) @PathVariable UUID tenantId,
             @Parameter(description = "Store ID", required = true) @PathVariable UUID storeId,
             @Parameter(description = "Page size", example = "10") @RequestParam(defaultValue = "10") Integer pageSize,
-            @Parameter(description = "Page number", example = "0") @RequestParam(defaultValue = "0") Integer pageNumber) {
-        PagedResult<StoreProductReviewDto> storeProductReviewDtos = getListStoreProductUseCase
-                .getListProductByStoreId(tenantId, storeId, DomainPageRequest.builder()
-                        .pageNumber(pageNumber)
-                        .pageSize(pageSize)
-                        .build());
+            @Parameter(description = "Page number", example = "0") @RequestParam(defaultValue = "0") Integer pageNumber,
+            @Parameter(description = "Sort by field", example = "createdAt") @RequestParam(required = false) String sortBy,
+            @Parameter(description = "Sort direction", example = "DESC") @RequestParam(required = false) String direction) {
+        SearchProductCmd searchProductCmd = SearchProductCmd.builder()
+                .tenantId(TenantId.of(tenantId))
+                .storeId(StoreId.of(storeId))
+                .build();
+        DomainPageRequest pageRequest = DomainPageRequest.builder()
+                .pageNumber(pageNumber)
+                .pageSize(pageSize)
+                .sortBy(sortBy)
+                .direction(direction)
+                .build();
+
+        PagedResult<StoreProductReviewDto> storeProductReviewDtos = searchProductUseCase
+                .search(searchProductCmd, pageRequest);
 
         return storeProductReviewDtos.map(storeProductRestMapper::toStoreProductPreviewResponse);
     }
