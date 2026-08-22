@@ -2,15 +2,21 @@ package com.dotran.example.store.infrastructure.persistence;
 
 import com.dotran.example.store.application.repository.StoreProductRepository;
 import com.dotran.example.store.common.annotation.PersistenceAdapter;
+import com.dotran.example.store.common.domain.valueobject.PriceRange;
 import com.dotran.example.store.common.domain.valueobject.ProductId;
 import com.dotran.example.store.common.domain.valueobject.StoreId;
 import com.dotran.example.store.common.dto.DomainPageRequest;
+import com.dotran.example.store.common.dto.PagedResult;
+import com.dotran.example.store.common.utils.PageUtils;
 import com.dotran.example.store.domain.model.StoreProduct;
 import com.dotran.example.store.infrastructure.mapper.StoreProductPersistenceMapper;
 import com.dotran.example.store.infrastructure.persistence.entity.StoreProductEntity;
 import com.dotran.example.store.infrastructure.persistence.jpa.SpringDataStoreProductRepository;
+import jakarta.persistence.criteria.Predicate;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.jpa.domain.Specification;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -42,14 +48,6 @@ public class StoreProductPersistenceAdapter implements StoreProductRepository {
     }
 
     @Override
-    public List<StoreProduct> getListByStoreId(StoreId storeId, DomainPageRequest pageRequest) {
-        return repository.findByStoreId(storeId.getValue(), pageRequest.toPageRequest())
-                .stream()
-                .map(mapper::fromEntity)
-                .toList();
-    }
-
-    @Override
     public List<StoreProduct> getProductsByListOfProductIds(List<ProductId> productIds) {
         if (null == productIds || productIds.isEmpty()) {
             return new ArrayList<>();
@@ -59,5 +57,57 @@ public class StoreProductPersistenceAdapter implements StoreProductRepository {
                 .stream()
                 .map(mapper::fromEntity)
                 .toList();
+    }
+
+    @Override
+    public PagedResult<StoreProduct> searchProducts(StoreId storeId,
+                                                    PriceRange priceRange,
+                                                    DomainPageRequest pageRequest) {
+        Specification<StoreProductEntity> specification = buildSearchSpecification(storeId, priceRange);
+
+        Page<StoreProduct> storeProductPage = repository.findAll(specification, PageUtils.toPageRequest(pageRequest))
+                .map(mapper::fromEntity);
+
+        return PagedResult.of(storeProductPage);
+    }
+
+    /**
+     * Builds JPA Specification for product search with dynamic criteria.
+     *
+     * @param storeId    the store ID to filter products
+     * @param priceRange optional price range filter
+     * @return JPA Specification
+     */
+    private Specification<StoreProductEntity> buildSearchSpecification(StoreId storeId, PriceRange priceRange) {
+        return (root, query, criteriaBuilder) -> {
+            List<Predicate> predicates = new ArrayList<>();
+
+            // Filter by storeId (required)
+            predicates.add(criteriaBuilder.equal(root.get("storeId"), storeId.getValue()));
+
+            // Filter by price range if provided (using SKU prices)
+            if (priceRange != null) {
+                var skuJoin = root.join("skus");
+
+                if (priceRange.getFrom() != null) {
+                    predicates.add(criteriaBuilder.greaterThanOrEqualTo(
+                            skuJoin.get("price"),
+                            priceRange.getFrom().getAmount()
+                    ));
+                }
+
+                if (priceRange.getTo() != null) {
+                    predicates.add(criteriaBuilder.lessThanOrEqualTo(
+                            skuJoin.get("price"),
+                            priceRange.getTo().getAmount()
+                    ));
+                }
+
+                // Ensure we only get distinct products when joining skus
+                query.distinct(true);
+            }
+
+            return criteriaBuilder.and(predicates.toArray(new Predicate[0]));
+        };
     }
 }

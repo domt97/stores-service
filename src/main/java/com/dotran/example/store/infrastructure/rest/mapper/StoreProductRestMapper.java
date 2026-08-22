@@ -17,5 +17,5 @@ public interface StoreProductRestMapper {
 
     StoreProductResponse toStoreProductResponse(StoreProductDetailDto dto);
 
-    List<StoreProductPreviewResponse> toStoreProductPreviewResponseList(List<StoreProductReviewDto> dtoList);
+    StoreProductPreviewResponse toStoreProductPreviewResponse(StoreProductReviewDto dto);
 }
