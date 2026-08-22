@@ -1,6 +1,6 @@
 package com.dotran.example.store.application.mapper;
 
-import com.dotran.example.store.application.command.CreateStoreCollectionCmd;
+import com.dotran.example.store.application.command.collection.CreateStoreCollectionCmd;
 import com.dotran.example.store.application.dto.StoreCollectionDto;
 import com.dotran.example.store.common.mapper.IdMapper;
 import com.dotran.example.store.domain.model.StoreCollection;

@@ -1,9 +1,9 @@
 package com.dotran.example.store.infrastructure.rest.mapper;
 
-import com.dotran.example.store.application.command.AddStoreAvailabilityCmd;
-import com.dotran.example.store.application.command.CreateStoreCmd;
-import com.dotran.example.store.application.command.UpdateBusinessHourCmd;
-import com.dotran.example.store.application.command.UpdateStoreConfigCmd;
+import com.dotran.example.store.application.command.storeconfig.AddStoreAvailabilityCmd;
+import com.dotran.example.store.application.command.store.CreateStoreCmd;
+import com.dotran.example.store.application.command.storeconfig.UpdateBusinessHourCmd;
+import com.dotran.example.store.application.command.storeconfig.UpdateStoreConfigCmd;
 import com.dotran.example.store.application.dto.StoreAvailabilityDto;
 import com.dotran.example.store.application.dto.StoreDetailDto;
 import com.dotran.example.store.infrastructure.rest.dto.request.AddStoreAvailabilityRequest;

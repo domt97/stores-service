@@ -1,6 +1,6 @@
 package com.dotran.example.store.application.usecase;
 
-import com.dotran.example.store.application.command.UpdateBusinessHourCmd;
+import com.dotran.example.store.application.command.storeconfig.UpdateBusinessHourCmd;
 import com.dotran.example.store.application.dto.StoreDetailDto;
 
 import java.util.List;

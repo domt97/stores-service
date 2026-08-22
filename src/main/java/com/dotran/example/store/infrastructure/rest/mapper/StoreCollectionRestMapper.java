@@ -1,6 +1,6 @@
 package com.dotran.example.store.infrastructure.rest.mapper;
 
-import com.dotran.example.store.application.command.CreateStoreCollectionCmd;
+import com.dotran.example.store.application.command.collection.CreateStoreCollectionCmd;
 import com.dotran.example.store.application.dto.StoreCollectionDto;
 import com.dotran.example.store.common.domain.valueobject.ProductId;
 import com.dotran.example.store.infrastructure.rest.dto.request.UpsertStoreCollectionRequest;

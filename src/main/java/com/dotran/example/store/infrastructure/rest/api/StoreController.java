@@ -1,10 +1,10 @@
 package com.dotran.example.store.infrastructure.rest.api;
 
-import com.dotran.example.store.application.command.AddStoreAvailabilityCmd;
-import com.dotran.example.store.application.command.CloseStoreCmd;
-import com.dotran.example.store.application.command.CreateStoreCmd;
-import com.dotran.example.store.application.command.GetStoreCmd;
-import com.dotran.example.store.application.command.ReopenStoreCmd;
+import com.dotran.example.store.application.command.storeconfig.AddStoreAvailabilityCmd;
+import com.dotran.example.store.application.command.store.CloseStoreCmd;
+import com.dotran.example.store.application.command.store.CreateStoreCmd;
+import com.dotran.example.store.application.command.store.GetStoreCmd;
+import com.dotran.example.store.application.command.store.ReopenStoreCmd;
 import com.dotran.example.store.application.dto.StoreAvailabilityDto;
 import com.dotran.example.store.application.dto.StoreDetailDto;
 import com.dotran.example.store.application.usecase.AddStoreAvailabilityUseCase;
