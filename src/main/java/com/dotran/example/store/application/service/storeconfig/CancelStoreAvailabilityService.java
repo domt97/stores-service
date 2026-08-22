@@ -1,7 +1,7 @@
 package com.dotran.example.store.application.service.storeconfig;
 
 import com.dotran.example.store.application.repository.StoreAvailabilityRepository;
-import com.dotran.example.store.application.usecase.CancelStoreAvailabilityUseCase;
+import com.dotran.example.store.application.usecase.storeconfig.CancelStoreAvailabilityUseCase;
 import com.dotran.example.store.common.annotation.UseCase;
 import com.dotran.example.store.common.constants.Constants;
 import com.dotran.example.store.common.domain.valueobject.StoreAvailabilityId;

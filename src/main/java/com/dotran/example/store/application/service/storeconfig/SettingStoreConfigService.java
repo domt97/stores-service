@@ -4,7 +4,7 @@ import com.dotran.example.store.application.command.storeconfig.UpdateStoreConfi
 import com.dotran.example.store.application.dto.StoreDetailDto;
 import com.dotran.example.store.application.mapper.StoreDataMapper;
 import com.dotran.example.store.application.repository.StoreRepository;
-import com.dotran.example.store.application.usecase.SettingStoreConfigUseCase;
+import com.dotran.example.store.application.usecase.storeconfig.SettingStoreConfigUseCase;
 import com.dotran.example.store.common.annotation.UseCase;
 import com.dotran.example.store.common.domain.valueobject.StoreId;
 import com.dotran.example.store.common.domain.valueobject.TenantId;

@@ -5,7 +5,7 @@ import com.dotran.example.store.application.dto.StoreCollectionDto;
 import com.dotran.example.store.application.mapper.StoreCollectionMapper;
 import com.dotran.example.store.application.repository.StoreCollectionRepository;
 import com.dotran.example.store.application.repository.StoreProductRepository;
-import com.dotran.example.store.application.usecase.CreateStoreCollectionUseCase;
+import com.dotran.example.store.application.usecase.collection.CreateStoreCollectionUseCase;
 import com.dotran.example.store.common.annotation.UseCase;
 import com.dotran.example.store.common.domain.valueobject.ProductId;
 import com.dotran.example.store.domain.model.StoreCollection;

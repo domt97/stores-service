@@ -1,4 +1,4 @@
-package com.dotran.example.store.application.usecase;
+package com.dotran.example.store.application.usecase.storeconfig;
 
 import com.dotran.example.store.application.command.storeconfig.UpdateBusinessHourCmd;
 import com.dotran.example.store.application.dto.StoreDetailDto;
