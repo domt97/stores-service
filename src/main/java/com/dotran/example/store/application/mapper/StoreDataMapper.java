@@ -1,10 +1,10 @@
 package com.dotran.example.store.application.mapper;
 
-import com.dotran.example.store.application.command.AddStoreAvailabilityCmd;
-import com.dotran.example.store.application.command.AddressCmd;
-import com.dotran.example.store.application.command.BusinessHourCmd;
-import com.dotran.example.store.application.command.StoreConfigCmd;
-import com.dotran.example.store.application.command.UpdateBusinessHourCmd;
+import com.dotran.example.store.application.command.storeconfig.AddStoreAvailabilityCmd;
+import com.dotran.example.store.application.command.common.AddressCmd;
+import com.dotran.example.store.application.command.storeconfig.BusinessHourCmd;
+import com.dotran.example.store.application.command.storeconfig.StoreConfigCmd;
+import com.dotran.example.store.application.command.storeconfig.UpdateBusinessHourCmd;
 import com.dotran.example.store.application.dto.BusinessHourDto;
 import com.dotran.example.store.application.dto.ConfigDto;
 import com.dotran.example.store.application.dto.StoreAvailabilityDto;

@@ -1,6 +1,6 @@
 package com.dotran.example.store.application.usecase;
 
-import com.dotran.example.store.application.command.ReopenStoreCmd;
+import com.dotran.example.store.application.command.store.ReopenStoreCmd;
 import com.dotran.example.store.application.dto.StoreDetailDto;
 
 public interface ReopenStoreUseCase {

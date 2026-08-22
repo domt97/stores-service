@@ -1,9 +1,9 @@
 package com.dotran.example.store.infrastructure.rest.api;
 
-import com.dotran.example.store.application.command.AddProductCollectionCmd;
-import com.dotran.example.store.application.command.CreateStoreCollectionCmd;
-import com.dotran.example.store.application.command.GetCollectionDetailCmd;
-import com.dotran.example.store.application.command.RemoveProductCollectionCmd;
+import com.dotran.example.store.application.command.collection.AddProductCollectionCmd;
+import com.dotran.example.store.application.command.collection.CreateStoreCollectionCmd;
+import com.dotran.example.store.application.command.collection.GetCollectionDetailCmd;
+import com.dotran.example.store.application.command.collection.RemoveProductCollectionCmd;
 import com.dotran.example.store.application.dto.StoreCollectionDto;
 import com.dotran.example.store.application.usecase.AddProductCollectionUseCase;
 import com.dotran.example.store.application.usecase.CreateStoreCollectionUseCase;

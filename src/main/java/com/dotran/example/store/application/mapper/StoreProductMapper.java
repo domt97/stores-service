@@ -1,8 +1,8 @@
 package com.dotran.example.store.application.mapper;
 
-import com.dotran.example.store.application.command.CreateStoreProductCmd;
-import com.dotran.example.store.application.command.ProductImageCmd;
-import com.dotran.example.store.application.command.ProductSkuCmd;
+import com.dotran.example.store.application.command.storeproduct.CreateStoreProductCmd;
+import com.dotran.example.store.application.command.storeproduct.ProductImageCmd;
+import com.dotran.example.store.application.command.storeproduct.ProductSkuCmd;
 import com.dotran.example.store.application.dto.ProductImageDto;
 import com.dotran.example.store.application.dto.ProductSkuDto;
 import com.dotran.example.store.application.dto.StoreProductDetailDto;
