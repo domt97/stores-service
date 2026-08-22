@@ -1,4 +1,4 @@
-package com.dotran.example.store.application.command.storeconfig;
+package com.dotran.example.store.application.command.store;
 
 import com.dotran.example.store.domain.enums.AvailabilityType;
 import lombok.AllArgsConstructor;
