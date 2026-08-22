@@ -8,10 +8,11 @@ import com.dotran.example.store.application.usecase.storeproduct.GetListStorePro
 import com.dotran.example.store.application.usecase.storeproduct.GetStoreProductDetailUseCase;
 import com.dotran.example.store.common.annotation.WebAdapter;
 import com.dotran.example.store.common.dto.DomainPageRequest;
+import com.dotran.example.store.common.dto.PagedResult;
 import com.dotran.example.store.infrastructure.rest.dto.request.CreateStoreProductRequest;
-import com.dotran.example.store.infrastructure.rest.mapper.StoreProductRestMapper;
 import com.dotran.example.store.infrastructure.rest.dto.response.StoreProductPreviewResponse;
 import com.dotran.example.store.infrastructure.rest.dto.response.StoreProductResponse;
+import com.dotran.example.store.infrastructure.rest.mapper.StoreProductRestMapper;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -32,7 +33,6 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.util.List;
 import java.util.UUID;
 
 @Tag(name = "Store Product Management", description = "APIs for managing products within a store, including creation, retrieval and listing")
@@ -91,22 +91,22 @@ public class StoreProductController {
     @Operation(summary = "List store products", description = "Retrieves a paginated list of products for a specific store")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Products retrieved successfully",
-                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = StoreProductPreviewResponse.class))),
+                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = PagedResult.class))),
             @ApiResponse(responseCode = "404", description = "Store not found", content = @Content)
     })
     @GetMapping("/tenants/{tenantId}/stores/{storeId}/products")
     @ResponseStatus(HttpStatus.OK)
-    public List<StoreProductPreviewResponse> getStoreProducts(
+    public PagedResult<StoreProductPreviewResponse> getStoreProducts(
             @Parameter(description = "Tenant ID", required = true) @PathVariable UUID tenantId,
             @Parameter(description = "Store ID", required = true) @PathVariable UUID storeId,
             @Parameter(description = "Page size", example = "10") @RequestParam(defaultValue = "10") Integer pageSize,
             @Parameter(description = "Page number", example = "0") @RequestParam(defaultValue = "0") Integer pageNumber) {
-        List<StoreProductReviewDto> storeProductReviewDtos = getListStoreProductUseCase
+        PagedResult<StoreProductReviewDto> storeProductReviewDtos = getListStoreProductUseCase
                 .getListProductByStoreId(tenantId, storeId, DomainPageRequest.builder()
-                        .page(pageNumber)
-                        .size(pageSize)
+                        .pageNumber(pageNumber)
+                        .pageSize(pageSize)
                         .build());
 
-        return storeProductRestMapper.toStoreProductPreviewResponseList(storeProductReviewDtos);
+        return storeProductReviewDtos.map(storeProductRestMapper::toStoreProductPreviewResponse);
     }
 }

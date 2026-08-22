@@ -5,12 +5,15 @@ import com.dotran.example.store.common.annotation.PersistenceAdapter;
 import com.dotran.example.store.common.domain.valueobject.ProductId;
 import com.dotran.example.store.common.domain.valueobject.StoreId;
 import com.dotran.example.store.common.dto.DomainPageRequest;
+import com.dotran.example.store.common.dto.PagedResult;
+import com.dotran.example.store.common.utils.PageUtils;
 import com.dotran.example.store.domain.model.StoreProduct;
 import com.dotran.example.store.infrastructure.mapper.StoreProductPersistenceMapper;
 import com.dotran.example.store.infrastructure.persistence.entity.StoreProductEntity;
 import com.dotran.example.store.infrastructure.persistence.jpa.SpringDataStoreProductRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -42,11 +45,11 @@ public class StoreProductPersistenceAdapter implements StoreProductRepository {
     }
 
     @Override
-    public List<StoreProduct> getListByStoreId(StoreId storeId, DomainPageRequest pageRequest) {
-        return repository.findByStoreId(storeId.getValue(), pageRequest.toPageRequest())
-                .stream()
-                .map(mapper::fromEntity)
-                .toList();
+    public PagedResult<StoreProduct> getListByStoreId(StoreId storeId, DomainPageRequest pageRequest) {
+        Page<StoreProduct> storeProductPage = repository.findByStoreId(storeId.getValue(), PageUtils.toPageRequest(pageRequest))
+                .map(mapper::fromEntity);
+
+        return PagedResult.of(storeProductPage);
     }
 
     @Override

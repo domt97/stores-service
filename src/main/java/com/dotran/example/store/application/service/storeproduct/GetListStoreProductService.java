@@ -11,6 +11,7 @@ import com.dotran.example.store.common.constants.Constants;
 import com.dotran.example.store.common.domain.valueobject.StoreId;
 import com.dotran.example.store.common.domain.valueobject.TenantId;
 import com.dotran.example.store.common.dto.DomainPageRequest;
+import com.dotran.example.store.common.dto.PagedResult;
 import com.dotran.example.store.common.exception.NotFoundException;
 import com.dotran.example.store.domain.model.Store;
 import com.dotran.example.store.domain.model.StoreProduct;
@@ -32,17 +33,15 @@ public class GetListStoreProductService implements GetListStoreProductUseCase {
 
     @Override
     @Transactional
-    public List<StoreProductReviewDto> getListProductByStoreId(UUID tenantId, UUID storeId, DomainPageRequest pageRequest) {
+    public PagedResult<StoreProductReviewDto> getListProductByStoreId(UUID tenantId, UUID storeId, DomainPageRequest pageRequest) {
         TenantInfo tenantInfo = tenantRepository.findByTenantId(TenantId.of(tenantId))
                 .orElseThrow(() -> new NotFoundException(Constants.ERROR_MSG_TENANT_NOT_FOUND));
 
         Store store = storeRepository.findByTenantIdAndStoreId(tenantInfo.getId(), StoreId.of(storeId))
                 .orElseThrow(() -> new NotFoundException(Constants.ERROR_MSG_STORE_NOT_FOUND));
 
-        List<StoreProduct> storeProducts = storeProductRepository.getListByStoreId(store.getId(), pageRequest);
+        PagedResult<StoreProduct> storeProducts = storeProductRepository.getListByStoreId(store.getId(), pageRequest);
 
-        return storeProducts.stream()
-                .map(storeProductMapper::fromStoreProductToPreview)
-                .toList();
+        return storeProducts.map(storeProductMapper::fromStoreProductToPreview);
     }
 }
