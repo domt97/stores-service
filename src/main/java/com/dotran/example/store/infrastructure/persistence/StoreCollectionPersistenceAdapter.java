@@ -5,6 +5,7 @@ import com.dotran.example.store.common.annotation.PersistenceAdapter;
 import com.dotran.example.store.common.domain.valueobject.BaseId;
 import com.dotran.example.store.common.domain.valueobject.ProductId;
 import com.dotran.example.store.common.domain.valueobject.StoreCollectionId;
+import com.dotran.example.store.common.domain.valueobject.StoreId;
 import com.dotran.example.store.common.exception.NotFoundException;
 import com.dotran.example.store.common.utils.CollectionUtils;
 import com.dotran.example.store.domain.model.StoreCollection;
@@ -95,6 +96,16 @@ public class StoreCollectionPersistenceAdapter implements StoreCollectionReposit
         return storeCollectionRepository
                 .findById(storeCollectionId.getValue())
                 .map(storeCollectionPersistenceMapper::toStoreCollection);
+    }
+
+    @Override
+    public List<StoreCollection> getListCollectionByStoreId(StoreId storeId) {
+        List<StoreCollectionEntity> storeCollectionEntityList =
+                storeCollectionRepository.findAllByStoreId(storeId.getValue());
+
+        return storeCollectionEntityList.stream()
+                .map(storeCollectionPersistenceMapper::toStoreCollection)
+                .toList();
     }
 
     private List<ProductCollectionEntity> createProductCollectionList(StoreCollectionEntity collectionEntity, List<ProductId> productIds) {
