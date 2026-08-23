@@ -3,10 +3,12 @@ package com.dotran.example.store.infrastructure.rest.api;
 import com.dotran.example.store.application.command.collection.AddProductCollectionCmd;
 import com.dotran.example.store.application.command.collection.CreateStoreCollectionCmd;
 import com.dotran.example.store.application.command.collection.GetCollectionDetailCmd;
+import com.dotran.example.store.application.command.collection.GetListCollectionCmd;
 import com.dotran.example.store.application.command.collection.RemoveProductCollectionCmd;
 import com.dotran.example.store.application.dto.StoreCollectionDto;
 import com.dotran.example.store.application.usecase.collection.AddProductCollectionUseCase;
 import com.dotran.example.store.application.usecase.collection.CreateStoreCollectionUseCase;
+import com.dotran.example.store.application.usecase.collection.GetListStoreCollectionUseCase;
 import com.dotran.example.store.application.usecase.collection.GetStoreCollectionUseCase;
 import com.dotran.example.store.application.usecase.collection.RemoveProductFromCollectionUseCase;
 import com.dotran.example.store.common.annotation.WebAdapter;
@@ -50,6 +52,7 @@ public class StoreCollectionController {
 
     private final CreateStoreCollectionUseCase createStoreCollectionUseCase;
     private final GetStoreCollectionUseCase getStoreCollectionUseCase;
+    private final GetListStoreCollectionUseCase getListStoreCollectionUseCase;
     private final AddProductCollectionUseCase addProductCollectionUseCase;
     private final RemoveProductFromCollectionUseCase removeProductCollectionUseCase;
     private final StoreCollectionRestMapper restMapper;
@@ -74,6 +77,29 @@ public class StoreCollectionController {
         StoreCollectionDto storeCollectionDto = createStoreCollectionUseCase.create(cmd);
 
         return restMapper.fromDtoToResponse(storeCollectionDto);
+    }
+
+    @Operation(summary = "Get all collections", description = "Retrieves all collection belong to the store")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Collections retrieved successfully",
+                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = StoreCollectionResponse.class))),
+    })
+    @GetMapping("/tenants/{tenantId}/stores/{storeId}/collections")
+    @ResponseStatus(HttpStatus.OK)
+    public List<StoreCollectionResponse> getAll(
+            @Parameter(description = "Tenant ID", required = true) @PathVariable UUID tenantId,
+            @Parameter(description = "Store ID", required = true) @PathVariable UUID storeId) {
+        GetListCollectionCmd cmd = GetListCollectionCmd.builder()
+                .tenantId(TenantId.of(tenantId))
+                .storeId(StoreId.of(storeId))
+                .build();
+
+        List<StoreCollectionDto> storeCollectionDtos = getListStoreCollectionUseCase.getListCollectionByStoreId(cmd);
+
+        return storeCollectionDtos
+                .stream()
+                .map(restMapper::fromDtoToResponse)
+                .toList();
     }
 
     @Operation(summary = "Get collection details", description = "Retrieves detailed information about a specific product collection")

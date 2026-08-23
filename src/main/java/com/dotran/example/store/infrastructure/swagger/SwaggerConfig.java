@@ -29,7 +29,7 @@ public class SwaggerConfig {
                                 .name("Apache 2.0")))
                 .servers(List.of(
                         new Server()
-                                .url("http://localhost:8383")
+                                .url("http://localhost:8048")
                                 .description("Local"),
                         new Server()
                                 .url("https://api.example.com")
