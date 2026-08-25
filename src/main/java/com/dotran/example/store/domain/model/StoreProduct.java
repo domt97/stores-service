@@ -6,11 +6,10 @@ import com.dotran.example.store.common.domain.valueobject.EventId;
 import com.dotran.example.store.common.domain.valueobject.ProductId;
 import com.dotran.example.store.common.domain.valueobject.SKU;
 import com.dotran.example.store.common.domain.valueobject.StoreId;
-import com.dotran.example.store.common.domain.valueobject.TenantId;
+
 import com.dotran.example.store.domain.enums.OutboxStatus;
 import com.dotran.example.store.domain.enums.ProductStatus;
 import com.dotran.example.store.domain.event.OutboxEvent;
-import com.dotran.example.store.domain.event.ProductCreatedEvent;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.experimental.SuperBuilder;
@@ -105,23 +104,15 @@ public class StoreProduct extends AggregateRoot<ProductId> {
                 .toList();
     }
 
-    public OutboxEvent toOutboxEvent(TenantId tenantId) {
-        EventId generatedEventId = EventId.newEventId();
+    public OutboxEvent toProductCreatedOutboxEvent(EventId eventId, Object payload) {
         Instant now = Instant.now();
 
         return OutboxEvent.builder()
-                .id(generatedEventId)
+                .id(eventId)
                 .aggregateType("Product")
                 .aggregateId(id.getValue())
                 .eventType("PRODUCT_CREATED")
-                .payload(ProductCreatedEvent.builder()
-                        .eventId(generatedEventId.getValue())
-                        .occurredAt(now)
-                        .tenantId(tenantId.getValue())
-                        .storeId(storeId.getValue())
-                        .productId(id.getValue())
-                        .skus(this.getListOfSKUs())
-                        .build())
+                .payload(payload)
                 .status(OutboxStatus.PENDING)
                 .retryCount(0)
                 .createdAt(now)

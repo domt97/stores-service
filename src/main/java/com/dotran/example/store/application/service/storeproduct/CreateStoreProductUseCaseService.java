@@ -8,10 +8,14 @@ import com.dotran.example.store.application.repository.StoreProductRepository;
 import com.dotran.example.store.application.usecase.storeproduct.CreateStoreProductUseCase;
 import com.dotran.example.store.common.annotation.UseCase;
 import com.dotran.example.store.common.domain.valueobject.TenantId;
+import com.dotran.example.store.common.domain.valueobject.EventId;
 import com.dotran.example.store.domain.event.OutboxEvent;
+import com.dotran.example.store.domain.event.ProductCreatedEvent;
 import com.dotran.example.store.domain.model.StoreProduct;
 import lombok.RequiredArgsConstructor;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.time.Instant;
 
 @UseCase
 @RequiredArgsConstructor
@@ -29,7 +33,19 @@ public class CreateStoreProductUseCaseService implements CreateStoreProductUseCa
 
         StoreProduct createdStoreProduct = storeProductRepository.create(storeProduct);
 
-        OutboxEvent outboxEvent = createdStoreProduct.toOutboxEvent(TenantId.of(createStoreProductCmd.getTenantId()));
+        TenantId tenantId = TenantId.of(createStoreProductCmd.getTenantId());
+        EventId eventId = EventId.newEventId();
+        Instant now = Instant.now();
+        ProductCreatedEvent payload = ProductCreatedEvent.builder()
+                .eventId(eventId.getValue())
+                .occurredAt(now)
+                .tenantId(tenantId.getValue())
+                .storeId(createdStoreProduct.getStoreId().getValue())
+                .productId(createdStoreProduct.getId().getValue())
+                .skus(createdStoreProduct.getListOfSKUs())
+                .build();
+
+        OutboxEvent outboxEvent = createdStoreProduct.toProductCreatedOutboxEvent(eventId, payload);
         outboxEventRepository.save(outboxEvent);
 
         return storeProductMapper.fromStoreProduct(createdStoreProduct);

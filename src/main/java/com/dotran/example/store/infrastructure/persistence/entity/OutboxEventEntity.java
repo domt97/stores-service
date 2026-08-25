@@ -1,5 +1,6 @@
 package com.dotran.example.store.infrastructure.persistence.entity;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.dotran.example.store.domain.enums.OutboxStatus;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -42,7 +43,7 @@ public class OutboxEventEntity {
 
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "payload", nullable = false, columnDefinition = "jsonb")
-    private String payload;
+    private JsonNode payload;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)

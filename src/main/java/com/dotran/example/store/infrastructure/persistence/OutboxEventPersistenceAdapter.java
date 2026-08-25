@@ -8,8 +8,6 @@ import com.dotran.example.store.infrastructure.persistence.jpa.SpringDataOutboxE
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 
-import java.time.Instant;
-
 @PersistenceAdapter
 @RequiredArgsConstructor
 public class OutboxEventPersistenceAdapter implements OutboxEventRepository {
@@ -25,13 +23,8 @@ public class OutboxEventPersistenceAdapter implements OutboxEventRepository {
         entity.setAggregateType(outboxEvent.getAggregateType());
         entity.setAggregateId(outboxEvent.getAggregateId());
         entity.setEventType(outboxEvent.getEventType());
-        try {
-            entity.setPayload(objectMapper.writeValueAsString(outboxEvent.getPayload()));
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to serialize outbox event payload", e);
-        }
+        entity.setPayload(objectMapper.valueToTree(outboxEvent.getPayload()));
         entity.setStatus(outboxEvent.getStatus());
-        entity.setCreatedAt(Instant.now());
         entity.setRetryCount(outboxEvent.getRetryCount());
         entity.setCreatedAt(outboxEvent.getCreatedAt());
 
