@@ -2,9 +2,15 @@ package com.dotran.example.store.domain.model;
 
 import com.dotran.example.store.common.domain.AggregateRoot;
 import com.dotran.example.store.common.domain.valueobject.CategoryId;
+import com.dotran.example.store.common.domain.valueobject.EventId;
 import com.dotran.example.store.common.domain.valueobject.ProductId;
+import com.dotran.example.store.common.domain.valueobject.SKU;
 import com.dotran.example.store.common.domain.valueobject.StoreId;
+import com.dotran.example.store.common.domain.valueobject.TenantId;
+import com.dotran.example.store.domain.enums.OutboxStatus;
 import com.dotran.example.store.domain.enums.ProductStatus;
+import com.dotran.example.store.domain.event.OutboxEvent;
+import com.dotran.example.store.domain.event.ProductCreatedEvent;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.experimental.SuperBuilder;
@@ -89,5 +95,36 @@ public class StoreProduct extends AggregateRoot<ProductId> {
         return Optional.ofNullable(skus)
                 .orElseGet(List::of)
                 .size();
+    }
+
+    public List<SKU> getListOfSKUs() {
+        return Optional.ofNullable(skus)
+                .orElseGet(List::of)
+                .stream()
+                .map(ProductSku::getSku)
+                .toList();
+    }
+
+    public OutboxEvent toOutboxEvent(TenantId tenantId) {
+        EventId generatedEventId = EventId.newEventId();
+        Instant now = Instant.now();
+
+        return OutboxEvent.builder()
+                .id(generatedEventId)
+                .aggregateType("Product")
+                .aggregateId(id.getValue())
+                .eventType("PRODUCT_CREATED")
+                .payload(ProductCreatedEvent.builder()
+                        .eventId(generatedEventId.getValue())
+                        .occurredAt(now)
+                        .tenantId(tenantId.getValue())
+                        .storeId(storeId.getValue())
+                        .productId(id.getValue())
+                        .skus(this.getListOfSKUs())
+                        .build())
+                .status(OutboxStatus.PENDING)
+                .retryCount(0)
+                .createdAt(now)
+                .build();
     }
 }
