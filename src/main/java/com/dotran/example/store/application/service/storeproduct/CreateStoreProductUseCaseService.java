@@ -3,18 +3,26 @@ package com.dotran.example.store.application.service.storeproduct;
 import com.dotran.example.store.application.command.storeproduct.CreateStoreProductCmd;
 import com.dotran.example.store.application.dto.StoreProductDetailDto;
 import com.dotran.example.store.application.mapper.StoreProductMapper;
+import com.dotran.example.store.application.repository.OutboxEventRepository;
 import com.dotran.example.store.application.repository.StoreProductRepository;
 import com.dotran.example.store.application.usecase.storeproduct.CreateStoreProductUseCase;
 import com.dotran.example.store.common.annotation.UseCase;
+import com.dotran.example.store.common.domain.valueobject.TenantId;
+import com.dotran.example.store.common.domain.valueobject.EventId;
+import com.dotran.example.store.domain.event.OutboxEvent;
+import com.dotran.example.store.domain.event.ProductCreatedEvent;
 import com.dotran.example.store.domain.model.StoreProduct;
 import lombok.RequiredArgsConstructor;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.time.Instant;
 
 @UseCase
 @RequiredArgsConstructor
 public class CreateStoreProductUseCaseService implements CreateStoreProductUseCase {
 
     private final StoreProductRepository storeProductRepository;
+    private final OutboxEventRepository outboxEventRepository;
     private final StoreProductMapper storeProductMapper;
 
     @Override
@@ -24,6 +32,21 @@ public class CreateStoreProductUseCaseService implements CreateStoreProductUseCa
         storeProduct.initState();
 
         StoreProduct createdStoreProduct = storeProductRepository.create(storeProduct);
+
+        TenantId tenantId = TenantId.of(createStoreProductCmd.getTenantId());
+        EventId eventId = EventId.newEventId();
+        Instant now = Instant.now();
+        ProductCreatedEvent payload = ProductCreatedEvent.builder()
+                .eventId(eventId.getValue())
+                .occurredAt(now)
+                .tenantId(tenantId.getValue())
+                .storeId(createdStoreProduct.getStoreId().getValue())
+                .productId(createdStoreProduct.getId().getValue())
+                .skus(createdStoreProduct.getListOfSKUs())
+                .build();
+
+        OutboxEvent outboxEvent = createdStoreProduct.toProductCreatedOutboxEvent(eventId, payload);
+        outboxEventRepository.save(outboxEvent);
 
         return storeProductMapper.fromStoreProduct(createdStoreProduct);
     }
