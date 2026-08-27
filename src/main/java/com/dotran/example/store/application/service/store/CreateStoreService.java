@@ -27,12 +27,12 @@ public class CreateStoreService implements CreateStoreUseCase {
     @Override
     @Transactional
     public StoreDetailDto create(CreateStoreCmd cmd) {
-        TenantInfo tenantInfo = tenantRepository.findByTenantId(TenantId.of(cmd.getTenantId()))
+        TenantInfo tenantInfo = tenantRepository.findByTenantId(cmd.getTenantId())
                 .orElseThrow(() -> new NotFoundException(Constants.ERROR_MSG_TENANT_NOT_FOUND));
         Store store = Store.initStore(tenantInfo.getId(),
                 cmd.getName(),
                 cmd.getCode(),
-                CustomerId.of(cmd.getOwnerId()),
+                cmd.getOwnerId(),
                 cmd.getEmail(),
                 cmd.getPhone());
 

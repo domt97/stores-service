@@ -33,13 +33,12 @@ public class CreateStoreProductUseCaseService implements CreateStoreProductUseCa
 
         StoreProduct createdStoreProduct = storeProductRepository.create(storeProduct);
 
-        TenantId tenantId = TenantId.of(createStoreProductCmd.getTenantId());
         EventId eventId = EventId.newEventId();
         Instant now = Instant.now();
         ProductCreatedEvent payload = ProductCreatedEvent.builder()
                 .eventId(eventId.getValue())
                 .occurredAt(now)
-                .tenantId(tenantId.getValue())
+                .tenantId(createStoreProductCmd.getTenantId().getValue())
                 .storeId(createdStoreProduct.getStoreId().getValue())
                 .productId(createdStoreProduct.getId().getValue())
                 .skus(createdStoreProduct.getListOfSKUs())

@@ -1,5 +1,7 @@
 package com.dotran.example.store.application.command.store;
 
+import com.dotran.example.store.common.domain.valueobject.StoreId;
+import com.dotran.example.store.common.domain.valueobject.TenantId;
 import com.dotran.example.store.domain.enums.AvailabilityType;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -15,9 +17,9 @@ import java.util.UUID;
 @NoArgsConstructor
 public class AddStoreAvailabilityCmd {
 
-    private UUID tenantId;
+    private TenantId tenantId;
 
-    private UUID storeId;
+    private StoreId storeId;
 
     private AvailabilityType type;
 

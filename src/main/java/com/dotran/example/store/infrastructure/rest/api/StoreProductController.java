@@ -65,8 +65,8 @@ public class StoreProductController {
             @Parameter(description = "Store ID", required = true) @PathVariable UUID storeId,
             @RequestBody @Valid CreateStoreProductRequest request) {
         CreateStoreProductCmd createStoreProductCmd = storeProductRestMapper.fromCreateRequestToCmd(request);
-        createStoreProductCmd.setTenantId(tenantId);
-        createStoreProductCmd.setStoreId(storeId);
+        createStoreProductCmd.setTenantId(TenantId.of(tenantId));
+        createStoreProductCmd.setStoreId(StoreId.of(storeId));
 
         StoreProductDetailDto storeProductDetailDto = createStoreProductUseCase.createProduct(createStoreProductCmd);
 

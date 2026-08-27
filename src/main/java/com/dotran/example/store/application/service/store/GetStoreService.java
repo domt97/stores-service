@@ -23,7 +23,7 @@ public class GetStoreService implements GetStoreUseCase {
     @Override
     @Transactional
     public StoreDetailDto getStoreByTenantIdAndStoreId(GetStoreCmd cmd) {
-        Store store = storeRepository.findByTenantIdAndStoreId(TenantId.of(cmd.getTenantId()), StoreId.of(cmd.getStoreId()))
+        Store store = storeRepository.findByTenantIdAndStoreId(cmd.getTenantId(), cmd.getStoreId())
                 .orElseThrow(StoreNotFoundException::new);
 
         return storeDataMapper.toStoreDetailDto(store);

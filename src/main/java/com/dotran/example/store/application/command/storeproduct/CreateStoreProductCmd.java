@@ -1,5 +1,8 @@
 package com.dotran.example.store.application.command.storeproduct;
 
+import com.dotran.example.store.common.domain.valueobject.CategoryId;
+import com.dotran.example.store.common.domain.valueobject.StoreId;
+import com.dotran.example.store.common.domain.valueobject.TenantId;
 import lombok.Builder;
 import lombok.Data;
 
@@ -10,15 +13,15 @@ import java.util.UUID;
 @Builder
 public class CreateStoreProductCmd {
 
-    private UUID tenantId;
+    private TenantId tenantId;
 
-    private UUID storeId;
+    private StoreId storeId;
 
     private String name;
 
     private String description;
 
-    private UUID categoryId;
+    private CategoryId categoryId;
 
     private UUID brandId;
 

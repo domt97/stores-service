@@ -25,7 +25,7 @@ public class AddStoreAvailabilityService implements AddStoreAvailabilityUseCase 
     public StoreAvailabilityDto add(AddStoreAvailabilityCmd cmd) {
         log.info("AddStoreAvailabilityService - add: START for storeId={}", cmd.getStoreId());
         
-        StoreAvailability storeAvailability = storeDataMapper.fromCmdToStoreAvailability(cmd, StoreId.of(cmd.getStoreId()));
+        StoreAvailability storeAvailability = storeDataMapper.fromCmdToStoreAvailability(cmd, cmd.getStoreId());
         storeAvailability.newStoreAvailability();
 
         StoreAvailability savedAvailability = storeAvailabilityRepository.save(storeAvailability);

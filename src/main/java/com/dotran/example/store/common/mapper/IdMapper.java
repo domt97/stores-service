@@ -5,6 +5,7 @@ import com.dotran.example.store.common.domain.valueobject.CustomerId;
 import com.dotran.example.store.common.domain.valueobject.ProductId;
 import com.dotran.example.store.common.domain.valueobject.ProductImageId;
 import com.dotran.example.store.common.domain.valueobject.ProductSkuId;
+import com.dotran.example.store.common.domain.valueobject.SKU;
 import com.dotran.example.store.common.domain.valueobject.StoreAvailabilityId;
 import com.dotran.example.store.common.domain.valueobject.StoreCollectionId;
 import com.dotran.example.store.common.domain.valueobject.StoreId;
@@ -30,6 +31,11 @@ public interface IdMapper {
     @Named("toProductSkuId")
     default ProductSkuId toProductSkuId(UUID id) {
         return id == null ? null : new ProductSkuId(id);
+    }
+
+    @Named("toSKU")
+    default SKU toSKU(String id) {
+        return id == null ? null : new SKU(id);
     }
 
     @Named("toProductImageId")
