@@ -34,16 +34,19 @@ spring:
     locations: classpath:db/migration
     url: jdbc:postgresql://localhost:5432/store?currentSchema=store
 
-app:
+aws:
+  # For local development with LocalStack
+  # endpoint: http://localhost:4566
+  region: ${AWS_REGION:eu-west-1}
+  endpoint: ${AWS_ENDPOINT:http://localhost:4566}
+  access-key: ${AWS_ACCESS_KEY:test}
+  secret-key: ${AWS_SECRET_KEY:test}
+
   dynamodb:
-    # For local development with LocalStack
-    # endpoint: http://localhost:4566
-    endpoint: ""
-    region: eu-west-1
-    access-key: ""
-    secret-key: ""
     table:
-      tenant-info: tenant_info
+      tenant-info: ${AWS_DYNAMODB_TABLE:tenant_info}
+  s3:
+    store-product-bucket: ${AWS_S3_STORE_PRODUCT_BUCKET:store-products}
 
 springdoc:
   api-docs:

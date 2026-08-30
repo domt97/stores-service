@@ -59,6 +59,8 @@ aws dynamodb put-item \
     }
   }'
 
+aws --endpoint-url=http://localhost:4566 s3 mb s3://localdev-store-products
+
 if [ $? -ne 0 ]; then
   echo "ERROR: Failed to insert data"
   exit 1

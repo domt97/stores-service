@@ -1,9 +1,12 @@
 package com.dotran.example.store.infrastructure.rest.api;
 
+import com.dotran.example.store.application.command.impex.ImportStoreProductCmd;
 import com.dotran.example.store.application.command.storeproduct.CreateStoreProductCmd;
 import com.dotran.example.store.application.command.storeproduct.SearchProductCmd;
 import com.dotran.example.store.application.dto.StoreProductDetailDto;
 import com.dotran.example.store.application.dto.StoreProductReviewDto;
+import com.dotran.example.store.application.impex.template.ImportResult;
+import com.dotran.example.store.application.usecase.impex.ImportStoreProductUseCase;
 import com.dotran.example.store.application.usecase.storeproduct.CreateStoreProductUseCase;
 import com.dotran.example.store.application.usecase.storeproduct.GetStoreProductDetailUseCase;
 import com.dotran.example.store.application.usecase.storeproduct.SearchProductUseCase;
@@ -13,6 +16,7 @@ import com.dotran.example.store.common.domain.valueobject.TenantId;
 import com.dotran.example.store.common.dto.DomainPageRequest;
 import com.dotran.example.store.common.dto.PagedResult;
 import com.dotran.example.store.infrastructure.rest.dto.request.CreateStoreProductRequest;
+import com.dotran.example.store.infrastructure.rest.dto.request.ImportStoreProductsRequest;
 import com.dotran.example.store.infrastructure.rest.dto.response.StoreProductPreviewResponse;
 import com.dotran.example.store.infrastructure.rest.dto.response.StoreProductResponse;
 import com.dotran.example.store.infrastructure.rest.mapper.StoreProductRestMapper;
@@ -49,6 +53,7 @@ public class StoreProductController {
     private final CreateStoreProductUseCase createStoreProductUseCase;
     private final GetStoreProductDetailUseCase getStoreProductDetailUseCase;
     private final SearchProductUseCase searchProductUseCase;
+    private final ImportStoreProductUseCase importStoreProductUseCase;
     private final StoreProductRestMapper storeProductRestMapper;
 
     @Operation(summary = "Create a new product", description = "Creates a new product in the specified store with SKUs and images")
@@ -121,5 +126,27 @@ public class StoreProductController {
                 .search(searchProductCmd, pageRequest);
 
         return storeProductReviewDtos.map(storeProductRestMapper::toStoreProductPreviewResponse);
+    }
+
+    @Operation(summary = "Import store products", description = "Imports a list of products for a specific store")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Products imported successfully",
+                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = ImportResult.class))),
+            @ApiResponse(responseCode = "404", description = "Store not found", content = @Content)
+    })
+    @PostMapping("/tenants/{tenantId}/stores/{storeId}/products/import")
+    @ResponseStatus(HttpStatus.OK)
+    public ImportResult importProducts(@PathVariable UUID tenantId,
+                                       @PathVariable UUID storeId,
+                                       @RequestBody ImportStoreProductsRequest request) {
+
+        ImportStoreProductCmd importStoreProductCmd = ImportStoreProductCmd.builder()
+                .tenantId(TenantId.of(tenantId))
+                .storeId(StoreId.of(storeId))
+                .path(request.getPath())
+                .fileName(request.getFileName())
+                .build();
+
+        return importStoreProductUseCase.execute(importStoreProductCmd);
     }
 }

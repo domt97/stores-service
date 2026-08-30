@@ -2,7 +2,6 @@ package com.dotran.example.store.infrastructure.cloud.dynamodb;
 
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.env.Environment;
@@ -25,20 +24,8 @@ public class DynamoDbConfig {
     @Autowired
     private Environment environment;
 
-    @Value("${app.dynamodb.endpoint:}")
-    private String dynamoDbEndpoint;
-
-    @Value("${app.dynamodb.region:eu-west-1}")
-    private String region;
-
-    @Value("${app.dynamodb.access-key:}")
-    private String accessKey;
-
-    @Value("${app.dynamodb.secret-key:}")
-    private String secretKey;
-
-    @Value("${app.dynamodb.table.tenant-info:localdev_tenant_info}")
-    private String tenantInfoTableName;
+    @Autowired
+    private DynamoDbProperties dynamoDbProperties;
 
     @Bean
     public DynamoDbClient dynamoDbClient() {
@@ -57,17 +44,20 @@ public class DynamoDbConfig {
                     .build();
         }
         var clientBuilder = DynamoDbClient.builder()
-                .region(Region.of(region));
+                .region(Region.of(dynamoDbProperties.getRegion()));
 
         // Use endpoint override if provided (e.g., for local testing with LocalStack)
-        if (dynamoDbEndpoint != null && !dynamoDbEndpoint.isEmpty()) {
-            clientBuilder.endpointOverride(java.net.URI.create(dynamoDbEndpoint));
+        if (dynamoDbProperties.getEndpoint() != null && !dynamoDbProperties.getEndpoint().isEmpty()) {
+            clientBuilder.endpointOverride(java.net.URI.create(dynamoDbProperties.getEndpoint()));
         }
 
         // Use static credentials if provided (e.g., for local development)
-        if (accessKey != null && !accessKey.isEmpty() && secretKey != null && !secretKey.isEmpty()) {
+        if (dynamoDbProperties.getAccessKey() != null && !dynamoDbProperties.getAccessKey().isEmpty()
+                && dynamoDbProperties.getSecretKey() != null && !dynamoDbProperties.getSecretKey().isEmpty()) {
             clientBuilder.credentialsProvider(
-                StaticCredentialsProvider.create(AwsBasicCredentials.create(accessKey, secretKey))
+                StaticCredentialsProvider.create(
+                        AwsBasicCredentials
+                                .create(dynamoDbProperties.getAccessKey(), dynamoDbProperties.getSecretKey()))
             );
         }
 
@@ -83,6 +73,6 @@ public class DynamoDbConfig {
 
     @Bean
     public DynamoDbTable<TenantInfoItem> tenantInfoTable(DynamoDbEnhancedClient enhancedClient) {
-        return enhancedClient.table(tenantInfoTableName, TableSchema.fromBean(TenantInfoItem.class));
+        return enhancedClient.table(dynamoDbProperties.getTenantInfoTable(), TableSchema.fromBean(TenantInfoItem.class));
     }
 }

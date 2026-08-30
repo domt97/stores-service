@@ -8,6 +8,8 @@ import com.dotran.example.store.infrastructure.persistence.jpa.SpringDataOutboxE
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 
+import java.util.List;
+
 @PersistenceAdapter
 @RequiredArgsConstructor
 public class OutboxEventPersistenceAdapter implements OutboxEventRepository {
@@ -17,6 +19,19 @@ public class OutboxEventPersistenceAdapter implements OutboxEventRepository {
 
     @Override
     public void save(OutboxEvent outboxEvent) {
+        OutboxEventEntity entity = createOutboxEventEntity(outboxEvent);
+
+        repository.save(entity);
+    }
+
+    @Override
+    public void saveAll(List<OutboxEvent> outboxEvents) {
+        List<OutboxEventEntity> entities = outboxEvents.stream().map(this::createOutboxEventEntity).toList();
+
+        repository.saveAll(entities);
+    }
+
+    private OutboxEventEntity createOutboxEventEntity(OutboxEvent outboxEvent) {
         OutboxEventEntity entity = new OutboxEventEntity();
 
         entity.setId(outboxEvent.getId().getValue());
@@ -28,6 +43,6 @@ public class OutboxEventPersistenceAdapter implements OutboxEventRepository {
         entity.setRetryCount(outboxEvent.getRetryCount());
         entity.setCreatedAt(outboxEvent.getCreatedAt());
 
-        repository.save(entity);
+        return entity;
     }
 }

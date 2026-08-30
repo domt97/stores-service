@@ -80,6 +80,11 @@ public class StorePersistenceAdapter implements StoreRepository {
         return storePersistenceMapper.fromEntityToStore(closedStore);
     }
 
+    @Override
+    public boolean existsByTenantIdAndStoreId(TenantId tenantId, StoreId storeId) {
+        return springDataStoreRepository.existsByTenantIdAndId(tenantId.getValue(), storeId.getValue());
+    }
+
     private void updateStore(StoreEntity storeEntity, Store store) {
         storePersistenceMapper.updateStoreEntity(storeEntity, store);
         storePersistenceMapper.updateStoreAddress(storeEntity.getAddress(), store.getAddress());

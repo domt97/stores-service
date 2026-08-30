@@ -17,4 +17,6 @@ public interface StoreRepository {
     Store close(Store store);
 
     Store reopen(Store store);
+
+    boolean existsByTenantIdAndStoreId(TenantId tenantId, StoreId storeId);
 }

@@ -7,6 +7,8 @@ import com.dotran.example.store.common.domain.valueobject.ProductId;
 import com.dotran.example.store.common.domain.valueobject.StoreId;
 import com.dotran.example.store.common.dto.DomainPageRequest;
 import com.dotran.example.store.common.dto.PagedResult;
+import com.dotran.example.store.common.exception.ValidationException;
+import com.dotran.example.store.common.utils.CollectionUtils;
 import com.dotran.example.store.common.utils.PageUtils;
 import com.dotran.example.store.domain.model.StoreProduct;
 import com.dotran.example.store.infrastructure.mapper.StoreProductPersistenceMapper;
@@ -69,6 +71,27 @@ public class StoreProductPersistenceAdapter implements StoreProductRepository {
                 .map(mapper::fromEntity);
 
         return PagedResult.of(storeProductPage);
+    }
+
+    @Override
+    public List<StoreProduct> saveAll(List<StoreProduct> storeProductList) {
+        if (CollectionUtils.isEmpty(storeProductList)) {
+            log.error("Store product list is empty, nothing to save.");
+            throw new ValidationException("Store product list is empty, nothing to save.");
+        }
+
+        List<StoreProductEntity> storeProductEntityList = new ArrayList<>();
+        for (StoreProduct storeProduct : storeProductList) {
+            StoreProductEntity storeProductEntity = mapper.fromStoreProduct(storeProduct);
+            storeProductEntity.setSkus(mapper.fromProductSkus(storeProduct.getSkus(), storeProductEntity));
+            storeProductEntity.setImages(mapper.fromProductImages(storeProduct.getImages(), storeProductEntity));
+
+            storeProductEntityList.add(storeProductEntity);
+        }
+        return repository.saveAllAndFlush(storeProductEntityList)
+                .stream()
+                .map(mapper::fromEntity)
+                .toList();
     }
 
     /**
