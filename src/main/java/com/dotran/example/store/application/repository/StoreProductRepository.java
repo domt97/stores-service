@@ -6,6 +6,7 @@ import com.dotran.example.store.common.domain.valueobject.StoreId;
 import com.dotran.example.store.common.dto.DomainPageRequest;
 import com.dotran.example.store.common.dto.PagedResult;
 import com.dotran.example.store.domain.model.StoreProduct;
+import com.dotran.example.store.infrastructure.persistence.entity.StoreProductEntity;
 
 import java.util.List;
 import java.util.Optional;
@@ -19,4 +20,6 @@ public interface StoreProductRepository {
     List<StoreProduct> getProductsByListOfProductIds(List<ProductId> productIds);
 
     PagedResult<StoreProduct> searchProducts(StoreId storeId, PriceRange priceRange, DomainPageRequest pageRequest);
+
+    List<StoreProduct> saveAll(List<StoreProduct> storeProductList);
 }

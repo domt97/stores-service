@@ -31,7 +31,7 @@ dependencies {
 
 	// AWS
 	implementation platform("software.amazon.awssdk:bom:2.31.76")
-
+	implementation 'software.amazon.awssdk:s3'
 	implementation "software.amazon.awssdk:dynamodb"
 	implementation "software.amazon.awssdk:dynamodb-enhanced"
 
@@ -44,6 +44,9 @@ dependencies {
 
 	// Flyway
 	implementation 'org.flywaydb:flyway-core'
+
+	// Apache
+	implementation 'org.apache.poi:poi-ooxml:5.4.1'
 
 	annotationProcessor 'org.projectlombok:lombok'
 	annotationProcessor 'org.projectlombok:lombok-mapstruct-binding:0.2.0'

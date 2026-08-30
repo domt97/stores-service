@@ -1,5 +1,7 @@
 package com.dotran.example.store.application.command.store;
 
+import com.dotran.example.store.common.domain.valueobject.StoreId;
+import com.dotran.example.store.common.domain.valueobject.TenantId;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -13,7 +15,7 @@ import java.util.UUID;
 @NoArgsConstructor
 public class GetStoreCmd {
 
-    private UUID tenantId;
+    private TenantId tenantId;
 
-    private UUID storeId;
+    private StoreId storeId;
 }

@@ -19,4 +19,6 @@ public interface SpringDataStoreRepository extends JpaRepository<StoreEntity, UU
     @Modifying
     @Query("UPDATE StoreEntity s SET s.status = :status WHERE s.tenantId = :tenantId and s.id = :storeId")
     int updateStoreStatus(@Param("tenantId") UUID tenantId, @Param("storeId") UUID storeId, @Param("status") StoreStatus status);
+
+    boolean existsByTenantIdAndId(UUID tenantId, UUID id);
 }

@@ -1,10 +1,2 @@
-app:
-  dynamodb:
-    # For local development with LocalStack
-    # endpoint: http://localhost:4566
-    endpoint: ""
-    region: eu-west-1
-    access-key: ""
-    secret-key: ""
-    table:
-      tenant-info: localdev_tenant_info
+AWS_DYNAMODB_TABLE: localdev_tenant_info
+AWS_S3_STORE_PRODUCT_BUCKET: localdev_store_products

@@ -14,6 +14,8 @@ import com.dotran.example.store.application.usecase.store.CreateStoreUseCase;
 import com.dotran.example.store.application.usecase.store.GetStoreUseCase;
 import com.dotran.example.store.application.usecase.store.ReopenStoreUseCase;
 import com.dotran.example.store.common.annotation.WebAdapter;
+import com.dotran.example.store.common.domain.valueobject.StoreId;
+import com.dotran.example.store.common.domain.valueobject.TenantId;
 import com.dotran.example.store.infrastructure.rest.dto.request.AddStoreAvailabilityRequest;
 import com.dotran.example.store.infrastructure.rest.dto.request.CreateStoreRequest;
 import com.dotran.example.store.infrastructure.rest.mapper.StoreRestMapper;
@@ -86,7 +88,11 @@ public class StoreController {
             @Parameter(description = "Tenant ID", required = true) @PathVariable UUID tenantId,
             @Parameter(description = "Store ID", required = true) @PathVariable UUID id) {
         log.info("StoreController - getStore: START");
-        StoreDetailDto storeDetailDto = getStoreUseCase.getStoreByTenantIdAndStoreId(new GetStoreCmd(tenantId, id));
+        StoreDetailDto storeDetailDto = getStoreUseCase.getStoreByTenantIdAndStoreId(
+                GetStoreCmd.builder()
+                        .tenantId(TenantId.of(tenantId))
+                        .storeId(StoreId.of(id))
+                        .build());
         log.info("StoreController - getStore: END");
         return storeRestMapper.toStoreDetailResponse(storeDetailDto);
     }
@@ -103,7 +109,7 @@ public class StoreController {
     public StoreDetailResponse closeStore(
             @Parameter(description = "Tenant ID", required = true) @PathVariable UUID tenantId,
             @Parameter(description = "Store ID", required = true) @PathVariable UUID id) {
-        StoreDetailDto storeDetailDto = closeStoreUseCase.close(new CloseStoreCmd(tenantId, id));
+        StoreDetailDto storeDetailDto = closeStoreUseCase.close(storeRestMapper.fromRequestToCloseStoreCmd(tenantId, id));
         return storeRestMapper.toStoreDetailResponse(storeDetailDto);
     }
 
@@ -119,7 +125,12 @@ public class StoreController {
     public StoreDetailResponse reopenStore(
             @Parameter(description = "Tenant ID", required = true) @PathVariable UUID tenantId,
             @Parameter(description = "Store ID", required = true) @PathVariable UUID id) {
-        StoreDetailDto storeDetailDto = reopenStoreUseCase.reopen(new ReopenStoreCmd(tenantId, id));
+        StoreDetailDto storeDetailDto = reopenStoreUseCase.reopen(
+                ReopenStoreCmd.builder()
+                        .tenantId(TenantId.of(tenantId))
+                        .storeId(StoreId.of(id))
+                        .build()
+        );
         return storeRestMapper.toStoreDetailResponse(storeDetailDto);
     }
 
@@ -139,8 +150,8 @@ public class StoreController {
         log.info("StoreController - addStoreAvailability: START for storeId={}", id);
 
         AddStoreAvailabilityCmd cmd = storeRestMapper.fromRequestToAddStoreAvailabilityCmd(request);
-        cmd.setTenantId(tenantId);
-        cmd.setStoreId(id);
+        cmd.setTenantId(TenantId.of(tenantId));
+        cmd.setStoreId(StoreId.of(id));
 
         StoreAvailabilityDto storeAvailabilityDto = addStoreAvailabilityUseCase.add(cmd);
 
