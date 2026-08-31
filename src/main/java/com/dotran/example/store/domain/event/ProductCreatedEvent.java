@@ -18,7 +18,7 @@ import java.util.UUID;
 public class ProductCreatedEvent {
 
     private UUID eventId;
-    private String eventType = "PRODUCT_CREATED";
+    private String eventType = "ProductCreated";
     private Instant occurredAt;
 
     private UUID tenantId;

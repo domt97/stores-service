@@ -111,7 +111,7 @@ public class StoreProduct extends AggregateRoot<ProductId> {
                 .id(eventId)
                 .aggregateType("Product")
                 .aggregateId(id.getValue())
-                .eventType("PRODUCT_CREATED")
+                .eventType("ProductCreated")
                 .payload(payload)
                 .status(OutboxStatus.PENDING)
                 .retryCount(0)
