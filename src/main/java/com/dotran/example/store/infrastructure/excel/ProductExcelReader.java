@@ -17,14 +17,15 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.ss.usermodel.Workbook;
-import org.apache.poi.ss.usermodel.WorkbookFactory;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import static com.dotran.example.store.common.utils.POIUtils.getString;
 import static com.dotran.example.store.common.utils.POIUtils.getValueAsBigDecimal;
@@ -36,11 +37,27 @@ import static com.dotran.example.store.common.utils.POIUtils.getValueAsUUID;
 public class ProductExcelReader implements StoreProductImportReader {
 
     private final S3ObjectStorageReader s3ObjectStorageReader;
+    private final ExcelValidator excelValidator;
 
     public ProductImportData read(String path, String fileName) {
         try (InputStream inputStream = s3ObjectStorageReader.read(path, fileName);
              XSSFWorkbook workbook = new XSSFWorkbook(inputStream)
         ) {
+            excelValidator.validateHeader(workbook.getSheet("Product"),
+                    Arrays.stream(ProductImportColumn.values())
+                            .map(ProductImportColumn::getColumnName)
+                            .collect(Collectors.toList())
+            );
+            excelValidator.validateHeader(workbook.getSheet("Product SKU"),
+                    Arrays.stream(ProductSKUColumn.values())
+                            .map(ProductSKUColumn::getColumnName)
+                            .collect(Collectors.toList())
+            );
+            excelValidator.validateHeader(workbook.getSheet("Product Image"),
+                    Arrays.stream(ProductImageColumn.values())
+                            .map(ProductImageColumn::getColumnName)
+                            .collect(Collectors.toList())
+            );
 
             List<ProductImportRow> products = parseProducts(workbook);
             List<ProductSKUImportRow> skus = parseProductSKUs(workbook);
