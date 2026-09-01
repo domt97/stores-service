@@ -167,6 +167,71 @@ spring:
 
 3. **Flyway migrations run automatically on startup** ✅
 
+### Outbox Event Setup with Debezium
+1. **Enable logical replication in PostgreSQL:**
+   wal_level=logical
+   
+    Verify
+    ```sql
+    SHOW wal_level;
+    ```
+
+2. **Create Debezium user and grant privileges:**
+    ```sql
+    CREATE USER debezium
+    WITH REPLICATION
+    LOGIN
+    PASSWORD 'debezium';
+    CREATE ROLE
+   
+    -----
+   
+    GRANT USAGE ON SCHEMA store TO debezium;
+
+    GRANT SELECT ON ALL TABLES IN SCHEMA store
+    TO debezium;
+    
+    ALTER DEFAULT PRIVILEGES IN SCHEMA store
+    GRANT SELECT ON TABLES
+    TO debezium;
+    GRANT
+    GRANT
+    ALTER DEFAULT PRIVILEGES
+    ```
+
+3. **Debezium Connector Configuration:**
+    ```json
+    {
+      "name": "postgres-cdc",
+      "config": {
+        "connector.class": "io.debezium.connector.postgresql.PostgresConnector",
+        "database.hostname": "postgres",
+        "database.port": "5432",
+        "database.user": "postgres",
+        "database.password": "postgres",
+        "database.dbname": "postgres",
+    
+        "topic.prefix": "store",
+    
+        "plugin.name": "pgoutput",
+        "slot.name": "debezium_store_slot",
+        "publication.name": "debezium_store_publication",
+        "publication.autocreate.mode": "filtered",
+    
+        "table.include.list": "store.outbox_events",
+    
+        "tombstones.on.delete": "false",
+    
+        "transforms": "outbox",
+        "transforms.outbox.type": "io.debezium.transforms.outbox.EventRouter",
+    
+        "transforms.outbox.route.by.field": "event_type",
+        "transforms.outbox.table.field.event.key": "aggregate_id",
+        "transforms.outbox.table.field.event.payload": "payload"
+      }
+    }
+    ```
+
 ### Build & Run
 
 **Build the project:**

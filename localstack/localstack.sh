@@ -3,6 +3,33 @@
 profile=localdev
 region=eu-west-1
 
+#Queues
+declare -a queues=(
+		${profile}-store-products-created-queue
+)
+
+#Buckets
+declare -a buckets=(
+    ${profile}-store-products
+)
+
+echo "Creating SQS queues..."
+for queue in "${queues[@]}"
+do
+	aws --endpoint-url=http://localhost:4566 sqs create-queue --attributes VisibilityTimeout=300 --queue-name $queue
+done
+echo "Created SQS queues successfully"
+
+
+echo "Creating S3 buckets..."
+for bucket in "${buckets[@]}"
+do
+	aws --endpoint-url=http://localhost:4566 s3 mb s3://$bucket
+done
+echo "Created S3 buckets successfully"
+
+
+
 echo "Creating DynamoDB table: ${profile}_tenant_info..."
 
 aws dynamodb create-table \
@@ -58,8 +85,6 @@ aws dynamodb put-item \
       "S": "2026-08-02T15:00:00Z"
     }
   }'
-
-aws --endpoint-url=http://localhost:4566 s3 mb s3://localdev-store-products
 
 if [ $? -ne 0 ]; then
   echo "ERROR: Failed to insert data"

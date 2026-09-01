@@ -6,8 +6,10 @@ spring:
     name: stores-service
 
   datasource:
-    url: jdbc:postgresql://localhost:5432/store?currentSchema=store
+    url: jdbc:postgresql://localhost:5432/postgres?currentSchema=store
     driver-class-name: org.postgresql.Driver
+    username: ${DB_USER:postgres}
+    password: ${DB_PASSWORD:postgres}
 
     hikari:
       maximum-pool-size: 10
@@ -32,7 +34,9 @@ spring:
     validate-on-migrate: true
     baseline-on-migrate: true
     locations: classpath:db/migration
-    url: jdbc:postgresql://localhost:5432/store?currentSchema=store
+    url: jdbc:postgresql://localhost:5432/postgres?currentSchema=store
+    user: ${DB_USER:postgres}
+    password: ${DB_PASSWORD:postgres}
 
 aws:
   # For local development with LocalStack
