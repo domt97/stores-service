@@ -1,7 +1,7 @@
 package com.dotran.oms.store.application.event;
 
+import com.dotran.oms.core.domain.id.EventId;
 import com.dotran.oms.core.domain.id.TenantId;
-import com.dotran.oms.store.common.id.EventId;
 import com.dotran.oms.store.domain.event.OutboxEvent;
 import com.dotran.oms.store.domain.event.ProductCreatedEvent;
 import com.dotran.oms.store.domain.model.StoreProduct;

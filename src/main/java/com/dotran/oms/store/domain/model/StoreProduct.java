@@ -2,10 +2,10 @@ package com.dotran.oms.store.domain.model;
 
 import com.dotran.oms.core.domain.AggregateRoot;
 import com.dotran.oms.core.domain.id.CategoryId;
+import com.dotran.oms.core.domain.id.EventId;
 import com.dotran.oms.core.domain.id.ProductId;
 import com.dotran.oms.core.domain.id.SKU;
 import com.dotran.oms.core.domain.id.StoreId;
-import com.dotran.oms.store.common.id.EventId;
 
 import com.dotran.oms.store.domain.enums.OutboxStatus;
 import com.dotran.oms.store.domain.enums.ProductStatus;

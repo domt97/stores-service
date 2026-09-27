@@ -1,7 +1,7 @@
 package com.dotran.oms.store.domain.event;
 
 import com.dotran.oms.core.domain.AggregateRoot;
-import com.dotran.oms.store.common.id.EventId;
+import com.dotran.oms.core.domain.id.EventId;
 import com.dotran.oms.store.domain.enums.OutboxStatus;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
