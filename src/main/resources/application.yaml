@@ -52,16 +52,11 @@ aws:
   s3:
     store-product-bucket: ${AWS_S3_STORE_PRODUCT_BUCKET:store-products}
 
-springdoc:
-  api-docs:
-    path: /api-docs
-
-  swagger-ui:
-    operationsSorter: method
-    tagsSorter: alpha
-    display-request-duration: true
-    try-it-out-enabled: true
-    enabled: true
+app:
+  swagger:
+    title: Store Service API
+    version: v1
+    description: Store service REST API
 
 logging:
   level:
