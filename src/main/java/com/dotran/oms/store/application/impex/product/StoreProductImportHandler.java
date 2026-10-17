@@ -1,6 +1,6 @@
 package com.dotran.oms.store.application.impex.product;
 
-import com.dotran.oms.core.cloud.dynamodb.DynamoDbTenantInfoRepository;
+import com.dotran.oms.store.application.repository.TenantRepository;
 import com.dotran.oms.core.domain.TenantInfo;
 import com.dotran.oms.core.domain.id.ProductId;
 import com.dotran.oms.core.exception.NotFoundException;
@@ -34,7 +34,7 @@ import java.util.stream.Collectors;
 public class StoreProductImportHandler extends
         AbstractImportTemplate<ProductImportContext, ProductImportData, ProductImportRequest> {
 
-    private final DynamoDbTenantInfoRepository tenantRepository;
+    private final TenantRepository tenantRepository;
     private final StoreRepository storeRepository;
     private final StoreProductRepository storeProductRepository;
     private final OutboxEventRepository outboxEventRepository;
@@ -145,7 +145,7 @@ public class StoreProductImportHandler extends
         }
 
         List<OutboxEvent> outboxEvents = outboxEventHelper
-                .createOutboxEvents(context.getTenantId(), context.getProducts());
+                .createProductCreatedOutboxEvents(context.getTenantId(), context.getProducts());
         outboxEventRepository.saveAll(outboxEvents);
         log.info("Post Import Product - END, {} outbox events created.", outboxEvents.size());
     }

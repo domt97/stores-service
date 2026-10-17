@@ -33,20 +33,16 @@ public class StoreCollection extends AggregateRoot<StoreCollectionId> {
         this.createdAt = this.updatedAt = Instant.now();
     }
 
-    public void addProduct(StoreProduct product) {
-        if (null == product) {
+    public void addProduct(ProductId productId) {
+        if (null == productId) {
             return;
-        }
-
-        if (!this.storeId.equals(product.getStoreId())) {
-            throw new BusinessException("Cannot add product from a different store to the collection");
         }
 
         if (this.productIds == null) {
             this.productIds = new ArrayList<>();
         }
 
-        this.productIds.add(product.getId());
+        this.productIds.add(productId);
         this.updatedAt = Instant.now();
     }
 

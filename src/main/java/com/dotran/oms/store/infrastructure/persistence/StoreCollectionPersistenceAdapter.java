@@ -56,10 +56,6 @@ public class StoreCollectionPersistenceAdapter implements StoreCollectionReposit
         List<ProductCollectionEntity> newProductCollections =
                 this.createProductCollectionList(storeCollectionEntity, productIds);
 
-        if (CollectionUtils.isEmpty(storeCollectionEntity.getProducts())) {
-            storeCollectionEntity.setProducts(new ArrayList<>());
-        }
-
         storeCollectionEntity.getProducts().addAll(newProductCollections);
 
         StoreCollectionEntity updatedCollection = storeCollectionRepository.saveAndFlush(storeCollectionEntity);

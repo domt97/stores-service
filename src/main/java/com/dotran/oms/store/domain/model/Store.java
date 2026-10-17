@@ -13,6 +13,7 @@ import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.experimental.SuperBuilder;
 
+import java.time.DayOfWeek;
 import java.time.Instant;
 import java.time.LocalTime;
 import java.util.ArrayList;
@@ -109,7 +110,24 @@ public class Store extends AggregateRoot<StoreId> {
                              String currency,
                              Integer preparationTimeMinutes,
                              Integer maxOrdersPerDay) {
-        this.config.updateConfig(autoAcceptOrder, allowPreOrder, openingTime, closingTime, timeZone, currency, preparationTimeMinutes, maxOrdersPerDay);
+        this.config = this.config.withUpdated(
+                autoAcceptOrder,
+                allowPreOrder,
+                openingTime,
+                closingTime,
+                timeZone,
+                currency,
+                preparationTimeMinutes,
+                maxOrdersPerDay);
+        this.updatedAt = Instant.now();
+    }
+
+    public void updateBusinessHour(DayOfWeek dayOfWeek, LocalTime openingTime, LocalTime closingTime, boolean closed) {
+        this.businessHours = this.businessHours.stream()
+                .map(bh -> bh.getDayOfWeek() == dayOfWeek
+                        ? bh.withUpdated(openingTime, closingTime, closed)
+                        : bh)
+                .toList();
         this.updatedAt = Instant.now();
     }
 

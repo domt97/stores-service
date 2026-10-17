@@ -10,8 +10,6 @@ import java.time.LocalTime;
 @Builder
 public class BusinessHourDto {
 
-    private Long id;
-
     private DayOfWeek dayOfWeek;
     private LocalTime openingTime;
     private LocalTime closingTime;

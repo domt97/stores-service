@@ -4,7 +4,6 @@ import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
-import lombok.NoArgsConstructor;
 
 import java.time.DayOfWeek;
 import java.time.LocalTime;
@@ -15,44 +14,38 @@ import java.util.stream.Collectors;
 @Getter
 @Builder
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
-@NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class BusinessHour {
 
-    private Long id;
-    private DayOfWeek dayOfWeek;
-    private LocalTime openingTime;
-    private LocalTime closingTime;
-    private boolean closed;
+    private final DayOfWeek dayOfWeek;
+    private final LocalTime openingTime;
+    private final LocalTime closingTime;
+    private final boolean closed;
 
-    public BusinessHour newBusinessHourConfig(DayOfWeek dayOfWeek,
-                                              LocalTime openingTime,
-                                              LocalTime closingTime,
-                                              Boolean isClosed) {
+    public static BusinessHour of(DayOfWeek dayOfWeek,
+                                  LocalTime openingTime,
+                                  LocalTime closingTime,
+                                  boolean closed) {
         return BusinessHour.builder()
                 .dayOfWeek(dayOfWeek)
                 .openingTime(openingTime)
                 .closingTime(closingTime)
-                .closed(isClosed)
+                .closed(closed)
                 .build();
     }
 
-    public void updateBusinessHour(DayOfWeek dayOfWeek,
-                                   LocalTime openingTime,
-                                   LocalTime closingTime,
-                                   boolean isClosed) {
-        this.dayOfWeek = dayOfWeek;
-        this.openingTime = openingTime;
-        this.closingTime = closingTime;
-        this.closed = isClosed;
+    public static List<BusinessHour> defaultConfig() {
+        return Arrays.stream(DayOfWeek.values())
+                .map(dow -> BusinessHour.of(dow, LocalTime.of(9, 0), LocalTime.of(18, 0), false))
+                .collect(Collectors.toList());
     }
 
-    public List<BusinessHour> defaultBusinessHourConfig() {
-        return Arrays.stream(DayOfWeek.values())
-                .map(dow -> this.newBusinessHourConfig(dow,
-                        LocalTime.of(9, 0),
-                        LocalTime.of(18, 0),
-                        false))
-                .collect(Collectors.toList());
+    public BusinessHour withUpdated(LocalTime openingTime, LocalTime closingTime, boolean closed) {
+        return BusinessHour.builder()
+                .dayOfWeek(this.dayOfWeek)
+                .openingTime(openingTime)
+                .closingTime(closingTime)
+                .closed(closed)
+                .build();
     }
 
     public boolean isOpen(LocalTime current) {

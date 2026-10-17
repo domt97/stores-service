@@ -6,7 +6,7 @@ import com.dotran.oms.store.application.command.storeconfig.UpdateStoreConfigCmd
 import com.dotran.oms.store.application.dto.StoreDetailDto;
 import com.dotran.oms.store.application.usecase.storeconfig.SettingStoreBusinessHourUseCase;
 import com.dotran.oms.store.application.usecase.storeconfig.SettingStoreConfigUseCase;
-import com.dotran.oms.store.infrastructure.rest.dto.request.UpdateBusinessHourRequest;
+import com.dotran.oms.store.infrastructure.rest.dto.request.BusinessHourRequest;
 import com.dotran.oms.store.infrastructure.rest.dto.request.UpdateStoreConfigRequest;
 import com.dotran.oms.store.infrastructure.rest.mapper.StoreRestMapper;
 import com.dotran.oms.store.infrastructure.rest.dto.response.StoreDetailResponse;
@@ -52,7 +52,7 @@ public class StoreConfigController {
     public StoreDetailResponse updateBusinessHour(
             @Parameter(description = "Tenant ID", required = true) @PathVariable UUID tenantId,
             @Parameter(description = "Store ID", required = true) @PathVariable UUID storeId,
-            @Valid @RequestBody List<UpdateBusinessHourRequest> updateBusinessHourRequests) {
+            @Valid @RequestBody List<BusinessHourRequest> updateBusinessHourRequests) {
         List<UpdateBusinessHourCmd> updateBusinessHourCmds = storeRestMapper
                 .fromListRequestToUpdateBusinessHourCmd(updateBusinessHourRequests);
         StoreDetailDto storeDetailDto = settingStoreBusinessHourUseCase.setupBusinessHour(tenantId, storeId, updateBusinessHourCmds);

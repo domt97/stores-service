@@ -2,14 +2,11 @@ package com.dotran.oms.store.domain.model;
 
 import com.dotran.oms.core.domain.AggregateRoot;
 import com.dotran.oms.core.domain.id.CategoryId;
-import com.dotran.oms.core.domain.id.EventId;
 import com.dotran.oms.core.domain.id.ProductId;
 import com.dotran.oms.core.domain.id.SKU;
 import com.dotran.oms.core.domain.id.StoreId;
 
-import com.dotran.oms.store.domain.enums.OutboxStatus;
 import com.dotran.oms.store.domain.enums.ProductStatus;
-import com.dotran.oms.store.domain.event.OutboxEvent;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.experimental.SuperBuilder;
@@ -104,18 +101,4 @@ public class StoreProduct extends AggregateRoot<ProductId> {
                 .toList();
     }
 
-    public OutboxEvent toProductCreatedOutboxEvent(EventId eventId, Object payload) {
-        Instant now = Instant.now();
-
-        return OutboxEvent.builder()
-                .id(eventId)
-                .aggregateType("Product")
-                .aggregateId(id.getValue())
-                .eventType("ProductCreated")
-                .payload(payload)
-                .status(OutboxStatus.PENDING)
-                .retryCount(0)
-                .createdAt(now)
-                .build();
-    }
 }

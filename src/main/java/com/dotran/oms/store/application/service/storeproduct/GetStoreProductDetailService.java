@@ -1,7 +1,7 @@
 package com.dotran.oms.store.application.service.storeproduct;
 
 import com.dotran.oms.core.annotation.UseCase;
-import com.dotran.oms.core.cloud.dynamodb.DynamoDbTenantInfoRepository;
+import com.dotran.oms.store.application.repository.TenantRepository;
 import com.dotran.oms.core.domain.TenantInfo;
 import com.dotran.oms.core.domain.id.ProductId;
 import com.dotran.oms.core.domain.id.StoreId;
@@ -25,7 +25,7 @@ import java.util.UUID;
 public class GetStoreProductDetailService implements GetStoreProductDetailUseCase {
 
     private final StoreProductRepository repository;
-    private final DynamoDbTenantInfoRepository tenantRepository;
+    private final TenantRepository tenantRepository;
     private final StoreRepository storeRepository;
     private final StoreProductMapper mapper;
 
