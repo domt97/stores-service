@@ -1,162 +1,185 @@
-# Stores Service
+# stores-service
 
-A multi-tenant store management system built with Spring Boot 3.2.3 and Java 17, following **DDD (Domain-Driven Design)** and **Hexagonal Architecture** principles.
+Store Management microservice for the **Order Management System (OMS)** — a multi-tenant SaaS platform.
 
-[![Java](https://img.shields.io/badge/Java-17-blue.svg)](https://openjdk.org/projects/jdk/17/)
-[![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.2.3-brightgreen.svg)](https://spring.io/projects/spring-boot)
-[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-blue.svg)](https://www.postgresql.org/)
+[![Java](https://img.shields.io/badge/Java-17-blue)](https://openjdk.org/projects/jdk/17/)
+[![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.2.3-brightgreen)](https://spring.io/projects/spring-boot)
+[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-blue)](https://www.postgresql.org/)
+[![DynamoDB](https://img.shields.io/badge/AWS-DynamoDB-orange)](https://aws.amazon.com/dynamodb/)
 
-## 📋 Table of Contents
+---
 
-- [Overview](#overview)
-- [Key Features](#key-features)
-- [Technology Stack](#technology-stack)
-- [Architecture](#architecture)
-- [Getting Started](#getting-started)
-- [API Documentation](#api-documentation)
-- [Project Structure](#project-structure)
-- [Database](#database)
-- [Configuration](#configuration)
-- [Development](#development)
+## System Context
 
-## 🎯 Overview
-
-Stores Service is a comprehensive store management platform designed for multi-tenant environments. It provides robust APIs for managing stores, products, collections, and operational configurations with full support for business hours, availability schedules, and product variants (SKUs).
-
-**Domain Model:**
-- **Store**: Multi-tenant stores with lifecycle management (open/close)
-- **Store Products**: Products with multiple SKUs, images, and pricing
-- **Store Collections**: Product grouping for merchandising
-- **Store Availability**: Time-based availability schedules
-- **Store Configuration**: Business hours and operational settings
-- **Tenant Info**: Multi-tenant support with DynamoDB integration
-
-## ✨ Key Features
-
-### Store Management
-- ✅ Create, retrieve, close, and reopen stores
-- ✅ Multi-tenant isolation by tenant ID
-- ✅ Store-level configuration and business hours
-- ✅ Availability schedule management
-
-### Product Management
-- ✅ Product creation with multiple SKUs and images
-- ✅ Product variants with individual pricing
-- ✅ Thumbnail and image gallery support
-- ✅ Pagination support for product listings
-
-### Collection Management
-- ✅ Create and manage product collections
-- ✅ Add/remove products from collections
-- ✅ Collection-based product organization
-
-### Technical Features
-- ✅ **Immutable Domain Models** using Lombok `@SuperBuilder`
-- ✅ **Value Objects** for type-safe identifiers
-- ✅ **Aggregate Roots** following DDD patterns
-- ✅ **MapStruct** for DTO/Entity mapping
-- ✅ **Batch fetching** optimization with `@BatchSize`
-- ✅ **Swagger/OpenAPI 3.0** documentation
-- ✅ **Flyway** database migrations
-- ✅ **Multi-database** support (PostgreSQL + DynamoDB)
-
-## 🛠 Technology Stack
-
-### Core Framework
-- **Java 17** - LTS with modern language features
-- **Spring Boot 3.2.3** - Application framework
-- **Spring Data JPA** - ORM and repository abstraction
-- **Hibernate 6.4** - JPA implementation with batch optimization
-
-### Database
-- **PostgreSQL** - Primary relational database
-- **DynamoDB** - Tenant information storage
-- **Flyway** - Database version control
-
-### API & Documentation
-- **Spring Web** - RESTful API
-- **SpringDoc OpenAPI 3.0** - Interactive API documentation
-- **Jakarta Validation** - Request validation
-
-### Code Quality & Productivity
-- **Lombok** - Boilerplate reduction
-- **MapStruct 1.6.3** - Type-safe bean mapping
-- **Hibernate Validator 8.0** - Bean validation
-
-### Build & Testing
-- **Gradle** - Build automation
-- **JUnit 5** - Testing framework
-
-## 🏗 Architecture
-
-### DDD Hexagonal Architecture
+`stores-service` is the owner of the **Store Management Bounded Context** within the OMS. It manages the full lifecycle of merchant stores, their product catalog, and merchandising. Other services consume its events or query it via REST.
 
 ```
-┌────────────────────────────────────────────────────────────┐
-│                    Infrastructure Layer                    │
-│  ┌──────────────┐  ┌─────────────┐  ┌──────────────────┐   │
-│  │ REST API     │  │ Persistence │  │ Cloud Services   │   │
-│  │ Controllers  │  │ Adapters    │  │ (DynamoDB)       │   │
-│  └──────┬───────┘  └──────┬──────┘  └────────┬─────────┘   │
-│         │                 │                  │             │
-└─────────┼─────────────────┼──────────────────┼─────────────┘
-          │                 │                  │
-┌─────────┼─────────────────┼──────────────────┼──────────────┐
-│         │   Application Layer (Use Cases)    │              │
-│         │                 │                  │              │
-│  ┌──────▼─────┐  ┌────────▼────┐  ┌──────────▼────────┐     │
-│  │  Commands  │  │  DTOs       │  │  Port Interfaces  │     │
-│  └────────────┘  └─────────────┘  └───────────────────┘     │
-└──────────────────────────┬──────────────────────────────────┘
-                           │
-┌──────────────────────────▼───────────────────────────────────┐
-│                     Domain Layer                             │
-│  ┌────────────────┐  ┌─────────────┐  ┌──────────────────┐   │
-│  │ Aggregates     │  │ Entities    │  │ Value Objects    │   │
-│  │ (Store,        │  │             │  │ (StoreId,        │   │
-│  │  StoreProduct) │  │             │  │  TenantId, etc.) │   │
-│  └────────────────┘  └─────────────┘  └──────────────────┘   │
-└──────────────────────────────────────────────────────────────┘
+┌──────────────────────────── Order Management System ────────────────────────────┐
+│                                                                                  │
+│   ┌───────────────────┐   ProductCreated     ┌──────────────────────────────┐   │
+│   │                   │ ──── (Kafka) ──────► │                              │   │
+│   │  stores-service   │                      │  inventory-service           │   │
+│   │  [this service]   │ ◄──── REST ─────────►│                              │   │
+│   │                   │                      └──────────────────────────────┘   │
+│   └─────────┬─────────┘                                                         │
+│             │  reads tenant metadata                                             │
+│             ▼                                                                    │
+│   ┌──────────────────┐     ┌──────────────────────────────┐                     │
+│   │  DynamoDB        │     │  promotion-service           │                     │
+│   │  (TenantInfo)    │     │  (ACL via PromotionClient)   │                     │
+│   └──────────────────┘     └──────────────────────────────┘                     │
+│                                                                                  │
+└──────────────────────────────────────────────────────────────────────────────────┘
 ```
 
-### Design Principles
+---
 
-**Domain Layer** (Pure Business Logic)
-- Immutable entities with `@SuperBuilder`
-- Value objects for type-safe IDs
-- No framework dependencies
-- Business rules enforcement
+## Architecture
 
-**Application Layer** (Use Cases)
-- Orchestrates domain logic
-- Defines port interfaces (repositories, clients)
-- Command/Query separation
-- DTO transformations
+The service follows **Domain-Driven Design (DDD)** with **Hexagonal Architecture** (Ports & Adapters). Business logic is isolated in the domain layer with zero framework dependencies. Infrastructure concerns are adapters that implement outbound ports defined in the application layer.
 
-**Infrastructure Layer** (Technical Details)
-- REST controllers with Swagger annotations
-- JPA entities and repositories
-- MapStruct mappers
-- External client adapters
+```
+┌──────────────────────────────────────────────────────────────────┐
+│  PRIMARY ADAPTERS  (Driving Side)                                │
+│  REST Controllers @WebAdapter · Import/Job Adapters              │
+└───────────────────────────┬──────────────────────────────────────┘
+                            │ calls inbound ports (Use Case interfaces)
+┌───────────────────────────▼──────────────────────────────────────┐
+│  APPLICATION LAYER                                               │
+│                                                                  │
+│  Inbound Ports     Use Case interfaces                           │
+│  Use Cases         @UseCase services — orchestrate domain        │
+│  Outbound Ports    Repository & Client interfaces                │
+│  Mappers           Command ↔ Domain ↔ DTO (MapStruct)            │
+└───────────────────────────┬──────────────────────────────────────┘
+                            │ depends on
+┌───────────────────────────▼──────────────────────────────────────┐
+│  DOMAIN LAYER  (pure Java — no framework dependencies)           │
+│                                                                  │
+│  Aggregates        Store · StoreProduct · StoreCollection        │
+│                    StoreAvailability                             │
+│  Value Objects     StoreConfig · Address · typed IDs            │
+│  Domain Events     ProductCreatedEvent · OutboxEvent             │
+│  Invariants        Business rules enforced inside aggregates     │
+└──────────────────────────────────────────────────────────────────┘
+                            ▲ implemented by
+┌──────────────────────────────────────────────────────────────────┐
+│  SECONDARY ADAPTERS  (Driven Side)                               │
+│  JPA Persistence · DynamoDB · S3 · REST Clients                  │
+└──────────────────────────────────────────────────────────────────┘
+```
 
-## 🚀 Getting Started
+### Architecture Annotations
+
+Custom stereotype annotations (from `oms-core`) make layer intent explicit:
+
+| Annotation | Role |
+|---|---|
+| `@UseCase` | Application service / use case implementation |
+| `@WebAdapter` | REST controller (primary adapter) |
+| `@PersistenceAdapter` | Repository adapter (secondary adapter) |
+
+---
+
+## Domain Model
+
+```
+Store (Aggregate Root)
+├── StoreConfig (Value Object)     — immutable, operational settings
+├── Address (Value Object)         — from oms-core shared kernel
+└── BusinessHour[] (Value Object)  — keyed by DayOfWeek, one per day
+
+StoreProduct (Aggregate Root)
+├── ProductSku[]  (Entity)         — variants with price/dimensions
+└── ProductImage[] (Entity)        — gallery images
+
+StoreCollection (Aggregate Root)
+└── productIds: List<ProductId>    — cross-aggregate reference by ID only
+
+StoreAvailability (Aggregate Root)
+└── forced open/close windows with time range
+```
+
+**Key design decisions:**
+- Aggregates reference each other by **typed ID only** — never by object reference
+- Value Objects are **immutable** — `withUpdated()` returns a new instance; no setters
+- `TenantId` is a **first-class domain concept** threaded through all aggregates
+- Typed ID wrappers (`StoreId`, `ProductId`, `TenantId`) prevent primitive obsession
+
+---
+
+## Outbox Pattern (Reliable Event Publishing)
+
+Domain events are published reliably via the **Transactional Outbox** pattern with **Debezium CDC**.
+
+```
+HTTP Request
+    │
+    ▼
+CreateStoreProductUseCaseService  @Transactional
+    ├── [1] storeProductRepository.create(product)   ──► PostgreSQL: store_products
+    └── [2] outboxEventRepository.save(outboxEvent)  ──► PostgreSQL: outbox_events
+              └── atomic — both writes in the same transaction
+
+                    Debezium reads PostgreSQL WAL (no polling)
+                                │
+                                ▼
+                    Kafka Topic: store.outbox_events
+                                │
+                                ▼
+                    inventory-service  (consumes ProductCreated)
+```
+
+No polling from the application — Debezium pushes changes from the WAL, guaranteeing **at-least-once delivery**.
+
+---
+
+## Tech Stack
+
+| Layer | Technology |
+|---|---|
+| Language | Java 17 |
+| Framework | Spring Boot 3.2.3 |
+| ORM | Spring Data JPA · Hibernate 6.4 |
+| Primary DB | PostgreSQL 16 |
+| Tenant Store | AWS DynamoDB (Enhanced Client) |
+| File Storage | AWS S3 |
+| Mapping | MapStruct 1.6.3 |
+| Validation | Jakarta Validation · Hibernate Validator 8.0 |
+| API Docs | SpringDoc OpenAPI 3.0 (Swagger UI) |
+| Migrations | Flyway |
+| Excel Import | Apache POI 5.4 |
+| Build | Gradle |
+| Shared Kernel | `oms-core` (composite build) |
+
+### oms-core Shared Kernel
+
+`oms-core` is a local Gradle composite build shared across all OMS microservices. It provides:
+- **Typed IDs** — `StoreId`, `ProductId`, `TenantId`, `CustomerId`, `SKU`, ...
+- **Base classes** — `AggregateRoot`, `BaseDomain`
+- **Cross-context VOs** — `Address`, `Money`, `PriceRange`
+- **Exceptions** — `BusinessException`, `NotFoundException`, `ValidationException`
+- **Annotations** — `@UseCase`, `@WebAdapter`, `@PersistenceAdapter`
+
+---
+
+## Getting Started
 
 ### Prerequisites
 
-- **Java 17+** ([Download OpenJDK](https://adoptium.net/))
-- **Gradle** (included via wrapper)
-- **PostgreSQL 12+** ([Download PostgreSQL](https://www.postgresql.org/download/))
-- **AWS CLI** (optional, for DynamoDB)
+- Java 17+
+- PostgreSQL 12+
+- AWS credentials (for DynamoDB / S3; or LocalStack for local dev)
 
 ### Database Setup
 
-1. **Create PostgreSQL database:**
 ```sql
 CREATE DATABASE store;
 CREATE SCHEMA store;
 ```
 
-2. **Update credentials in `application.yaml`:**
+Update `src/main/resources/application.yaml`:
+
 ```yaml
 spring:
   datasource:
@@ -165,207 +188,101 @@ spring:
     password: your_password
 ```
 
-3. **Flyway migrations run automatically on startup** ✅
+Flyway migrations run automatically on startup.
 
-### Outbox Event Setup with Debezium
-1. **Enable logical replication in PostgreSQL:**
-   wal_level=logical
-   
-    Verify
-    ```sql
-    SHOW wal_level;
-    ```
+### Run
 
-2. **Create Debezium user and grant privileges:**
-    ```sql
-    CREATE USER debezium
-    WITH REPLICATION
-    LOGIN
-    PASSWORD 'debezium';
-    CREATE ROLE
-   
-    -----
-   
-    GRANT USAGE ON SCHEMA store TO debezium;
-
-    GRANT SELECT ON ALL TABLES IN SCHEMA store
-    TO debezium;
-    
-    ALTER DEFAULT PRIVILEGES IN SCHEMA store
-    GRANT SELECT ON TABLES
-    TO debezium;
-    GRANT
-    GRANT
-    ALTER DEFAULT PRIVILEGES
-    ```
-
-3. **Debezium Connector Configuration:**
-    ```json
-    {
-      "name": "postgres-cdc",
-      "config": {
-        "connector.class": "io.debezium.connector.postgresql.PostgresConnector",
-        "database.hostname": "postgres",
-        "database.port": "5432",
-        "database.user": "postgres",
-        "database.password": "postgres",
-        "database.dbname": "postgres",
-    
-        "topic.prefix": "store",
-    
-        "plugin.name": "pgoutput",
-        "slot.name": "debezium_store_slot",
-        "publication.name": "debezium_store_publication",
-        "publication.autocreate.mode": "filtered",
-    
-        "table.include.list": "store.outbox_events",
-    
-        "tombstones.on.delete": "false",
-    
-        "transforms": "outbox",
-        "transforms.outbox.type": "io.debezium.transforms.outbox.EventRouter",
-    
-        "transforms.outbox.route.by.field": "event_type",
-        "transforms.outbox.table.field.event.key": "aggregate_id",
-        "transforms.outbox.table.field.event.payload": "payload"
-      }
-    }
-    ```
-
-### Build & Run
-
-**Build the project:**
-```bash
-./gradlew build
-```
-
-**Run the application:**
 ```bash
 ./gradlew bootRun
 ```
 
-**Run in dev profile:**
 ```bash
+# Local dev profile (uses LocalStack)
 ./gradlew bootRun --args='--spring.profiles.active=localdev'
 ```
 
-The application starts on **http://localhost:8048**
+App starts on **http://localhost:8048**  
+Swagger UI: **http://localhost:8048/swagger-ui.html**
 
-## 📖 API Documentation
-
-### Swagger UI
-After starting the server, access the interactive API documentation:
-
-- **Swagger UI:** http://localhost:8048/swagger-ui.html
-- **OpenAPI JSON:** http://localhost:8048/api-docs
-
-## 🗄 Database
-
-### PostgreSQL Schema
-
-**Primary Tables:**
-- `store` - Store entities
-- `store_availability` - Availability schedules
-- `store_product` - Product catalog
-- `store_product_sku` - Product variants
-- `store_product_image` - Product images
-- `store_product_collection` - Product collections
-- `store_product_collection_item` - Collection-product relationships
-
-**Key Constraints:**
-- `store.store_code` - Unique globally (cross-tenant)
-- Multi-tenant isolation via `tenant_id` column
-- Foreign key cascades for aggregate consistency
-
-### DynamoDB
-
-**Table:** `tenant_info`
-- Stores tenant metadata
-- Configured via `app.dynamodb.*` properties
-
-### Migrations
-
-Flyway manages schema evolution automatically:
-```bash
-# Migrations run on application startup
-# Located in: src/main/resources/db/migration/
-```
-
-
-### Performance Optimizations
-
-✅ **Batch Fetching** - `@BatchSize(size = 30)` on collections prevents N+1 queries  
-✅ **Connection Pooling** - HikariCP with tuned settings  
-✅ **IN Clause Padding** - Optimizes query plan caching  
-✅ **Open-in-View: false** - Prevents lazy loading anti-pattern
-
-## 💻 Development
-
-### IDE Setup
-
-**IntelliJ IDEA / Eclipse:**
-1. Install **Lombok plugin**
-2. Enable **annotation processing**
-3. Import as Gradle project
-
-### Code Style
-
-**Domain Models:**
-- Use `@Getter` + `@SuperBuilder` for immutability
-- No public setters in domain layer
-- Value objects are immutable
-
-**Mappers:**
-- Use MapStruct for all transformations
-- Expression syntax for complex mappings
-- Separate mappers per layer
-
-**Controllers:**
-- Thin controllers - delegate to use cases
-- Swagger annotations on all endpoints
-- Consistent response codes
-
-### Running Tests
+### Build
 
 ```bash
-# Run all tests
-./gradlew test
-
-# Run with coverage
-./gradlew test jacocoTestReport
-```
-
-### Build for Production
-
-```bash
-# Create executable JAR
 ./gradlew bootJar
-
-# Run the JAR
 java -jar build/libs/stores-0.0.1-SNAPSHOT.jar
 ```
 
-## 🔒 Security Considerations
+---
 
-- **Multi-tenancy:** Tenant ID isolation in all queries
-- **Input Validation:** Jakarta Validation on all request DTOs
-- **SQL Injection:** JPA parameterized queries
-- **Secrets Management:** Externalize credentials (environment variables)
-- **HTTPS:** Configure SSL/TLS in production
+## Debezium CDC Setup
 
-## 📝 Contributing
+Enable logical replication in PostgreSQL (`postgresql.conf`):
 
-1. Follow existing code structure and naming conventions
-2. Add tests for new features
-3. Update API documentation (Swagger annotations)
-4. Keep domain logic pure (no framework dependencies)
-5. Use value objects for type safety
+```
+wal_level = logical
+```
 
-## 📄 License
+Create the Debezium user:
 
-MIT-style (no license file provided). Feel free to add a LICENSE file.
+```sql
+CREATE USER debezium WITH REPLICATION LOGIN PASSWORD 'debezium';
+GRANT USAGE ON SCHEMA store TO debezium;
+GRANT SELECT ON ALL TABLES IN SCHEMA store TO debezium;
+ALTER DEFAULT PRIVILEGES IN SCHEMA store GRANT SELECT ON TABLES TO debezium;
+```
+
+Register the connector:
+
+```json
+{
+  "name": "postgres-cdc",
+  "config": {
+    "connector.class": "io.debezium.connector.postgresql.PostgresConnector",
+    "database.hostname": "postgres",
+    "database.port": "5432",
+    "database.user": "debezium",
+    "database.password": "debezium",
+    "database.dbname": "store",
+    "topic.prefix": "store",
+    "plugin.name": "pgoutput",
+    "slot.name": "debezium_store_slot",
+    "publication.name": "debezium_store_publication",
+    "publication.autocreate.mode": "filtered",
+    "table.include.list": "store.outbox_events",
+    "tombstones.on.delete": "false",
+    "transforms": "outbox",
+    "transforms.outbox.type": "io.debezium.transforms.outbox.EventRouter",
+    "transforms.outbox.route.by.field": "event_type",
+    "transforms.outbox.table.field.event.key": "aggregate_id",
+    "transforms.outbox.table.field.event.payload": "payload"
+  }
+}
+```
 
 ---
 
-**Repository:** [domt97/stores-service](https://github.com/domt97/stores-service)  
-**Documentation:** See [docs/review](docs/review) for architectural review notes
+## Project Structure
+
+```
+src/main/java/com/dotran/oms/store/
+├── domain/
+│   ├── model/          Aggregate Roots (Store, StoreProduct, ...)
+│   ├── valueobject/    Value Objects (StoreConfig)
+│   ├── event/          Domain Events (OutboxEvent, ProductCreatedEvent)
+│   ├── enums/          Domain enumerations
+│   └── exception/      Domain exceptions
+├── application/
+│   ├── usecase/        Inbound port interfaces
+│   ├── service/        Use case implementations (@UseCase)
+│   ├── repository/     Outbound port interfaces
+│   ├── client/         External service port interfaces
+│   ├── command/        Input command objects
+│   ├── dto/            Output DTOs
+│   ├── event/          Outbox event factory
+│   ├── mapper/         Application-layer MapStruct mappers
+│   └── impex/          Bulk import pipeline
+└── infrastructure/
+    ├── rest/           REST controllers, request/response DTOs
+    ├── persistence/    JPA adapters, entities, Spring Data repos
+    ├── mapper/         Persistence-layer MapStruct mappers
+    └── cloud/          AWS S3, DynamoDB adapters
+```
