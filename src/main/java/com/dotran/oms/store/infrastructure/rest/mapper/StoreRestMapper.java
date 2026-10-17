@@ -9,8 +9,8 @@ import com.dotran.oms.store.application.dto.StoreAvailabilityDto;
 import com.dotran.oms.store.application.dto.StoreDetailDto;
 import com.dotran.oms.store.common.mapper.InternalIdMapper;
 import com.dotran.oms.store.infrastructure.rest.dto.request.AddStoreAvailabilityRequest;
+import com.dotran.oms.store.infrastructure.rest.dto.request.BusinessHourRequest;
 import com.dotran.oms.store.infrastructure.rest.dto.request.CreateStoreRequest;
-import com.dotran.oms.store.infrastructure.rest.dto.request.UpdateBusinessHourRequest;
 import com.dotran.oms.store.infrastructure.rest.dto.request.UpdateStoreConfigRequest;
 import com.dotran.oms.store.infrastructure.rest.dto.response.StoreAvailabilityResponse;
 import com.dotran.oms.store.infrastructure.rest.dto.response.StoreDetailResponse;
@@ -35,9 +35,9 @@ public abstract class StoreRestMapper {
     @Mapping(target = "tenantId", expression = "java(idMapper.toTenantId(tenantId))")
     public abstract CloseStoreCmd fromRequestToCloseStoreCmd(UUID tenantId, UUID storeId);
 
-    public abstract UpdateBusinessHourCmd fromRequestToUpdateBusinessHourCmd(UpdateBusinessHourRequest request);
+    public abstract UpdateBusinessHourCmd fromRequestToUpdateBusinessHourCmd(BusinessHourRequest request);
 
-    public abstract List<UpdateBusinessHourCmd> fromListRequestToUpdateBusinessHourCmd(List<UpdateBusinessHourRequest> request);
+    public abstract List<UpdateBusinessHourCmd> fromListRequestToUpdateBusinessHourCmd(List<BusinessHourRequest> request);
 
     public abstract UpdateStoreConfigCmd fromUpdateStoreConfigToCmd(UpdateStoreConfigRequest updateStoreConfigRequest);
 

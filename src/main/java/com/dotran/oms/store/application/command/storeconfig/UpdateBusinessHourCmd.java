@@ -8,9 +8,7 @@ import java.time.LocalTime;
 
 @Data
 @Builder
-public class UpdateBusinessHourCmd  {
-
-    private Long id;
+public class UpdateBusinessHourCmd {
 
     private DayOfWeek dayOfWeek;
     private LocalTime openingTime;

@@ -1,7 +1,7 @@
 package com.dotran.oms.store.application.service.collection;
 
 import com.dotran.oms.core.annotation.UseCase;
-import com.dotran.oms.core.domain.id.ProductId;
+import com.dotran.oms.core.exception.BusinessException;
 import com.dotran.oms.store.application.command.collection.CreateStoreCollectionCmd;
 import com.dotran.oms.store.application.dto.StoreCollectionDto;
 import com.dotran.oms.store.application.mapper.StoreCollectionMapper;
@@ -14,8 +14,6 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
-import java.util.Map;
-import java.util.stream.Collectors;
 
 @UseCase
 @RequiredArgsConstructor
@@ -32,12 +30,14 @@ public class CreateStoreCollectionService implements CreateStoreCollectionUseCas
         storeCollection.init();
 
         List<StoreProduct> storeProducts = storeProductRepository.getProductsByListOfProductIds(cmd.getProductIds());
-        Map<ProductId, StoreProduct> productMap = storeProducts.stream()
-                .collect(Collectors.toMap(StoreProduct::getId, product -> product));
 
-        for(ProductId productId : cmd.getProductIds()) {
-            storeCollection.addProduct(productMap.get(productId));
+        for (StoreProduct product : storeProducts) {
+            if (!product.getStoreId().equals(cmd.getStoreId())) {
+                throw new BusinessException("Cannot add product from a different store to the collection");
+            }
         }
+
+        cmd.getProductIds().forEach(storeCollection::addProduct);
 
         StoreCollection savedCollection = repository.create(storeCollection);
 

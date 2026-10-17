@@ -15,6 +15,7 @@ import com.dotran.oms.store.domain.model.Store;
 import lombok.RequiredArgsConstructor;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.DayOfWeek;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -39,23 +40,18 @@ public class SettingBusinessHourService implements SettingStoreBusinessHourUseCa
         Store store = storeRepository.findByTenantIdAndStoreId(tenantId, storeId)
                 .orElseThrow(StoreNotFoundException::new);
 
-        Map<Long, UpdateBusinessHourCmd> updateBusinessHourCmdMap = updateBusinessHourCmds.stream()
-                .collect(Collectors.toMap(UpdateBusinessHourCmd::getId, Function.identity()));
+        Map<DayOfWeek, UpdateBusinessHourCmd> cmdMap = updateBusinessHourCmds.stream()
+                .collect(Collectors.toMap(UpdateBusinessHourCmd::getDayOfWeek, Function.identity()));
 
         for (BusinessHour businessHour : store.getBusinessHours()) {
-            UpdateBusinessHourCmd updateBusinessHourCmd = updateBusinessHourCmdMap.get(businessHour.getId());
-
-            if (null == updateBusinessHourCmd) {
+            if (!cmdMap.containsKey(businessHour.getDayOfWeek())) {
                 throw new BusinessException(String.format(ERROR_MSG_STORE_MISSING_BUSINESS_HOUR_CONFIG,
                         businessHour.getDayOfWeek().toString()));
             }
-
-            businessHour.updateBusinessHour(
-                    updateBusinessHourCmd.getDayOfWeek(),
-                    updateBusinessHourCmd.getOpeningTime(),
-                    updateBusinessHourCmd.getClosingTime(),
-                    updateBusinessHourCmd.isClosed());
         }
+
+        cmdMap.forEach((day, cmd) ->
+                store.updateBusinessHour(day, cmd.getOpeningTime(), cmd.getClosingTime(), cmd.isClosed()));
 
         Store updatedStore = storeRepository.update(store);
 

@@ -1,7 +1,7 @@
 package com.dotran.oms.store.application.service.store;
 
 import com.dotran.oms.core.annotation.UseCase;
-import com.dotran.oms.core.cloud.dynamodb.DynamoDbTenantInfoRepository;
+import com.dotran.oms.store.application.repository.TenantRepository;
 import com.dotran.oms.core.domain.TenantInfo;
 import com.dotran.oms.core.exception.NotFoundException;
 import com.dotran.oms.store.application.command.store.CreateStoreCmd;
@@ -19,7 +19,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class CreateStoreService implements CreateStoreUseCase {
 
     private final StoreRepository storeRepository;
-    private final DynamoDbTenantInfoRepository tenantRepository;
+    private final TenantRepository tenantRepository;
     private final StoreDataMapper storeDataMapper;
 
     @Override

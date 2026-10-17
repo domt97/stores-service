@@ -31,7 +31,7 @@ public class CreateStoreProductUseCaseService implements CreateStoreProductUseCa
         StoreProduct createdStoreProduct = storeProductRepository.create(storeProduct);
 
         OutboxEvent outboxEvent = outboxEventHelper.
-                createOutboxEvent(createStoreProductCmd.getTenantId(), createdStoreProduct);
+                createProductCreatedOutboxEvent(createStoreProductCmd.getTenantId(), createdStoreProduct);
         outboxEventRepository.save(outboxEvent);
 
         return storeProductMapper.fromStoreProduct(createdStoreProduct);

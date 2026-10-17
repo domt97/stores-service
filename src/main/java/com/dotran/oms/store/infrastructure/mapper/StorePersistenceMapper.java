@@ -15,6 +15,7 @@ import org.mapstruct.MappingTarget;
 import org.mapstruct.Named;
 import org.springframework.beans.factory.annotation.Autowired;
 
+import java.time.DayOfWeek;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -64,17 +65,18 @@ public abstract class StorePersistenceMapper {
     @Named("fromStoreConfigToStoreConfigEntity")
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "store", source = "storeEntity")
-    @Mapping(target = "createdAt", source = "storeConfig.createdAt")
-    @Mapping(target = "updatedAt", source = "storeConfig.updatedAt")
+    @Mapping(target = "createdAt", ignore = true)
+    @Mapping(target = "updatedAt", ignore = true)
     public abstract StoreConfigEntity fromStoreConfigToStoreConfigEntity(StoreConfig storeConfig, StoreEntity storeEntity);
 
     @Named("updateStoreConfig")
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "store", ignore = true)
     @Mapping(target = "createdAt", ignore = true)
+    @Mapping(target = "updatedAt", ignore = true)
     public abstract void updateStoreConfig(@MappingTarget StoreConfigEntity entity, StoreConfig storeConfig);
 
-    @Mapping(target = "id", source = "businessHour.id")
+    @Mapping(target = "id", ignore = true)
     @Mapping(target = "store", source = "storeEntity")
     public abstract BusinessHourEntity fromBusinessHourToEntity(BusinessHour businessHour, StoreEntity storeEntity);
 
@@ -92,11 +94,11 @@ public abstract class StorePersistenceMapper {
     }
 
     public void updateBusinessHours(List<BusinessHourEntity> businessHourEntities, List<BusinessHour> businessHours) {
-        Map<Long, BusinessHour> businessHourMap = businessHours.stream()
-                .collect(Collectors.toMap(BusinessHour::getId, Function.identity()));
+        Map<DayOfWeek, BusinessHour> businessHourMap = businessHours.stream()
+                .collect(Collectors.toMap(BusinessHour::getDayOfWeek, Function.identity()));
 
         for (BusinessHourEntity businessHourEntity : businessHourEntities) {
-            BusinessHour businessHour = businessHourMap.get(businessHourEntity.getId());
+            BusinessHour businessHour = businessHourMap.get(businessHourEntity.getDayOfWeek());
             if (null != businessHour) {
                 this.updateBusinessHourEntity(businessHourEntity, businessHour);
             }
