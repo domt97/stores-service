@@ -172,4 +172,94 @@ class StoreCollectionTest {
             assertThat(collection.getProductIds()).containsExactly(productB);
         }
     }
+
+    @Nested
+    @DisplayName("init")
+    class Init {
+
+        @Test
+        @DisplayName("sets status to ACTIVE")
+        void setsStatusActive() {
+            StoreCollection collection = StoreCollection.builder()
+                    .id(StoreCollectionId.generateId())
+                    .storeId(StoreId.newStoreId())
+                    .name("New Collection")
+                    .productIds(new ArrayList<>())
+                    .build();
+            collection.init();
+            assertThat(collection.getStatus()).isEqualTo(CollectionStatus.ACTIVE);
+        }
+
+        @Test
+        @DisplayName("sets createdAt and updatedAt")
+        void setsTimestamps() {
+            StoreCollection collection = StoreCollection.builder()
+                    .id(StoreCollectionId.generateId())
+                    .storeId(StoreId.newStoreId())
+                    .name("New Collection")
+                    .productIds(new ArrayList<>())
+                    .build();
+            collection.init();
+            assertThat(collection.getCreatedAt()).isNotNull();
+            assertThat(collection.getUpdatedAt()).isNotNull();
+        }
+    }
+
+    @Nested
+    @DisplayName("activate / deactivate")
+    class StatusTransitions {
+
+        @Test
+        @DisplayName("activate sets status to ACTIVE")
+        void activate_setsStatusActive() {
+            StoreCollection collection = StoreCollection.builder()
+                    .id(StoreCollectionId.generateId())
+                    .storeId(StoreId.newStoreId())
+                    .name("Test")
+                    .status(CollectionStatus.INACTIVE)
+                    .productIds(new ArrayList<>())
+                    .build();
+            collection.activate();
+            assertThat(collection.getStatus()).isEqualTo(CollectionStatus.ACTIVE);
+        }
+
+        @Test
+        @DisplayName("deactivate sets status to INACTIVE")
+        void deactivate_setsStatusInactive() {
+            StoreCollection collection = emptyCollection();
+            collection.deactivate();
+            assertThat(collection.getStatus()).isEqualTo(CollectionStatus.INACTIVE);
+        }
+    }
+
+    @Nested
+    @DisplayName("getProductCount")
+    class GetProductCount {
+
+        @Test
+        @DisplayName("returns the number of products in the collection")
+        void returnsCorrectCount() {
+            StoreCollection collection = collectionWith(productA, productB);
+            assertThat(collection.getProductCount()).isEqualTo(2);
+        }
+
+        @Test
+        @DisplayName("returns 0 when collection has no products")
+        void returnsZero_whenEmpty() {
+            StoreCollection collection = emptyCollection();
+            assertThat(collection.getProductCount()).isEqualTo(0);
+        }
+
+        @Test
+        @DisplayName("returns 0 when productIds is null")
+        void returnsZero_whenNull() {
+            StoreCollection collection = StoreCollection.builder()
+                    .id(StoreCollectionId.generateId())
+                    .storeId(StoreId.newStoreId())
+                    .name("Test")
+                    .productIds(null)
+                    .build();
+            assertThat(collection.getProductCount()).isEqualTo(0);
+        }
+    }
 }
