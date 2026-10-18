@@ -44,6 +44,11 @@ Areas used across packages: `store`, `storeconfig`, `storeproduct`, `collection`
 Plain JUnit 5 + Mockito (`@ExtendWith(MockitoExtension.class)`, `@Mock`/`@InjectMocks`, `@DisplayName`), no Spring context, no DB.
 Build test data with the aggregate builders. Run: `./gradlew test`.
 
+## Git workflow
+
+Branch **from `develop`** and open PRs **into `develop`** (`feature/...`, `fix/...`, `docs/...`).
+`master` only receives `develop` through release PRs — never target `master` directly.
+
 ## Build & run
 
 Needs `../oms-core` next to this repo (composite build) — use `oms-workspace/scripts/sync-repos.sh`.
