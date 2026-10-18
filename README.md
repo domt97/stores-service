@@ -124,7 +124,7 @@ CreateStoreProductUseCaseService  @Transactional
                     Debezium reads PostgreSQL WAL (no polling)
                                 │
                                 ▼
-                    Kafka Topic: store.outbox_events
+                    Kafka Topic: <event_type>  (e.g. ProductCreated)
                                 │
                                 ▼
                     inventory-service  (consumes ProductCreated)
@@ -221,7 +221,7 @@ Enable logical replication in PostgreSQL (`postgresql.conf`):
 wal_level = logical
 ```
 
-Create the Debezium user:
+Outside local dev, use a dedicated replication user instead of `postgres`:
 
 ```sql
 CREATE USER debezium WITH REPLICATION LOGIN PASSWORD 'debezium';
@@ -230,7 +230,8 @@ GRANT SELECT ON ALL TABLES IN SCHEMA store TO debezium;
 ALTER DEFAULT PRIVILEGES IN SCHEMA store GRANT SELECT ON TABLES TO debezium;
 ```
 
-Register the connector:
+Register the connector (Kafka Connect REST on `:9084` in the `development` stack). This matches the
+connector running locally:
 
 ```json
 {
@@ -239,24 +240,29 @@ Register the connector:
     "connector.class": "io.debezium.connector.postgresql.PostgresConnector",
     "database.hostname": "postgres",
     "database.port": "5432",
-    "database.user": "debezium",
-    "database.password": "debezium",
+    "database.user": "postgres",
+    "database.password": "postgres",
     "database.dbname": "store",
     "topic.prefix": "store",
     "plugin.name": "pgoutput",
-    "slot.name": "debezium_store_slot",
-    "publication.name": "debezium_store_publication",
+    "slot.name": "debezium_store_v2_slot",
+    "publication.name": "debezium_store_v2_publication",
     "publication.autocreate.mode": "filtered",
     "table.include.list": "store.outbox_events",
     "tombstones.on.delete": "false",
     "transforms": "outbox",
     "transforms.outbox.type": "io.debezium.transforms.outbox.EventRouter",
     "transforms.outbox.route.by.field": "event_type",
+    "transforms.outbox.route.topic.replacement": "${routedByValue}",
     "transforms.outbox.table.field.event.key": "aggregate_id",
     "transforms.outbox.table.field.event.payload": "payload"
   }
 }
 ```
+
+`route.topic.replacement=${routedByValue}` makes the **topic name equal to `event_type`**
+(`ProductCreated`), keyed by `aggregate_id`. Without it Debezium would publish to
+`outbox.event.ProductCreated` and consumers would receive nothing.
 
 ---
 
