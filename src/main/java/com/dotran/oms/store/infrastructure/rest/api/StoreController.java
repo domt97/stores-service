@@ -45,7 +45,7 @@ import java.util.UUID;
 @Tag(name = "Store Management", description = "APIs for managing store lifecycle, availability and operations")
 @WebAdapter
 @RestController
-@RequestMapping(value = "/v1")
+@RequestMapping(value = "/v1/store")
 @RequiredArgsConstructor
 @Slf4j
 public class StoreController {

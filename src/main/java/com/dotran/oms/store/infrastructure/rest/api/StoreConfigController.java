@@ -32,7 +32,7 @@ import java.util.UUID;
 @Tag(name = "Store Configuration", description = "APIs for configuring store settings including business hours and operational configurations")
 @WebAdapter
 @RestController
-@RequestMapping(value = "/v1")
+@RequestMapping(value = "/v1/store")
 @RequiredArgsConstructor
 @Slf4j
 public class StoreConfigController {
