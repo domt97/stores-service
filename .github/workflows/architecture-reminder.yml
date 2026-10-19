@@ -55,7 +55,7 @@ jobs:
               '- `domt97/oms-workspace` → `architecture/domain-map.md`, `architecture/integration.md`, relevant `architecture/flows/`',
               '- this repo\'s `CLAUDE.md` (layout, checklist, known gaps)',
               '',
-              '_`architecture/generated/` in oms-workspace refreshes daily from `develop`; a weekly Claude task reconciles the hand-written docs._',
+              '_`architecture/generated/` in oms-workspace refreshes daily from `develop`._',
             ].join('\n');
 
             const comments = await github.paginate(github.rest.issues.listComments, { owner, repo, issue_number });
