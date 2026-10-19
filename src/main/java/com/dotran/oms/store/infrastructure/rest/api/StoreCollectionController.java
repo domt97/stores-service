@@ -45,7 +45,7 @@ import java.util.UUID;
 @Tag(name = "Store Collection Management", description = "APIs for managing product collections within a store")
 @WebAdapter
 @RestController
-@RequestMapping(value = "/v1")
+@RequestMapping(value = "/v1/store")
 @RequiredArgsConstructor
 @Slf4j
 public class StoreCollectionController {
