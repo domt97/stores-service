@@ -1,7 +1,7 @@
 package com.dotran.oms.store.application.service.collection;
 
 import com.dotran.oms.core.domain.id.StoreId;
-import com.dotran.oms.core.domain.id.TenantId;
+import com.dotran.oms.core.domain.id.MerchantId;
 import com.dotran.oms.store.application.command.collection.GetListCollectionCmd;
 import com.dotran.oms.store.application.dto.StoreCollectionDto;
 import com.dotran.oms.store.application.mapper.StoreCollectionMapper;
@@ -38,7 +38,7 @@ class GetListStoreCollectionServiceTest {
     void returnsMappedDtos_forCollectionsInStore() {
         StoreId storeId = StoreId.newStoreId();
         GetListCollectionCmd cmd = GetListCollectionCmd.builder()
-                .tenantId(TenantId.newTenantId())
+                .merchantId(MerchantId.newMerchantId())
                 .storeId(storeId)
                 .build();
 
@@ -68,7 +68,7 @@ class GetListStoreCollectionServiceTest {
     void returnsEmptyList_whenNoCollections() {
         StoreId storeId = StoreId.newStoreId();
         GetListCollectionCmd cmd = GetListCollectionCmd.builder()
-                .tenantId(TenantId.newTenantId())
+                .merchantId(MerchantId.newMerchantId())
                 .storeId(storeId)
                 .build();
 

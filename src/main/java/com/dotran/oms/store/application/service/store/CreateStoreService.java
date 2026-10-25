@@ -1,8 +1,8 @@
 package com.dotran.oms.store.application.service.store;
 
 import com.dotran.oms.core.annotation.UseCase;
-import com.dotran.oms.store.application.repository.TenantRepository;
-import com.dotran.oms.core.domain.TenantInfo;
+import com.dotran.oms.store.application.repository.MerchantRepository;
+import com.dotran.oms.core.domain.MerchantInfo;
 import com.dotran.oms.core.exception.NotFoundException;
 import com.dotran.oms.store.application.command.store.CreateStoreCmd;
 import com.dotran.oms.store.application.dto.StoreDetailDto;
@@ -19,15 +19,15 @@ import org.springframework.transaction.annotation.Transactional;
 public class CreateStoreService implements CreateStoreUseCase {
 
     private final StoreRepository storeRepository;
-    private final TenantRepository tenantRepository;
+    private final MerchantRepository merchantRepository;
     private final StoreDataMapper storeDataMapper;
 
     @Override
     @Transactional
     public StoreDetailDto create(CreateStoreCmd cmd) {
-        TenantInfo tenantInfo = tenantRepository.findByTenantId(cmd.getTenantId())
-                .orElseThrow(() -> new NotFoundException(Constants.ERROR_MSG_TENANT_NOT_FOUND));
-        Store store = Store.initStore(tenantInfo.getId(),
+        MerchantInfo merchantInfo = merchantRepository.findByMerchantId(cmd.getMerchantId())
+                .orElseThrow(() -> new NotFoundException(Constants.ERROR_MSG_MERCHANT_NOT_FOUND));
+        Store store = Store.initStore(merchantInfo.getId(),
                 cmd.getName(),
                 cmd.getCode(),
                 cmd.getOwnerId(),

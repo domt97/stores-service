@@ -2,7 +2,7 @@ package com.dotran.oms.store.application.service.storeconfig;
 
 import com.dotran.oms.core.annotation.UseCase;
 import com.dotran.oms.core.domain.id.StoreId;
-import com.dotran.oms.core.domain.id.TenantId;
+import com.dotran.oms.core.domain.id.MerchantId;
 import com.dotran.oms.core.exception.BusinessException;
 import com.dotran.oms.store.application.command.storeconfig.UpdateBusinessHourCmd;
 import com.dotran.oms.store.application.dto.StoreDetailDto;
@@ -33,11 +33,11 @@ public class SettingBusinessHourService implements SettingStoreBusinessHourUseCa
 
     @Override
     @Transactional
-    public StoreDetailDto setupBusinessHour(UUID tenantIdString, UUID storeIdString, List<UpdateBusinessHourCmd> updateBusinessHourCmds) {
-        TenantId tenantId = TenantId.of(tenantIdString);
+    public StoreDetailDto setupBusinessHour(UUID merchantIdString, UUID storeIdString, List<UpdateBusinessHourCmd> updateBusinessHourCmds) {
+        MerchantId merchantId = MerchantId.of(merchantIdString);
         StoreId storeId = StoreId.of(storeIdString);
 
-        Store store = storeRepository.findByTenantIdAndStoreId(tenantId, storeId)
+        Store store = storeRepository.findByMerchantIdAndStoreId(merchantId, storeId)
                 .orElseThrow(StoreNotFoundException::new);
 
         Map<DayOfWeek, UpdateBusinessHourCmd> cmdMap = updateBusinessHourCmds.stream()

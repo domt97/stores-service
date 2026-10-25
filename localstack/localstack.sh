@@ -30,12 +30,12 @@ echo "Created S3 buckets successfully"
 
 
 
-echo "Creating DynamoDB table: ${profile}_tenant_info..."
+echo "Creating DynamoDB table: ${profile}_merchant_info..."
 
 aws dynamodb create-table \
   --endpoint-url=http://localhost:4566 \
   --region ${region} \
-  --table-name ${profile}_tenant_info \
+  --table-name ${profile}_merchant_info \
   --attribute-definitions \
     AttributeName=pk,AttributeType=S \
   --key-schema \
@@ -51,7 +51,7 @@ echo "Inserting test data..."
 aws dynamodb put-item \
   --endpoint-url=http://localhost:4566 \
   --region ${region} \
-  --table-name ${profile}_tenant_info \
+  --table-name ${profile}_merchant_info \
   --item '{
     "pk": {
       "S": "7b7fdc98-2c7c-45a9-bc1c-cfd4d52a55b8"

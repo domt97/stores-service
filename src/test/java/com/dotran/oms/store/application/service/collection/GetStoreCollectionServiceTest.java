@@ -1,7 +1,7 @@
 package com.dotran.oms.store.application.service.collection;
 
 import com.dotran.oms.core.domain.id.StoreId;
-import com.dotran.oms.core.domain.id.TenantId;
+import com.dotran.oms.core.domain.id.MerchantId;
 import com.dotran.oms.core.exception.NotFoundException;
 import com.dotran.oms.store.application.command.collection.GetCollectionDetailCmd;
 import com.dotran.oms.store.application.dto.StoreCollectionDto;
@@ -40,7 +40,7 @@ class GetStoreCollectionServiceTest {
     void throwsException_whenNotFound() {
         StoreCollectionId collectionId = StoreCollectionId.generateId();
         GetCollectionDetailCmd cmd = GetCollectionDetailCmd.builder()
-                .tenantId(TenantId.newTenantId())
+                .merchantId(MerchantId.newMerchantId())
                 .storeId(StoreId.newStoreId())
                 .storeCollectionId(collectionId)
                 .build();
@@ -57,7 +57,7 @@ class GetStoreCollectionServiceTest {
         StoreId storeId = StoreId.newStoreId();
         StoreCollectionId collectionId = StoreCollectionId.generateId();
         GetCollectionDetailCmd cmd = GetCollectionDetailCmd.builder()
-                .tenantId(TenantId.newTenantId())
+                .merchantId(MerchantId.newMerchantId())
                 .storeId(storeId)
                 .storeCollectionId(collectionId)
                 .build();

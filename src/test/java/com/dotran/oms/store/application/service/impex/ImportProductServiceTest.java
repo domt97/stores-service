@@ -1,7 +1,7 @@
 package com.dotran.oms.store.application.service.impex;
 
 import com.dotran.oms.core.domain.id.StoreId;
-import com.dotran.oms.core.domain.id.TenantId;
+import com.dotran.oms.core.domain.id.MerchantId;
 import com.dotran.oms.core.io.template.imp.ImportResult;
 import com.dotran.oms.store.application.command.impex.ImportStoreProductCmd;
 import com.dotran.oms.store.application.impex.parser.StoreProductImportReader;
@@ -36,7 +36,7 @@ class ImportProductServiceTest {
         return ImportStoreProductCmd.builder()
                 .path("/tmp")
                 .fileName("products.xlsx")
-                .tenantId(TenantId.newTenantId())
+                .merchantId(MerchantId.newMerchantId())
                 .storeId(StoreId.newStoreId())
                 .build();
     }
@@ -64,7 +64,7 @@ class ImportProductServiceTest {
     }
 
     @Test
-    @DisplayName("passes tenantId and storeId from cmd to the handler context")
+    @DisplayName("passes merchantId and storeId from cmd to the handler context")
     void passesContextFields_toHandler() {
         ImportStoreProductCmd cmd = buildCmd();
         ProductImportData data = mock(ProductImportData.class);
@@ -76,7 +76,7 @@ class ImportProductServiceTest {
         importProductService.execute(cmd);
 
         verify(productImportHandler).execute(
-                argThat(ctx -> ctx.getTenantId().equals(cmd.getTenantId())
+                argThat(ctx -> ctx.getMerchantId().equals(cmd.getMerchantId())
                         && ctx.getStoreId().equals(cmd.getStoreId())),
                 eq(data)
         );

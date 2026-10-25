@@ -1,7 +1,7 @@
 package com.dotran.oms.store.application.impex.product;
 
-import com.dotran.oms.store.application.repository.TenantRepository;
-import com.dotran.oms.core.domain.TenantInfo;
+import com.dotran.oms.store.application.repository.MerchantRepository;
+import com.dotran.oms.core.domain.MerchantInfo;
 import com.dotran.oms.core.domain.id.ProductId;
 import com.dotran.oms.core.exception.NotFoundException;
 import com.dotran.oms.core.exception.ValidationException;
@@ -34,7 +34,7 @@ import java.util.stream.Collectors;
 public class StoreProductImportHandler extends
         AbstractImportTemplate<ProductImportContext, ProductImportData, ProductImportRequest> {
 
-    private final TenantRepository tenantRepository;
+    private final MerchantRepository merchantRepository;
     private final StoreRepository storeRepository;
     private final StoreProductRepository storeProductRepository;
     private final OutboxEventRepository outboxEventRepository;
@@ -44,10 +44,10 @@ public class StoreProductImportHandler extends
     protected void validate(ProductImportContext context, ProductImportData data) {
         log.info("Validation Product Import - START");
 
-        TenantInfo tenantInfo = tenantRepository.findByTenantId(context.getTenantId())
-                .orElseThrow(() -> new NotFoundException("Not found Tenant"));
+        MerchantInfo merchantInfo = merchantRepository.findByMerchantId(context.getMerchantId())
+                .orElseThrow(() -> new NotFoundException("Not found Merchant"));
 
-        if (!storeRepository.existsByTenantIdAndStoreId(tenantInfo.getId(), context.getStoreId())) {
+        if (!storeRepository.existsByMerchantIdAndStoreId(merchantInfo.getId(), context.getStoreId())) {
             throw new NotFoundException("Not found Store");
         }
 
@@ -145,7 +145,7 @@ public class StoreProductImportHandler extends
         }
 
         List<OutboxEvent> outboxEvents = outboxEventHelper
-                .createProductCreatedOutboxEvents(context.getTenantId(), context.getProducts());
+                .createProductCreatedOutboxEvents(context.getMerchantId(), context.getProducts());
         outboxEventRepository.saveAll(outboxEvents);
         log.info("Post Import Product - END, {} outbox events created.", outboxEvents.size());
     }

@@ -2,7 +2,7 @@ package com.dotran.oms.store.application.service.collection;
 
 import com.dotran.oms.core.domain.id.ProductId;
 import com.dotran.oms.core.domain.id.StoreId;
-import com.dotran.oms.core.domain.id.TenantId;
+import com.dotran.oms.core.domain.id.MerchantId;
 import com.dotran.oms.core.exception.BusinessException;
 import com.dotran.oms.core.exception.NotFoundException;
 import com.dotran.oms.store.application.command.collection.RemoveProductCollectionCmd;
@@ -44,7 +44,7 @@ class RemoveProductFromCollectionServiceTest {
     void throwsException_whenCollectionNotFound() {
         StoreCollectionId collectionId = StoreCollectionId.generateId();
         RemoveProductCollectionCmd cmd = RemoveProductCollectionCmd.builder()
-                .tenantId(TenantId.newTenantId())
+                .merchantId(MerchantId.newMerchantId())
                 .storeId(StoreId.newStoreId())
                 .storeCollectionId(collectionId)
                 .productIds(List.of(ProductId.newProductId()))
@@ -73,7 +73,7 @@ class RemoveProductFromCollectionServiceTest {
                 .build();
 
         RemoveProductCollectionCmd cmd = RemoveProductCollectionCmd.builder()
-                .tenantId(TenantId.newTenantId())
+                .merchantId(MerchantId.newMerchantId())
                 .storeId(storeId)
                 .storeCollectionId(collectionId)
                 .productIds(List.of(productNotInCollection))
@@ -114,7 +114,7 @@ class RemoveProductFromCollectionServiceTest {
                 .build();
 
         RemoveProductCollectionCmd cmd = RemoveProductCollectionCmd.builder()
-                .tenantId(TenantId.newTenantId())
+                .merchantId(MerchantId.newMerchantId())
                 .storeId(storeId)
                 .storeCollectionId(collectionId)
                 .productIds(List.of(product))

@@ -3,7 +3,7 @@ package com.dotran.oms.store.infrastructure.rest.api;
 import com.dotran.oms.core.annotation.WebAdapter;
 import com.dotran.oms.core.domain.id.ProductId;
 import com.dotran.oms.core.domain.id.StoreId;
-import com.dotran.oms.core.domain.id.TenantId;
+import com.dotran.oms.core.domain.id.MerchantId;
 import com.dotran.oms.store.application.command.collection.AddProductCollectionCmd;
 import com.dotran.oms.store.application.command.collection.CreateStoreCollectionCmd;
 import com.dotran.oms.store.application.command.collection.GetCollectionDetailCmd;
@@ -64,14 +64,14 @@ public class StoreCollectionController {
             @ApiResponse(responseCode = "400", description = "Invalid request body", content = @Content),
             @ApiResponse(responseCode = "404", description = "Store not found", content = @Content)
     })
-    @PostMapping("/tenants/{tenantId}/stores/{storeId}/collections")
+    @PostMapping("/merchants/{merchantId}/stores/{storeId}/collections")
     @ResponseStatus(HttpStatus.CREATED)
     public StoreCollectionResponse create(
-            @Parameter(description = "Tenant ID", required = true) @PathVariable UUID tenantId,
+            @Parameter(description = "Merchant ID", required = true) @PathVariable UUID merchantId,
             @Parameter(description = "Store ID", required = true) @PathVariable UUID storeId,
             @RequestBody @Valid UpsertStoreCollectionRequest request) {
         CreateStoreCollectionCmd cmd = restMapper.fromRequestToCreateCmd(request);
-        cmd.setTenantId(TenantId.of(tenantId));
+        cmd.setMerchantId(MerchantId.of(merchantId));
         cmd.setStoreId(StoreId.of(storeId));
 
         StoreCollectionDto storeCollectionDto = createStoreCollectionUseCase.create(cmd);
@@ -84,13 +84,13 @@ public class StoreCollectionController {
             @ApiResponse(responseCode = "200", description = "Collections retrieved successfully",
                     content = @Content(mediaType = "application/json", schema = @Schema(implementation = StoreCollectionResponse.class))),
     })
-    @GetMapping("/tenants/{tenantId}/stores/{storeId}/collections")
+    @GetMapping("/merchants/{merchantId}/stores/{storeId}/collections")
     @ResponseStatus(HttpStatus.OK)
     public List<StoreCollectionResponse> getAll(
-            @Parameter(description = "Tenant ID", required = true) @PathVariable UUID tenantId,
+            @Parameter(description = "Merchant ID", required = true) @PathVariable UUID merchantId,
             @Parameter(description = "Store ID", required = true) @PathVariable UUID storeId) {
         GetListCollectionCmd cmd = GetListCollectionCmd.builder()
-                .tenantId(TenantId.of(tenantId))
+                .merchantId(MerchantId.of(merchantId))
                 .storeId(StoreId.of(storeId))
                 .build();
 
@@ -108,14 +108,14 @@ public class StoreCollectionController {
                     content = @Content(mediaType = "application/json", schema = @Schema(implementation = StoreCollectionResponse.class))),
             @ApiResponse(responseCode = "404", description = "Collection not found", content = @Content)
     })
-    @GetMapping("/tenants/{tenantId}/stores/{storeId}/collections/{collectionId}")
+    @GetMapping("/merchants/{merchantId}/stores/{storeId}/collections/{collectionId}")
     @ResponseStatus(HttpStatus.OK)
     public StoreCollectionResponse getDetails(
-            @Parameter(description = "Tenant ID", required = true) @PathVariable UUID tenantId,
+            @Parameter(description = "Merchant ID", required = true) @PathVariable UUID merchantId,
             @Parameter(description = "Store ID", required = true) @PathVariable UUID storeId,
             @Parameter(description = "Collection ID", required = true) @PathVariable UUID collectionId) {
         GetCollectionDetailCmd cmd = GetCollectionDetailCmd.builder()
-                .tenantId(TenantId.of(tenantId))
+                .merchantId(MerchantId.of(merchantId))
                 .storeId(StoreId.of(storeId))
                 .storeCollectionId(StoreCollectionId.of(collectionId))
                 .build();
@@ -131,15 +131,15 @@ public class StoreCollectionController {
                     content = @Content(mediaType = "application/json", schema = @Schema(implementation = StoreCollectionResponse.class))),
             @ApiResponse(responseCode = "404", description = "Collection or products not found", content = @Content)
     })
-    @PostMapping("/tenants/{tenantId}/stores/{storeId}/collections/{collectionId}/add-products")
+    @PostMapping("/merchants/{merchantId}/stores/{storeId}/collections/{collectionId}/add-products")
     @ResponseStatus(HttpStatus.OK)
     public StoreCollectionResponse addProducts(
-            @Parameter(description = "Tenant ID", required = true) @PathVariable UUID tenantId,
+            @Parameter(description = "Merchant ID", required = true) @PathVariable UUID merchantId,
             @Parameter(description = "Store ID", required = true) @PathVariable UUID storeId,
             @Parameter(description = "Collection ID", required = true) @PathVariable UUID collectionId,
             @Parameter(description = "List of Product IDs to add", required = true) @RequestParam List<UUID> productIds) {
         AddProductCollectionCmd cmd = AddProductCollectionCmd.builder()
-                .tenantId(TenantId.of(tenantId))
+                .merchantId(MerchantId.of(merchantId))
                 .storeId(StoreId.of(storeId))
                 .storeCollectionId(StoreCollectionId.of(collectionId))
                 .productIds(productIds.stream()
@@ -157,15 +157,15 @@ public class StoreCollectionController {
                     content = @Content(mediaType = "application/json", schema = @Schema(implementation = StoreCollectionResponse.class))),
             @ApiResponse(responseCode = "404", description = "Collection or products not found", content = @Content)
     })
-    @PostMapping("/tenants/{tenantId}/stores/{storeId}/collections/{collectionId}/remove-products")
+    @PostMapping("/merchants/{merchantId}/stores/{storeId}/collections/{collectionId}/remove-products")
     @ResponseStatus(HttpStatus.OK)
     public StoreCollectionResponse removeProducts(
-            @Parameter(description = "Tenant ID", required = true) @PathVariable UUID tenantId,
+            @Parameter(description = "Merchant ID", required = true) @PathVariable UUID merchantId,
             @Parameter(description = "Store ID", required = true) @PathVariable UUID storeId,
             @Parameter(description = "Collection ID", required = true) @PathVariable UUID collectionId,
             @Parameter(description = "List of Product IDs to remove", required = true) @RequestParam List<UUID> productIds) {
         RemoveProductCollectionCmd cmd = RemoveProductCollectionCmd.builder()
-                .tenantId(TenantId.of(tenantId))
+                .merchantId(MerchantId.of(merchantId))
                 .storeId(StoreId.of(storeId))
                 .storeCollectionId(StoreCollectionId.of(collectionId))
                 .productIds(productIds.stream()

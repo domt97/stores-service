@@ -3,7 +3,7 @@ package com.dotran.oms.store.domain.model;
 import com.dotran.oms.core.domain.AggregateRoot;
 import com.dotran.oms.core.domain.id.CustomerId;
 import com.dotran.oms.core.domain.id.StoreId;
-import com.dotran.oms.core.domain.id.TenantId;
+import com.dotran.oms.core.domain.id.MerchantId;
 import com.dotran.oms.core.exception.BusinessException;
 import com.dotran.oms.core.valueobject.Address;
 import com.dotran.oms.store.domain.enums.StoreStatus;
@@ -26,7 +26,7 @@ import static com.dotran.oms.store.common.constants.Constants.ERROR_MSG_STORE_IS
 @EqualsAndHashCode(callSuper = true)
 public class Store extends AggregateRoot<StoreId> {
 
-    private TenantId tenantId;
+    private MerchantId merchantId;
     private String name;
     private String code;
     private CustomerId ownerId;
@@ -41,7 +41,7 @@ public class Store extends AggregateRoot<StoreId> {
     private Instant createdAt;
     private Instant updatedAt;
 
-    public static Store initStore(TenantId tenantId,
+    public static Store initStore(MerchantId merchantId,
                                   String name,
                                   String code,
                                   CustomerId ownerId,
@@ -49,7 +49,7 @@ public class Store extends AggregateRoot<StoreId> {
                                   String phone) {
         return Store.builder()
                 .id(StoreId.newStoreId())
-                .tenantId(tenantId)
+                .merchantId(merchantId)
                 .name(name)
                 .code(code)
                 .ownerId(ownerId)

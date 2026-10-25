@@ -1,7 +1,7 @@
 package com.dotran.oms.store.infrastructure.persistence;
 
 import com.dotran.oms.core.domain.id.StoreId;
-import com.dotran.oms.core.domain.id.TenantId;
+import com.dotran.oms.core.domain.id.MerchantId;
 import com.dotran.oms.core.exception.NotFoundException;
 import com.dotran.oms.store.domain.enums.StoreStatus;
 import com.dotran.oms.store.domain.model.Store;
@@ -40,7 +40,7 @@ class StorePersistenceAdapterTest {
     private Store activeStore() {
         return Store.builder()
                 .id(StoreId.newStoreId())
-                .tenantId(TenantId.newTenantId())
+                .merchantId(MerchantId.newMerchantId())
                 .name("Test Store")
                 .code("TST001")
                 .status(StoreStatus.ACTIVE)
@@ -68,46 +68,46 @@ class StorePersistenceAdapterTest {
     }
 
     @Test
-    @DisplayName("findByTenantIdAndStoreId: returns mapped store when found")
+    @DisplayName("findByMerchantIdAndStoreId: returns mapped store when found")
     void find_returnsMappedStore_whenFound() {
-        TenantId tenantId = TenantId.newTenantId();
+        MerchantId merchantId = MerchantId.newMerchantId();
         StoreId storeId = StoreId.newStoreId();
         StoreEntity entity = mock(StoreEntity.class);
         Store expectedStore = activeStore();
 
-        when(springDataStoreRepository.findByTenantIdAndId(tenantId.getValue(), storeId.getValue()))
+        when(springDataStoreRepository.findByMerchantIdAndId(merchantId.getValue(), storeId.getValue()))
                 .thenReturn(Optional.of(entity));
         when(storePersistenceMapper.fromEntityToStore(entity)).thenReturn(expectedStore);
 
-        Optional<Store> result = storePersistenceAdapter.findByTenantIdAndStoreId(tenantId, storeId);
+        Optional<Store> result = storePersistenceAdapter.findByMerchantIdAndStoreId(merchantId, storeId);
 
         assertThat(result).contains(expectedStore);
     }
 
     @Test
-    @DisplayName("findByTenantIdAndStoreId: returns empty when not found")
+    @DisplayName("findByMerchantIdAndStoreId: returns empty when not found")
     void find_returnsEmpty_whenNotFound() {
-        TenantId tenantId = TenantId.newTenantId();
+        MerchantId merchantId = MerchantId.newMerchantId();
         StoreId storeId = StoreId.newStoreId();
 
-        when(springDataStoreRepository.findByTenantIdAndId(tenantId.getValue(), storeId.getValue()))
+        when(springDataStoreRepository.findByMerchantIdAndId(merchantId.getValue(), storeId.getValue()))
                 .thenReturn(Optional.empty());
 
-        Optional<Store> result = storePersistenceAdapter.findByTenantIdAndStoreId(tenantId, storeId);
+        Optional<Store> result = storePersistenceAdapter.findByMerchantIdAndStoreId(merchantId, storeId);
 
         assertThat(result).isEmpty();
     }
 
     @Test
-    @DisplayName("existsByTenantIdAndStoreId: delegates to spring data repository")
+    @DisplayName("existsByMerchantIdAndStoreId: delegates to spring data repository")
     void exists_delegatesToJpaRepo() {
-        TenantId tenantId = TenantId.newTenantId();
+        MerchantId merchantId = MerchantId.newMerchantId();
         StoreId storeId = StoreId.newStoreId();
 
-        when(springDataStoreRepository.existsByTenantIdAndId(tenantId.getValue(), storeId.getValue()))
+        when(springDataStoreRepository.existsByMerchantIdAndId(merchantId.getValue(), storeId.getValue()))
                 .thenReturn(true);
 
-        assertThat(storePersistenceAdapter.existsByTenantIdAndStoreId(tenantId, storeId)).isTrue();
+        assertThat(storePersistenceAdapter.existsByMerchantIdAndStoreId(merchantId, storeId)).isTrue();
     }
 
     @Test
@@ -117,7 +117,7 @@ class StorePersistenceAdapterTest {
         StoreEntity entity = mock(StoreEntity.class);
         StoreEntity savedEntity = mock(StoreEntity.class);
 
-        when(springDataStoreRepository.findByTenantIdAndId(store.getTenantId().getValue(), store.getId().getValue()))
+        when(springDataStoreRepository.findByMerchantIdAndId(store.getMerchantId().getValue(), store.getId().getValue()))
                 .thenReturn(Optional.of(entity));
         when(springDataStoreRepository.save(entity)).thenReturn(savedEntity);
         when(storePersistenceMapper.fromEntityToStore(savedEntity)).thenReturn(store);
@@ -133,7 +133,7 @@ class StorePersistenceAdapterTest {
     void update_throwsNotFoundException_whenNotFound() {
         Store store = activeStore();
 
-        when(springDataStoreRepository.findByTenantIdAndId(store.getTenantId().getValue(), store.getId().getValue()))
+        when(springDataStoreRepository.findByMerchantIdAndId(store.getMerchantId().getValue(), store.getId().getValue()))
                 .thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> storePersistenceAdapter.update(store))
@@ -147,7 +147,7 @@ class StorePersistenceAdapterTest {
         StoreEntity entity = mock(StoreEntity.class);
         StoreEntity savedEntity = mock(StoreEntity.class);
 
-        when(springDataStoreRepository.findByTenantIdAndId(store.getTenantId().getValue(), store.getId().getValue()))
+        when(springDataStoreRepository.findByMerchantIdAndId(store.getMerchantId().getValue(), store.getId().getValue()))
                 .thenReturn(Optional.of(entity));
         when(springDataStoreRepository.save(entity)).thenReturn(savedEntity);
         when(storePersistenceMapper.fromEntityToStore(savedEntity)).thenReturn(store);
@@ -163,7 +163,7 @@ class StorePersistenceAdapterTest {
     void close_throwsNotFoundException_whenNotFound() {
         Store store = activeStore();
 
-        when(springDataStoreRepository.findByTenantIdAndId(store.getTenantId().getValue(), store.getId().getValue()))
+        when(springDataStoreRepository.findByMerchantIdAndId(store.getMerchantId().getValue(), store.getId().getValue()))
                 .thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> storePersistenceAdapter.close(store))
@@ -177,7 +177,7 @@ class StorePersistenceAdapterTest {
         StoreEntity entity = mock(StoreEntity.class);
         StoreEntity savedEntity = mock(StoreEntity.class);
 
-        when(springDataStoreRepository.findByTenantIdAndId(store.getTenantId().getValue(), store.getId().getValue()))
+        when(springDataStoreRepository.findByMerchantIdAndId(store.getMerchantId().getValue(), store.getId().getValue()))
                 .thenReturn(Optional.of(entity));
         when(springDataStoreRepository.save(entity)).thenReturn(savedEntity);
         when(storePersistenceMapper.fromEntityToStore(savedEntity)).thenReturn(store);
@@ -193,7 +193,7 @@ class StorePersistenceAdapterTest {
     void reopen_throwsNotFoundException_whenNotFound() {
         Store store = activeStore();
 
-        when(springDataStoreRepository.findByTenantIdAndId(store.getTenantId().getValue(), store.getId().getValue()))
+        when(springDataStoreRepository.findByMerchantIdAndId(store.getMerchantId().getValue(), store.getId().getValue()))
                 .thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> storePersistenceAdapter.reopen(store))

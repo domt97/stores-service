@@ -29,7 +29,7 @@ public class ImportProductService implements ImportStoreProductUseCase {
                 storeProductImportReader.read(importCmd.getPath(), importCmd.getFileName());
 
         ProductImportContext context = ProductImportContext.builder()
-                .tenantId(importCmd.getTenantId())
+                .merchantId(importCmd.getMerchantId())
                 .storeId(importCmd.getStoreId())
                 .build();
 

@@ -1,7 +1,7 @@
 package com.dotran.oms.store.application.service.store;
 
 import com.dotran.oms.core.domain.id.StoreId;
-import com.dotran.oms.core.domain.id.TenantId;
+import com.dotran.oms.core.domain.id.MerchantId;
 import com.dotran.oms.store.application.command.store.AddStoreAvailabilityCmd;
 import com.dotran.oms.store.application.dto.StoreAvailabilityDto;
 import com.dotran.oms.store.application.mapper.StoreDataMapper;
@@ -41,7 +41,7 @@ class AddStoreAvailabilityServiceTest {
         Instant now = Instant.now();
         StoreId storeId = StoreId.newStoreId();
         AddStoreAvailabilityCmd cmd = AddStoreAvailabilityCmd.builder()
-                .tenantId(TenantId.newTenantId())
+                .merchantId(MerchantId.newMerchantId())
                 .storeId(storeId)
                 .type(AvailabilityType.HOLIDAY)
                 .startTime(now)
