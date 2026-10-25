@@ -1,15 +1,15 @@
 package com.dotran.oms.store.application.service.store;
 
-import com.dotran.oms.core.domain.TenantInfo;
+import com.dotran.oms.core.domain.MerchantInfo;
 import com.dotran.oms.core.domain.id.CustomerId;
 import com.dotran.oms.core.domain.id.StoreId;
-import com.dotran.oms.core.domain.id.TenantId;
+import com.dotran.oms.core.domain.id.MerchantId;
 import com.dotran.oms.core.exception.NotFoundException;
 import com.dotran.oms.store.application.command.store.CreateStoreCmd;
 import com.dotran.oms.store.application.dto.StoreDetailDto;
 import com.dotran.oms.store.application.mapper.StoreDataMapper;
 import com.dotran.oms.store.application.repository.StoreRepository;
-import com.dotran.oms.store.application.repository.TenantRepository;
+import com.dotran.oms.store.application.repository.MerchantRepository;
 import com.dotran.oms.store.domain.enums.StoreStatus;
 import com.dotran.oms.store.domain.model.Store;
 import org.junit.jupiter.api.DisplayName;
@@ -35,43 +35,43 @@ import static org.mockito.Mockito.when;
 class CreateStoreServiceTest {
 
     @Mock private StoreRepository storeRepository;
-    @Mock private TenantRepository tenantRepository;
+    @Mock private MerchantRepository merchantRepository;
     @Mock private StoreDataMapper storeDataMapper;
 
     @InjectMocks
     private CreateStoreService createStoreService;
 
     @Test
-    @DisplayName("throws NotFoundException when the tenant does not exist")
-    void throwsException_whenTenantNotFound() {
-        TenantId tenantId = TenantId.newTenantId();
+    @DisplayName("throws NotFoundException when the merchant does not exist")
+    void throwsException_whenMerchantNotFound() {
+        MerchantId merchantId = MerchantId.newMerchantId();
         CreateStoreCmd cmd = CreateStoreCmd.builder()
-                .tenantId(tenantId)
+                .merchantId(merchantId)
                 .name("My Store")
                 .code("STR001")
                 .build();
 
-        when(tenantRepository.findByTenantId(tenantId)).thenReturn(Optional.empty());
+        when(merchantRepository.findByMerchantId(merchantId)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> createStoreService.create(cmd))
                 .isInstanceOf(NotFoundException.class);
     }
 
     @Test
-    @DisplayName("creates a store and returns its DTO when tenant exists")
-    void createsStore_andReturnsDto_whenTenantFound() {
-        TenantId tenantId = TenantId.newTenantId();
-        TenantId resolvedTenantId = TenantId.newTenantId();
+    @DisplayName("creates a store and returns its DTO when merchant exists")
+    void createsStore_andReturnsDto_whenMerchantFound() {
+        MerchantId merchantId = MerchantId.newMerchantId();
+        MerchantId resolvedMerchantId = MerchantId.newMerchantId();
 
-        TenantInfo tenantInfo = TenantInfo.builder()
-                .id(resolvedTenantId)
+        MerchantInfo merchantInfo = MerchantInfo.builder()
+                .id(resolvedMerchantId)
                 .code("ACME")
                 .name("ACME Corp")
                 .status("ACTIVE")
                 .build();
 
         CreateStoreCmd cmd = CreateStoreCmd.builder()
-                .tenantId(tenantId)
+                .merchantId(merchantId)
                 .name("My Store")
                 .code("STR001")
                 .ownerId(CustomerId.newCustomerId())
@@ -81,7 +81,7 @@ class CreateStoreServiceTest {
 
         Store savedStore = Store.builder()
                 .id(StoreId.newStoreId())
-                .tenantId(resolvedTenantId)
+                .merchantId(resolvedMerchantId)
                 .name("My Store")
                 .code("STR001")
                 .status(StoreStatus.ACTIVE)
@@ -96,7 +96,7 @@ class CreateStoreServiceTest {
                 .status(StoreStatus.ACTIVE)
                 .build();
 
-        when(tenantRepository.findByTenantId(tenantId)).thenReturn(Optional.of(tenantInfo));
+        when(merchantRepository.findByMerchantId(merchantId)).thenReturn(Optional.of(merchantInfo));
         when(storeRepository.create(any(Store.class))).thenReturn(savedStore);
         when(storeDataMapper.toStoreDetailDto(savedStore)).thenReturn(expectedDto);
 

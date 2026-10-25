@@ -2,7 +2,7 @@ package com.dotran.oms.store.application.service.collection;
 
 import com.dotran.oms.core.domain.id.ProductId;
 import com.dotran.oms.core.domain.id.StoreId;
-import com.dotran.oms.core.domain.id.TenantId;
+import com.dotran.oms.core.domain.id.MerchantId;
 import com.dotran.oms.core.exception.BusinessException;
 import com.dotran.oms.core.exception.NotFoundException;
 import com.dotran.oms.store.application.command.collection.AddProductCollectionCmd;
@@ -46,7 +46,7 @@ class AddProductCollectionServiceTest {
 
     private AddProductCollectionCmd cmd(List<ProductId> productIds) {
         return AddProductCollectionCmd.builder()
-                .tenantId(TenantId.newTenantId())
+                .merchantId(MerchantId.newMerchantId())
                 .storeId(StoreId.newStoreId())
                 .storeCollectionId(collectionId)
                 .productIds(productIds)

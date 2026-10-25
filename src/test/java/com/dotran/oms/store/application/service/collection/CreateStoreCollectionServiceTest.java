@@ -2,7 +2,7 @@ package com.dotran.oms.store.application.service.collection;
 
 import com.dotran.oms.core.domain.id.ProductId;
 import com.dotran.oms.core.domain.id.StoreId;
-import com.dotran.oms.core.domain.id.TenantId;
+import com.dotran.oms.core.domain.id.MerchantId;
 import com.dotran.oms.core.exception.BusinessException;
 import com.dotran.oms.store.application.command.collection.CreateStoreCollectionCmd;
 import com.dotran.oms.store.application.dto.StoreCollectionDto;
@@ -66,7 +66,7 @@ class CreateStoreCollectionServiceTest {
         StoreId differentStoreId = StoreId.newStoreId();
 
         CreateStoreCollectionCmd cmd = CreateStoreCollectionCmd.builder()
-                .tenantId(TenantId.newTenantId())
+                .merchantId(MerchantId.newMerchantId())
                 .storeId(storeId)
                 .name("Summer Collection")
                 .productIds(List.of(productId))
@@ -88,7 +88,7 @@ class CreateStoreCollectionServiceTest {
     @DisplayName("creates the collection with valid products from the same store")
     void createsCollection_withValidProducts() {
         CreateStoreCollectionCmd cmd = CreateStoreCollectionCmd.builder()
-                .tenantId(TenantId.newTenantId())
+                .merchantId(MerchantId.newMerchantId())
                 .storeId(storeId)
                 .name("Summer Collection")
                 .productIds(List.of(productId))

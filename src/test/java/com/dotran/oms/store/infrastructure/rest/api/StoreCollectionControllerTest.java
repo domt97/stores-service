@@ -42,7 +42,7 @@ class StoreCollectionControllerTest {
     @Test
     @DisplayName("create: maps request, enriches cmd, calls use case, maps response")
     void create_delegatesAndReturnsResponse() {
-        UUID tenantId = UUID.randomUUID();
+        UUID merchantId = UUID.randomUUID();
         UUID storeId = UUID.randomUUID();
         UpsertStoreCollectionRequest request = mock(UpsertStoreCollectionRequest.class);
         CreateStoreCollectionCmd cmd = CreateStoreCollectionCmd.builder().name("test").build();
@@ -53,7 +53,7 @@ class StoreCollectionControllerTest {
         when(createStoreCollectionUseCase.create(cmd)).thenReturn(dto);
         when(restMapper.fromDtoToResponse(dto)).thenReturn(response);
 
-        StoreCollectionResponse result = controller.create(tenantId, storeId, request);
+        StoreCollectionResponse result = controller.create(merchantId, storeId, request);
 
         assertThat(result).isEqualTo(response);
     }
@@ -61,7 +61,7 @@ class StoreCollectionControllerTest {
     @Test
     @DisplayName("getAll: builds cmd, calls use case, maps each dto to response")
     void getAll_returnsListOfResponses() {
-        UUID tenantId = UUID.randomUUID();
+        UUID merchantId = UUID.randomUUID();
         UUID storeId = UUID.randomUUID();
         StoreCollectionDto dto = mock(StoreCollectionDto.class);
         StoreCollectionResponse response = mock(StoreCollectionResponse.class);
@@ -69,7 +69,7 @@ class StoreCollectionControllerTest {
         when(getListStoreCollectionUseCase.getListCollectionByStoreId(any())).thenReturn(List.of(dto));
         when(restMapper.fromDtoToResponse(dto)).thenReturn(response);
 
-        List<StoreCollectionResponse> result = controller.getAll(tenantId, storeId);
+        List<StoreCollectionResponse> result = controller.getAll(merchantId, storeId);
 
         assertThat(result).containsExactly(response);
     }
@@ -77,12 +77,12 @@ class StoreCollectionControllerTest {
     @Test
     @DisplayName("getAll: returns empty list when no collections exist")
     void getAll_returnsEmptyList_whenNone() {
-        UUID tenantId = UUID.randomUUID();
+        UUID merchantId = UUID.randomUUID();
         UUID storeId = UUID.randomUUID();
 
         when(getListStoreCollectionUseCase.getListCollectionByStoreId(any())).thenReturn(List.of());
 
-        List<StoreCollectionResponse> result = controller.getAll(tenantId, storeId);
+        List<StoreCollectionResponse> result = controller.getAll(merchantId, storeId);
 
         assertThat(result).isEmpty();
     }
@@ -90,7 +90,7 @@ class StoreCollectionControllerTest {
     @Test
     @DisplayName("getDetails: builds cmd, calls use case, maps response")
     void getDetails_delegatesAndReturnsResponse() {
-        UUID tenantId = UUID.randomUUID();
+        UUID merchantId = UUID.randomUUID();
         UUID storeId = UUID.randomUUID();
         UUID collectionId = UUID.randomUUID();
         StoreCollectionDto dto = mock(StoreCollectionDto.class);
@@ -99,7 +99,7 @@ class StoreCollectionControllerTest {
         when(getStoreCollectionUseCase.getCollectionById(any())).thenReturn(dto);
         when(restMapper.fromDtoToResponse(dto)).thenReturn(response);
 
-        StoreCollectionResponse result = controller.getDetails(tenantId, storeId, collectionId);
+        StoreCollectionResponse result = controller.getDetails(merchantId, storeId, collectionId);
 
         assertThat(result).isEqualTo(response);
     }
@@ -107,7 +107,7 @@ class StoreCollectionControllerTest {
     @Test
     @DisplayName("addProducts: builds cmd, calls use case, maps response")
     void addProducts_delegatesAndReturnsResponse() {
-        UUID tenantId = UUID.randomUUID();
+        UUID merchantId = UUID.randomUUID();
         UUID storeId = UUID.randomUUID();
         UUID collectionId = UUID.randomUUID();
         StoreCollectionDto dto = mock(StoreCollectionDto.class);
@@ -116,7 +116,7 @@ class StoreCollectionControllerTest {
         when(addProductCollectionUseCase.addProductsToCollection(any())).thenReturn(dto);
         when(restMapper.fromDtoToResponse(dto)).thenReturn(response);
 
-        StoreCollectionResponse result = controller.addProducts(tenantId, storeId, collectionId, List.of(UUID.randomUUID()));
+        StoreCollectionResponse result = controller.addProducts(merchantId, storeId, collectionId, List.of(UUID.randomUUID()));
 
         assertThat(result).isEqualTo(response);
     }
@@ -124,7 +124,7 @@ class StoreCollectionControllerTest {
     @Test
     @DisplayName("removeProducts: builds cmd, calls use case, maps response")
     void removeProducts_delegatesAndReturnsResponse() {
-        UUID tenantId = UUID.randomUUID();
+        UUID merchantId = UUID.randomUUID();
         UUID storeId = UUID.randomUUID();
         UUID collectionId = UUID.randomUUID();
         StoreCollectionDto dto = mock(StoreCollectionDto.class);
@@ -133,7 +133,7 @@ class StoreCollectionControllerTest {
         when(removeProductCollectionUseCase.removeProducts(any())).thenReturn(dto);
         when(restMapper.fromDtoToResponse(dto)).thenReturn(response);
 
-        StoreCollectionResponse result = controller.removeProducts(tenantId, storeId, collectionId, List.of(UUID.randomUUID()));
+        StoreCollectionResponse result = controller.removeProducts(merchantId, storeId, collectionId, List.of(UUID.randomUUID()));
 
         assertThat(result).isEqualTo(response);
     }

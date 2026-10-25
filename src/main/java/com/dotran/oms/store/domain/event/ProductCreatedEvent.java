@@ -18,10 +18,11 @@ import java.util.UUID;
 public class ProductCreatedEvent {
 
     private UUID eventId;
+    @Builder.Default
     private String eventType = "ProductCreated";
     private Instant occurredAt;
 
-    private UUID tenantId;
+    private UUID merchantId;
     private UUID storeId;
     private UUID productId;
 

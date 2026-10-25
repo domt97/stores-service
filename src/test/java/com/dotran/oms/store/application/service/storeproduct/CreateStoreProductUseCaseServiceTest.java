@@ -3,7 +3,7 @@ package com.dotran.oms.store.application.service.storeproduct;
 import com.dotran.oms.core.domain.id.EventId;
 import com.dotran.oms.core.domain.id.ProductId;
 import com.dotran.oms.core.domain.id.StoreId;
-import com.dotran.oms.core.domain.id.TenantId;
+import com.dotran.oms.core.domain.id.MerchantId;
 import com.dotran.oms.store.application.command.storeproduct.CreateStoreProductCmd;
 import com.dotran.oms.store.application.dto.StoreProductDetailDto;
 import com.dotran.oms.store.application.event.OutboxEventHelper;
@@ -44,12 +44,12 @@ class CreateStoreProductUseCaseServiceTest {
     @Test
     @DisplayName("maps command, initializes product, saves and returns DTO")
     void createsProduct_andReturnsDto() {
-        TenantId tenantId = TenantId.newTenantId();
+        MerchantId merchantId = MerchantId.newMerchantId();
         StoreId storeId = StoreId.newStoreId();
         ProductId productId = ProductId.newProductId();
 
         CreateStoreProductCmd cmd = CreateStoreProductCmd.builder()
-                .tenantId(tenantId)
+                .merchantId(merchantId)
                 .storeId(storeId)
                 .name("Test Product")
                 .build();
@@ -87,7 +87,7 @@ class CreateStoreProductUseCaseServiceTest {
 
         when(storeProductMapper.fromCreateStoreProductCmd(cmd)).thenReturn(product);
         when(storeProductRepository.create(any(StoreProduct.class))).thenReturn(savedProduct);
-        when(outboxEventHelper.createProductCreatedOutboxEvent(eq(tenantId), eq(savedProduct))).thenReturn(outboxEvent);
+        when(outboxEventHelper.createProductCreatedOutboxEvent(eq(merchantId), eq(savedProduct))).thenReturn(outboxEvent);
         when(storeProductMapper.fromStoreProduct(savedProduct)).thenReturn(expectedDto);
 
         StoreProductDetailDto result = createStoreProductUseCaseService.createProduct(cmd);

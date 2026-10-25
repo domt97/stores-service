@@ -21,7 +21,7 @@ public class ReopenStoreService implements ReopenStoreUseCase {
     @Override
     @Transactional
     public StoreDetailDto reopen(ReopenStoreCmd cmd) {
-        Store store = storeRepository.findByTenantIdAndStoreId(cmd.getTenantId(), cmd.getStoreId())
+        Store store = storeRepository.findByMerchantIdAndStoreId(cmd.getMerchantId(), cmd.getStoreId())
                 .orElseThrow(StoreNotFoundException::new);
 
         store.reopen();

@@ -45,7 +45,7 @@ class StoreProductControllerTest {
     @Test
     @DisplayName("create: maps request, enriches cmd, calls use case, maps response")
     void create_delegatesAndReturnsResponse() {
-        UUID tenantId = UUID.randomUUID();
+        UUID merchantId = UUID.randomUUID();
         UUID storeId = UUID.randomUUID();
         CreateStoreProductRequest request = mock(CreateStoreProductRequest.class);
         CreateStoreProductCmd cmd = mock(CreateStoreProductCmd.class);
@@ -56,7 +56,7 @@ class StoreProductControllerTest {
         when(createStoreProductUseCase.createProduct(cmd)).thenReturn(dto);
         when(storeProductRestMapper.toStoreProductResponse(dto)).thenReturn(response);
 
-        StoreProductResponse result = controller.create(tenantId, storeId, request);
+        StoreProductResponse result = controller.create(merchantId, storeId, request);
 
         assertThat(result).isEqualTo(response);
     }
@@ -64,16 +64,16 @@ class StoreProductControllerTest {
     @Test
     @DisplayName("getProductDetails: calls use case, maps response")
     void getProductDetails_delegatesAndReturnsResponse() {
-        UUID tenantId = UUID.randomUUID();
+        UUID merchantId = UUID.randomUUID();
         UUID storeId = UUID.randomUUID();
         UUID productId = UUID.randomUUID();
         StoreProductDetailDto dto = mock(StoreProductDetailDto.class);
         StoreProductResponse response = mock(StoreProductResponse.class);
 
-        when(getStoreProductDetailUseCase.getProductById(tenantId, storeId, productId)).thenReturn(dto);
+        when(getStoreProductDetailUseCase.getProductById(merchantId, storeId, productId)).thenReturn(dto);
         when(storeProductRestMapper.toStoreProductResponse(dto)).thenReturn(response);
 
-        StoreProductResponse result = controller.getProductDetails(tenantId, storeId, productId);
+        StoreProductResponse result = controller.getProductDetails(merchantId, storeId, productId);
 
         assertThat(result).isEqualTo(response);
     }
@@ -81,7 +81,7 @@ class StoreProductControllerTest {
     @Test
     @DisplayName("getStoreProducts: calls use case, maps paged result")
     void getStoreProducts_returnsMappedPagedResult() {
-        UUID tenantId = UUID.randomUUID();
+        UUID merchantId = UUID.randomUUID();
         UUID storeId = UUID.randomUUID();
         StoreProductReviewDto reviewDto = mock(StoreProductReviewDto.class);
         StoreProductPreviewResponse previewResponse = mock(StoreProductPreviewResponse.class);
@@ -94,7 +94,7 @@ class StoreProductControllerTest {
         when(searchProductUseCase.search(any(), any())).thenReturn(pagedDtos);
         when(storeProductRestMapper.toStoreProductPreviewResponse(reviewDto)).thenReturn(previewResponse);
 
-        PagedResult<StoreProductPreviewResponse> result = controller.getStoreProducts(tenantId, storeId, 10, 0, null, null);
+        PagedResult<StoreProductPreviewResponse> result = controller.getStoreProducts(merchantId, storeId, 10, 0, null, null);
 
         assertThat(result.getContent()).containsExactly(previewResponse);
     }
@@ -102,7 +102,7 @@ class StoreProductControllerTest {
     @Test
     @DisplayName("importProducts: builds cmd, calls use case, returns result")
     void importProducts_delegatesAndReturnsImportResult() {
-        UUID tenantId = UUID.randomUUID();
+        UUID merchantId = UUID.randomUUID();
         UUID storeId = UUID.randomUUID();
         ImportStoreProductsRequest request = mock(ImportStoreProductsRequest.class);
         ImportResult importResult = mock(ImportResult.class);
@@ -111,7 +111,7 @@ class StoreProductControllerTest {
         when(request.getFileName()).thenReturn("file.xlsx");
         when(importStoreProductUseCase.execute(any())).thenReturn(importResult);
 
-        ImportResult result = controller.importProducts(tenantId, storeId, request);
+        ImportResult result = controller.importProducts(merchantId, storeId, request);
 
         assertThat(result).isEqualTo(importResult);
     }

@@ -2,7 +2,7 @@ package com.dotran.oms.store.infrastructure.rest.api;
 
 import com.dotran.oms.core.annotation.WebAdapter;
 import com.dotran.oms.core.domain.id.StoreId;
-import com.dotran.oms.core.domain.id.TenantId;
+import com.dotran.oms.core.domain.id.MerchantId;
 import com.dotran.oms.core.domain.page.DomainPageRequest;
 import com.dotran.oms.core.domain.page.PagedResult;
 import com.dotran.oms.core.io.template.imp.ImportResult;
@@ -63,14 +63,14 @@ public class StoreProductController {
             @ApiResponse(responseCode = "400", description = "Invalid request body", content = @Content),
             @ApiResponse(responseCode = "404", description = "Store not found", content = @Content)
     })
-    @PostMapping("/tenants/{tenantId}/stores/{storeId}/products")
+    @PostMapping("/merchants/{merchantId}/stores/{storeId}/products")
     @ResponseStatus(HttpStatus.CREATED)
     public StoreProductResponse create(
-            @Parameter(description = "Tenant ID", required = true) @PathVariable UUID tenantId,
+            @Parameter(description = "Merchant ID", required = true) @PathVariable UUID merchantId,
             @Parameter(description = "Store ID", required = true) @PathVariable UUID storeId,
             @RequestBody @Valid CreateStoreProductRequest request) {
         CreateStoreProductCmd createStoreProductCmd = storeProductRestMapper.fromCreateRequestToCmd(request);
-        createStoreProductCmd.setTenantId(TenantId.of(tenantId));
+        createStoreProductCmd.setMerchantId(MerchantId.of(merchantId));
         createStoreProductCmd.setStoreId(StoreId.of(storeId));
 
         StoreProductDetailDto storeProductDetailDto = createStoreProductUseCase.createProduct(createStoreProductCmd);
@@ -84,14 +84,14 @@ public class StoreProductController {
                     content = @Content(mediaType = "application/json", schema = @Schema(implementation = StoreProductResponse.class))),
             @ApiResponse(responseCode = "404", description = "Product not found", content = @Content)
     })
-    @GetMapping("/tenants/{tenantId}/stores/{storeId}/products/{productId}")
+    @GetMapping("/merchants/{merchantId}/stores/{storeId}/products/{productId}")
     @ResponseStatus(HttpStatus.OK)
     public StoreProductResponse getProductDetails(
-            @Parameter(description = "Tenant ID", required = true) @PathVariable UUID tenantId,
+            @Parameter(description = "Merchant ID", required = true) @PathVariable UUID merchantId,
             @Parameter(description = "Store ID", required = true) @PathVariable UUID storeId,
             @Parameter(description = "Product ID", required = true) @PathVariable UUID productId) {
         StoreProductDetailDto storeProductDetailDto = getStoreProductDetailUseCase
-                .getProductById(tenantId, storeId, productId);
+                .getProductById(merchantId, storeId, productId);
 
         return storeProductRestMapper.toStoreProductResponse(storeProductDetailDto);
     }
@@ -102,17 +102,17 @@ public class StoreProductController {
                     content = @Content(mediaType = "application/json", schema = @Schema(implementation = PagedResult.class))),
             @ApiResponse(responseCode = "404", description = "Store not found", content = @Content)
     })
-    @GetMapping("/tenants/{tenantId}/stores/{storeId}/products/search")
+    @GetMapping("/merchants/{merchantId}/stores/{storeId}/products/search")
     @ResponseStatus(HttpStatus.OK)
     public PagedResult<StoreProductPreviewResponse> getStoreProducts(
-            @Parameter(description = "Tenant ID", required = true) @PathVariable UUID tenantId,
+            @Parameter(description = "Merchant ID", required = true) @PathVariable UUID merchantId,
             @Parameter(description = "Store ID", required = true) @PathVariable UUID storeId,
             @Parameter(description = "Page size", example = "10") @RequestParam(defaultValue = "10") Integer pageSize,
             @Parameter(description = "Page number", example = "0") @RequestParam(defaultValue = "0") Integer pageNumber,
             @Parameter(description = "Sort by field", example = "createdAt") @RequestParam(required = false) String sortBy,
             @Parameter(description = "Sort direction", example = "DESC") @RequestParam(required = false) String direction) {
         SearchProductCmd searchProductCmd = SearchProductCmd.builder()
-                .tenantId(TenantId.of(tenantId))
+                .merchantId(MerchantId.of(merchantId))
                 .storeId(StoreId.of(storeId))
                 .build();
         DomainPageRequest pageRequest = DomainPageRequest.builder()
@@ -134,14 +134,14 @@ public class StoreProductController {
                     content = @Content(mediaType = "application/json", schema = @Schema(implementation = ImportResult.class))),
             @ApiResponse(responseCode = "404", description = "Store not found", content = @Content)
     })
-    @PostMapping("/tenants/{tenantId}/stores/{storeId}/products/import")
+    @PostMapping("/merchants/{merchantId}/stores/{storeId}/products/import")
     @ResponseStatus(HttpStatus.OK)
-    public ImportResult importProducts(@PathVariable UUID tenantId,
+    public ImportResult importProducts(@PathVariable UUID merchantId,
                                        @PathVariable UUID storeId,
                                        @RequestBody ImportStoreProductsRequest request) {
 
         ImportStoreProductCmd importStoreProductCmd = ImportStoreProductCmd.builder()
-                .tenantId(TenantId.of(tenantId))
+                .merchantId(MerchantId.of(merchantId))
                 .storeId(StoreId.of(storeId))
                 .path(request.getPath())
                 .fileName(request.getFileName())

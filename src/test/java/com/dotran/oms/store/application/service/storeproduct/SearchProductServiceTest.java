@@ -1,9 +1,9 @@
 package com.dotran.oms.store.application.service.storeproduct;
 
-import com.dotran.oms.core.domain.TenantInfo;
+import com.dotran.oms.core.domain.MerchantInfo;
 import com.dotran.oms.core.domain.id.ProductId;
 import com.dotran.oms.core.domain.id.StoreId;
-import com.dotran.oms.core.domain.id.TenantId;
+import com.dotran.oms.core.domain.id.MerchantId;
 import com.dotran.oms.core.domain.page.DomainPageRequest;
 import com.dotran.oms.core.domain.page.PagedResult;
 import com.dotran.oms.core.exception.NotFoundException;
@@ -12,7 +12,7 @@ import com.dotran.oms.store.application.dto.StoreProductReviewDto;
 import com.dotran.oms.store.application.mapper.StoreProductMapper;
 import com.dotran.oms.store.application.repository.StoreProductRepository;
 import com.dotran.oms.store.application.repository.StoreRepository;
-import com.dotran.oms.store.application.repository.TenantRepository;
+import com.dotran.oms.store.application.repository.MerchantRepository;
 import com.dotran.oms.store.domain.enums.StoreStatus;
 import com.dotran.oms.store.domain.model.Store;
 import com.dotran.oms.store.domain.model.StoreProduct;
@@ -40,21 +40,21 @@ import static org.mockito.Mockito.when;
 class SearchProductServiceTest {
 
     @Mock private StoreProductRepository repository;
-    @Mock private TenantRepository tenantRepository;
+    @Mock private MerchantRepository merchantRepository;
     @Mock private StoreRepository storeRepository;
     @Mock private StoreProductMapper mapper;
 
     @InjectMocks
     private SearchProductService searchProductService;
 
-    private TenantInfo tenantInfo(TenantId id) {
-        return TenantInfo.builder().id(id).code("ACME").name("ACME Corp").status("ACTIVE").build();
+    private MerchantInfo merchantInfo(MerchantId id) {
+        return MerchantInfo.builder().id(id).code("ACME").name("ACME Corp").status("ACTIVE").build();
     }
 
-    private Store store(TenantId tenantId, StoreId storeId) {
+    private Store store(MerchantId merchantId, StoreId storeId) {
         return Store.builder()
                 .id(storeId)
-                .tenantId(tenantId)
+                .merchantId(merchantId)
                 .name("Store")
                 .status(StoreStatus.ACTIVE)
                 .businessHours(new ArrayList<>())
@@ -64,15 +64,15 @@ class SearchProductServiceTest {
     }
 
     @Test
-    @DisplayName("throws NotFoundException when tenant does not exist")
-    void throwsException_whenTenantNotFound() {
+    @DisplayName("throws NotFoundException when merchant does not exist")
+    void throwsException_whenMerchantNotFound() {
         SearchProductCmd cmd = SearchProductCmd.builder()
-                .tenantId(TenantId.newTenantId())
+                .merchantId(MerchantId.newMerchantId())
                 .storeId(StoreId.newStoreId())
                 .build();
         DomainPageRequest pageRequest = DomainPageRequest.builder().pageNumber(0).pageSize(10).build();
 
-        when(tenantRepository.findByTenantId(cmd.getTenantId())).thenReturn(Optional.empty());
+        when(merchantRepository.findByMerchantId(cmd.getMerchantId())).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> searchProductService.search(cmd, pageRequest))
                 .isInstanceOf(NotFoundException.class);
@@ -81,15 +81,15 @@ class SearchProductServiceTest {
     @Test
     @DisplayName("throws NotFoundException when store does not exist")
     void throwsException_whenStoreNotFound() {
-        TenantId tenantId = TenantId.newTenantId();
+        MerchantId merchantId = MerchantId.newMerchantId();
         SearchProductCmd cmd = SearchProductCmd.builder()
-                .tenantId(tenantId)
+                .merchantId(merchantId)
                 .storeId(StoreId.newStoreId())
                 .build();
         DomainPageRequest pageRequest = DomainPageRequest.builder().pageNumber(0).pageSize(10).build();
 
-        when(tenantRepository.findByTenantId(tenantId)).thenReturn(Optional.of(tenantInfo(tenantId)));
-        when(storeRepository.findByTenantIdAndStoreId(any(), any())).thenReturn(Optional.empty());
+        when(merchantRepository.findByMerchantId(merchantId)).thenReturn(Optional.of(merchantInfo(merchantId)));
+        when(storeRepository.findByMerchantIdAndStoreId(any(), any())).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> searchProductService.search(cmd, pageRequest))
                 .isInstanceOf(NotFoundException.class);
@@ -98,10 +98,10 @@ class SearchProductServiceTest {
     @Test
     @DisplayName("returns mapped paged result of product review DTOs")
     void returnsMappedPagedResult_whenFound() {
-        TenantId tenantId = TenantId.newTenantId();
+        MerchantId merchantId = MerchantId.newMerchantId();
         StoreId storeId = StoreId.newStoreId();
         SearchProductCmd cmd = SearchProductCmd.builder()
-                .tenantId(tenantId)
+                .merchantId(merchantId)
                 .storeId(storeId)
                 .build();
         DomainPageRequest pageRequest = DomainPageRequest.builder().pageNumber(0).pageSize(10).build();
@@ -121,8 +121,8 @@ class SearchProductServiceTest {
                 .isLast(true)
                 .build();
 
-        when(tenantRepository.findByTenantId(tenantId)).thenReturn(Optional.of(tenantInfo(tenantId)));
-        when(storeRepository.findByTenantIdAndStoreId(any(), any())).thenReturn(Optional.of(store(tenantId, storeId)));
+        when(merchantRepository.findByMerchantId(merchantId)).thenReturn(Optional.of(merchantInfo(merchantId)));
+        when(storeRepository.findByMerchantIdAndStoreId(any(), any())).thenReturn(Optional.of(store(merchantId, storeId)));
         when(repository.searchProducts(any(), any(), any())).thenReturn(pagedResult);
         when(mapper.fromStoreProductToPreview(product)).thenReturn(reviewDto);
 

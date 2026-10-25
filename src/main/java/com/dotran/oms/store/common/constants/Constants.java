@@ -6,7 +6,7 @@ import lombok.experimental.UtilityClass;
 public class Constants {
 
     // Resource
-    public static final String TENANT = "Tenant";
+    public static final String MERCHANT = "Merchant";
     public static final String STORE = "Store";
     public static final String PRODUCT = "Product";
 
@@ -14,7 +14,7 @@ public class Constants {
     public static final String ERROR_MSG_NOT_FOUND = "Resource not found";
 
     // Store business error
-    public static final String ERROR_MSG_TENANT_NOT_FOUND = "Tenant not found";
+    public static final String ERROR_MSG_MERCHANT_NOT_FOUND = "Merchant not found";
     public static final String ERROR_MSG_STORE_NOT_FOUND = "Store not found";
     public static final String ERROR_MSG_PRODUCT_NOT_FOUND = "Product not found";
     public static final String ERROR_MSG_STORE_AVAILABILITY_NOT_FOUND = "Store availability not found";

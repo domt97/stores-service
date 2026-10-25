@@ -8,7 +8,7 @@ that publishes/consumes events or calls another service.
 
 Stores (config, address, business hours, availability windows), the store's **own product catalog**
 (products, SKUs, images), collections, Excel product import. Publishes `ProductCreated`.
-Postgres DB `store`, schema `store`; tenant info from DynamoDB; files in S3. Port **8048**.
+Postgres DB `store`, schema `store`; merchant info from DynamoDB; files in S3. Port **8048**.
 
 ## Layout (`com.dotran.oms.store`)
 
@@ -31,12 +31,12 @@ Areas used across packages: `store`, `storeconfig`, `storeproduct`, `collection`
 ## Adding a use case — checklist
 
 1. **Domain**: put the rule in the aggregate method (e.g. `Store.close()` throws `StoreAlreadyClosedException`). No Spring, no setters from outside; aggregates reference others by typed ID.
-2. **Port**: `application/usecase/<area>/XxxUseCase` + `application/command/<area>/XxxCmd` (carry `TenantId`).
+2. **Port**: `application/usecase/<area>/XxxUseCase` + `application/command/<area>/XxxCmd` (carry `MerchantId`).
 3. **Service**: `application/service/<area>/XxxService` annotated `@UseCase`, `@Transactional` on the method; load via repository port, call domain, save.
 4. **Event?** If other contexts must know: build with `OutboxEventHelper`, save with `OutboxEventRepository` **in the same transaction**. Never use a Kafka client. Topic = `eventType` (PascalCase, unique across OMS). Add the JSON Schema + row to `oms-workspace/architecture/`.
-5. **REST**: controller under `/v1/store/tenants/{tenantId}/stores/...`, request DTO with Jakarta validation, map Request → Cmd and Dto → Response in `infrastructure/rest/mapper`.
+5. **REST**: controller under `/v1/store/merchants/{merchantId}/stores/...`, request DTO with Jakarta validation, map Request → Cmd and Dto → Response in `infrastructure/rest/mapper`.
 6. **Errors**: domain exception → handler in `StoreExceptionHandler` (extends `oms-core` `GlobalExceptionHandler`); messages in `common/constants/Constants`.
-7. **Persistence**: Flyway migration `src/main/resources/db/migration/V<next>__<what>.sql` (latest is `V8`); never edit an applied migration. Every table has `tenant_id`.
+7. **Persistence**: Flyway migration `src/main/resources/db/migration/V<next>__<what>.sql` (latest is `V8`); never edit an applied migration. Top-level tables carry `merchant_id`; child tables are scoped through `store_id`.
 8. **Tests** (mirror the package): domain model test, service test, controller test, adapter test.
 
 ## Tests

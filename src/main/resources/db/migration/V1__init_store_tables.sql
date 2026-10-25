@@ -1,6 +1,6 @@
 CREATE TABLE IF NOT EXISTS stores (
     id          UUID PRIMARY KEY,
-    tenant_id   UUID         NOT NULL,
+    merchant_id UUID         NOT NULL,
     name        VARCHAR(255) NOT NULL,
     code        VARCHAR(50)  NOT NULL,
     owner_id    UUID         NOT NULL,
