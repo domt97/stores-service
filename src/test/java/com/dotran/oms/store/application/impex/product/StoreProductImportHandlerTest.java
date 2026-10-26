@@ -1,6 +1,5 @@
 package com.dotran.oms.store.application.impex.product;
 
-import com.dotran.oms.core.domain.MerchantInfo;
 import com.dotran.oms.core.domain.id.SKU;
 import com.dotran.oms.core.domain.id.StoreId;
 import com.dotran.oms.core.domain.id.MerchantId;
@@ -50,9 +49,6 @@ class StoreProductImportHandlerTest {
     private final MerchantId merchantId = MerchantId.newMerchantId();
     private final StoreId storeId = StoreId.newStoreId();
 
-    private MerchantInfo merchantInfo() {
-        return MerchantInfo.builder().id(merchantId).code("ACME").name("ACME Corp").status("ACTIVE").build();
-    }
 
     private ProductImportContext context() {
         return ProductImportContext.builder().merchantId(merchantId).storeId(storeId).build();
@@ -89,16 +85,18 @@ class StoreProductImportHandlerTest {
         @Test
         @DisplayName("throws NotFoundException when merchant not found")
         void throwsException_whenMerchantNotFound() {
-            when(merchantRepository.findByMerchantId(merchantId)).thenReturn(Optional.empty());
+            when(merchantRepository.existsById(merchantId)).thenReturn(false);
 
             assertThatThrownBy(() -> handler.execute(context(), validData()))
                     .isInstanceOf(NotFoundException.class);
+            verify(storeRepository, never()).existsByMerchantIdAndStoreId(any(), any());
+            verify(storeProductRepository, never()).saveAll(any());
         }
 
         @Test
         @DisplayName("throws NotFoundException when store not found")
         void throwsException_whenStoreNotFound() {
-            when(merchantRepository.findByMerchantId(merchantId)).thenReturn(Optional.of(merchantInfo()));
+            when(merchantRepository.existsById(merchantId)).thenReturn(true);
             when(storeRepository.existsByMerchantIdAndStoreId(merchantId, storeId)).thenReturn(false);
 
             assertThatThrownBy(() -> handler.execute(context(), validData()))
@@ -108,7 +106,7 @@ class StoreProductImportHandlerTest {
         @Test
         @DisplayName("throws ValidationException when product list is empty")
         void throwsException_whenProductsEmpty() {
-            when(merchantRepository.findByMerchantId(merchantId)).thenReturn(Optional.of(merchantInfo()));
+            when(merchantRepository.existsById(merchantId)).thenReturn(true);
             when(storeRepository.existsByMerchantIdAndStoreId(merchantId, storeId)).thenReturn(true);
             ProductImportData emptyData = ProductImportData.builder()
                     .products(List.of())
@@ -123,7 +121,7 @@ class StoreProductImportHandlerTest {
         @Test
         @DisplayName("throws ValidationException when a product has no matching SKU")
         void throwsException_whenMissingSku() {
-            when(merchantRepository.findByMerchantId(merchantId)).thenReturn(Optional.of(merchantInfo()));
+            when(merchantRepository.existsById(merchantId)).thenReturn(true);
             when(storeRepository.existsByMerchantIdAndStoreId(merchantId, storeId)).thenReturn(true);
             ProductImportData dataWithNoSku = ProductImportData.builder()
                     .products(List.of(ProductImportRow.builder().reference("REF-001").name("P1").build()))
@@ -139,7 +137,7 @@ class StoreProductImportHandlerTest {
         @Test
         @DisplayName("throws ValidationException when a product has no matching image")
         void throwsException_whenMissingImage() {
-            when(merchantRepository.findByMerchantId(merchantId)).thenReturn(Optional.of(merchantInfo()));
+            when(merchantRepository.existsById(merchantId)).thenReturn(true);
             when(storeRepository.existsByMerchantIdAndStoreId(merchantId, storeId)).thenReturn(true);
             ProductImportData dataWithNoImage = ProductImportData.builder()
                     .products(List.of(ProductImportRow.builder().reference("REF-001").name("P1").build()))
@@ -161,7 +159,7 @@ class StoreProductImportHandlerTest {
         @Test
         @DisplayName("processes valid data and returns SUCCESS result")
         void returnsSuccess_forValidData() {
-            when(merchantRepository.findByMerchantId(merchantId)).thenReturn(Optional.of(merchantInfo()));
+            when(merchantRepository.existsById(merchantId)).thenReturn(true);
             when(storeRepository.existsByMerchantIdAndStoreId(merchantId, storeId)).thenReturn(true);
             when(storeProductRepository.saveAll(any())).thenAnswer(inv -> inv.getArgument(0));
             when(outboxEventHelper.createProductCreatedOutboxEvents(any(), any())).thenReturn(List.of());
@@ -187,7 +185,7 @@ class StoreProductImportHandlerTest {
             sp.initState();
             savedProducts.add(sp);
 
-            when(merchantRepository.findByMerchantId(merchantId)).thenReturn(Optional.of(merchantInfo()));
+            when(merchantRepository.existsById(merchantId)).thenReturn(true);
             when(storeRepository.existsByMerchantIdAndStoreId(merchantId, storeId)).thenReturn(true);
             when(storeProductRepository.saveAll(any())).thenReturn(savedProducts);
             when(outboxEventHelper.createProductCreatedOutboxEvents(any(), any())).thenReturn(List.of());
@@ -201,7 +199,7 @@ class StoreProductImportHandlerTest {
         @Test
         @DisplayName("skips outbox creation when no products were saved")
         void skipsOutboxCreation_whenNoProductsSaved() {
-            when(merchantRepository.findByMerchantId(merchantId)).thenReturn(Optional.of(merchantInfo()));
+            when(merchantRepository.existsById(merchantId)).thenReturn(true);
             when(storeRepository.existsByMerchantIdAndStoreId(merchantId, storeId)).thenReturn(true);
             when(storeProductRepository.saveAll(any())).thenReturn(List.of());
 

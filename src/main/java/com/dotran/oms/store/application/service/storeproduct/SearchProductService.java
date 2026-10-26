@@ -2,7 +2,6 @@ package com.dotran.oms.store.application.service.storeproduct;
 
 import com.dotran.oms.core.annotation.UseCase;
 import com.dotran.oms.store.application.repository.MerchantRepository;
-import com.dotran.oms.core.domain.MerchantInfo;
 import com.dotran.oms.core.domain.page.DomainPageRequest;
 import com.dotran.oms.core.domain.page.PagedResult;
 import com.dotran.oms.core.exception.NotFoundException;
@@ -30,10 +29,11 @@ public class SearchProductService implements SearchProductUseCase {
     @Override
     @Transactional
     public PagedResult<StoreProductReviewDto> search(SearchProductCmd searchCmd, DomainPageRequest pageRequest) {
-        MerchantInfo merchantInfo = merchantRepository.findByMerchantId(searchCmd.getMerchantId())
-                .orElseThrow(() -> new NotFoundException(Constants.ERROR_MSG_MERCHANT_NOT_FOUND));
+        if (!merchantRepository.existsById(searchCmd.getMerchantId())) {
+            throw new NotFoundException(Constants.ERROR_MSG_MERCHANT_NOT_FOUND);
+        }
 
-        Store store = storeRepository.findByMerchantIdAndStoreId(merchantInfo.getId(), searchCmd.getStoreId())
+        Store store = storeRepository.findByMerchantIdAndStoreId(searchCmd.getMerchantId(), searchCmd.getStoreId())
                 .orElseThrow(() -> new NotFoundException(Constants.ERROR_MSG_STORE_NOT_FOUND));
 
         PagedResult<StoreProduct> storeProductPagedResult = repository

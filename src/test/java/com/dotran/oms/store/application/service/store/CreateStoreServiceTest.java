@@ -1,6 +1,5 @@
 package com.dotran.oms.store.application.service.store;
 
-import com.dotran.oms.core.domain.MerchantInfo;
 import com.dotran.oms.core.domain.id.CustomerId;
 import com.dotran.oms.core.domain.id.StoreId;
 import com.dotran.oms.core.domain.id.MerchantId;
@@ -11,6 +10,8 @@ import com.dotran.oms.store.application.mapper.StoreDataMapper;
 import com.dotran.oms.store.application.repository.StoreRepository;
 import com.dotran.oms.store.application.repository.MerchantRepository;
 import com.dotran.oms.store.domain.enums.StoreStatus;
+import com.dotran.oms.store.domain.enums.MerchantStatus;
+import com.dotran.oms.store.domain.model.Merchant;
 import com.dotran.oms.store.domain.model.Store;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -29,6 +30,8 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.Mockito.never;
 
 @ExtendWith(MockitoExtension.class)
 @DisplayName("CreateStoreService")
@@ -51,23 +54,23 @@ class CreateStoreServiceTest {
                 .code("STR001")
                 .build();
 
-        when(merchantRepository.findByMerchantId(merchantId)).thenReturn(Optional.empty());
+        when(merchantRepository.findById(merchantId)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> createStoreService.create(cmd))
                 .isInstanceOf(NotFoundException.class);
+        verify(storeRepository, never()).create(any(Store.class));
     }
 
     @Test
     @DisplayName("creates a store and returns its DTO when merchant exists")
     void createsStore_andReturnsDto_whenMerchantFound() {
         MerchantId merchantId = MerchantId.newMerchantId();
-        MerchantId resolvedMerchantId = MerchantId.newMerchantId();
 
-        MerchantInfo merchantInfo = MerchantInfo.builder()
-                .id(resolvedMerchantId)
+        Merchant merchant = Merchant.builder()
+                .id(merchantId)
                 .code("ACME")
                 .name("ACME Corp")
-                .status("ACTIVE")
+                .status(MerchantStatus.ACTIVE)
                 .build();
 
         CreateStoreCmd cmd = CreateStoreCmd.builder()
@@ -81,7 +84,7 @@ class CreateStoreServiceTest {
 
         Store savedStore = Store.builder()
                 .id(StoreId.newStoreId())
-                .merchantId(resolvedMerchantId)
+                .merchantId(merchantId)
                 .name("My Store")
                 .code("STR001")
                 .status(StoreStatus.ACTIVE)
@@ -96,13 +99,13 @@ class CreateStoreServiceTest {
                 .status(StoreStatus.ACTIVE)
                 .build();
 
-        when(merchantRepository.findByMerchantId(merchantId)).thenReturn(Optional.of(merchantInfo));
+        when(merchantRepository.findById(merchantId)).thenReturn(Optional.of(merchant));
         when(storeRepository.create(any(Store.class))).thenReturn(savedStore);
         when(storeDataMapper.toStoreDetailDto(savedStore)).thenReturn(expectedDto);
 
         StoreDetailDto result = createStoreService.create(cmd);
 
         assertThat(result).isEqualTo(expectedDto);
-        verify(storeRepository).create(any(Store.class));
+        verify(storeRepository).create(argThat(store -> store.getMerchantId().equals(merchantId)));
     }
 }

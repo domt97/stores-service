@@ -1,7 +1,6 @@
 package com.dotran.oms.store.application.impex.product;
 
 import com.dotran.oms.store.application.repository.MerchantRepository;
-import com.dotran.oms.core.domain.MerchantInfo;
 import com.dotran.oms.core.domain.id.ProductId;
 import com.dotran.oms.core.exception.NotFoundException;
 import com.dotran.oms.core.exception.ValidationException;
@@ -44,10 +43,11 @@ public class StoreProductImportHandler extends
     protected void validate(ProductImportContext context, ProductImportData data) {
         log.info("Validation Product Import - START");
 
-        MerchantInfo merchantInfo = merchantRepository.findByMerchantId(context.getMerchantId())
-                .orElseThrow(() -> new NotFoundException("Not found Merchant"));
+        if (!merchantRepository.existsById(context.getMerchantId())) {
+            throw new NotFoundException("Not found Merchant");
+        }
 
-        if (!storeRepository.existsByMerchantIdAndStoreId(merchantInfo.getId(), context.getStoreId())) {
+        if (!storeRepository.existsByMerchantIdAndStoreId(context.getMerchantId(), context.getStoreId())) {
             throw new NotFoundException("Not found Store");
         }
 

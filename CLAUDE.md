@@ -8,13 +8,13 @@ that publishes/consumes events or calls another service.
 
 Stores (config, address, business hours, availability windows), the store's **own product catalog**
 (products, SKUs, images), collections, Excel product import. Publishes `ProductCreated`.
-Postgres DB `store`, schema `store`; merchant info from DynamoDB; files in S3. Port **8048**.
+Postgres DB `store`, schema `store` (owns `merchants`); files in S3. Port **8048**.
 
 ## Layout (`com.dotran.oms.store`)
 
 | Layer | Package | Contains |
 |-------|---------|----------|
-| Domain (no Spring) | `domain/model` | Aggregates `Store`, `StoreProduct` (+ `ProductSku`, `ProductImage`), `StoreCollection`, `StoreAvailability`, `BusinessHour` |
+| Domain (no Spring) | `domain/model` | Aggregates `Merchant`, `Store`, `StoreProduct` (+ `ProductSku`, `ProductImage`), `StoreCollection`, `StoreAvailability`, `BusinessHour` |
 | | `domain/valueobject`, `enums`, `event`, `exception` | `StoreConfig`; statuses; `OutboxEvent`, `ProductCreatedEvent`; domain exceptions |
 | Application | `application/usecase/<area>` | Inbound port interfaces `XxxUseCase` |
 | | `application/service/<area>` | `@UseCase` implementations `XxxService`, `@Transactional` here |
@@ -24,9 +24,9 @@ Postgres DB `store`, schema `store`; merchant info from DynamoDB; files in S3. P
 | | `application/impex` | Excel import pipeline (built on `oms-core` `AbstractImportTemplate`) |
 | Infrastructure | `infrastructure/rest/{api,dto,mapper,exception}` | `@WebAdapter` controllers, `XxxRequest/XxxResponse`, `StoreExceptionHandler` |
 | | `infrastructure/persistence/{entity,jpa}` | `@PersistenceAdapter` adapters, JPA entities, `SpringDataXxxRepository` |
-| | `infrastructure/mapper`, `cloud` | Entity ↔ domain mappers; S3 / DynamoDB |
+| | `infrastructure/mapper`, `cloud` | Entity ↔ domain mappers; S3 |
 
-Areas used across packages: `store`, `storeconfig`, `storeproduct`, `collection`, `impex`.
+Areas used across packages: `merchant`, `store`, `storeconfig`, `storeproduct`, `collection`, `impex`.
 
 ## Adding a use case — checklist
 
