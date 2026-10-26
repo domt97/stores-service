@@ -164,30 +164,6 @@ No polling from the application — Debezium pushes changes from the WAL, guaran
 
 ## Getting Started
 
-> **Merchants moved to Postgres (2026-10).** Merchants are no longer read from DynamoDB: this service owns the
-> table `merchants` (created in `V1`, `stores.merchant_id` references it). The original `V1` was edited in place, so
-> on every machine:
->    1. Stop **both** services and delete the Debezium connector: `curl -X DELETE http://localhost:9084/connectors/postgres-cdc`.
->    2. Drop the connector's replication slot. Deleting the connector keeps it, and Postgres refuses to drop a
->       database that still has a logical slot: `docker exec -i postgres psql -U postgres -d store -c "SELECT pg_drop_replication_slot('debezium_store_v2_slot');"`
->       (check with `SELECT slot_name, active FROM pg_replication_slots;`). The publication goes away with the database.
->       If it fails with "replication slot … is active", the Connect task has not stopped yet: wait a few seconds and
->       retry, or end it with `SELECT pg_terminate_backend(active_pid) FROM pg_replication_slots WHERE slot_name = 'debezium_store_v2_slot';`.
->    3. Drop and recreate the `store` database (Flyway checksum) and, for clean data, the `inventory` database.
->       Run it from the `postgres` database; `WITH (FORCE)` closes other sessions such as an IDE console:
->       `docker exec -i postgres psql -U postgres -d postgres -c "DROP DATABASE store WITH (FORCE);" -c "CREATE DATABASE store;"`
->       then `docker exec -i postgres psql -U postgres -d store -c "CREATE SCHEMA IF NOT EXISTS store;"` (see "Database Setup").
->       Same for `inventory` (schema `inventory`).
->    4. Start stores-service, register the connector again (`PUT http://localhost:9084/connectors/postgres-cdc/config`, see "Debezium CDC Setup"), then start inventory-service.
->       Kafka Connect still holds the old source offset under the name `postgres-cdc`; that is harmless on a fresh
->       database (a new slot starts from the current WAL position).
->    5. Register a merchant (sellers register themselves):
->       `curl -X POST http://localhost:8048/v1/store/merchants -H 'Content-Type: application/json' -d '{"code":"M001","name":"Demo Merchant"}'`
->       and use the returned `id` in `/v1/store/merchants/{merchantId}/stores`.
->    6. Optional: the DynamoDB table `localdev_merchant_info` is no longer used and can be deleted.
->
->    Kafka needs no reset: `ProductCreated` is unchanged and the consumer group keeps its offsets.
-
 ### Prerequisites
 
 - Java 17+
