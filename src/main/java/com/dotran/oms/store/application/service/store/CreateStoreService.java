@@ -2,7 +2,6 @@ package com.dotran.oms.store.application.service.store;
 
 import com.dotran.oms.core.annotation.UseCase;
 import com.dotran.oms.store.application.repository.MerchantRepository;
-import com.dotran.oms.core.domain.MerchantInfo;
 import com.dotran.oms.core.exception.NotFoundException;
 import com.dotran.oms.store.application.command.store.CreateStoreCmd;
 import com.dotran.oms.store.application.dto.StoreDetailDto;
@@ -10,6 +9,7 @@ import com.dotran.oms.store.application.mapper.StoreDataMapper;
 import com.dotran.oms.store.application.repository.StoreRepository;
 import com.dotran.oms.store.application.usecase.store.CreateStoreUseCase;
 import com.dotran.oms.store.common.constants.Constants;
+import com.dotran.oms.store.domain.model.Merchant;
 import com.dotran.oms.store.domain.model.Store;
 import lombok.RequiredArgsConstructor;
 import org.springframework.transaction.annotation.Transactional;
@@ -25,9 +25,9 @@ public class CreateStoreService implements CreateStoreUseCase {
     @Override
     @Transactional
     public StoreDetailDto create(CreateStoreCmd cmd) {
-        MerchantInfo merchantInfo = merchantRepository.findByMerchantId(cmd.getMerchantId())
+        Merchant merchant = merchantRepository.findById(cmd.getMerchantId())
                 .orElseThrow(() -> new NotFoundException(Constants.ERROR_MSG_MERCHANT_NOT_FOUND));
-        Store store = Store.initStore(merchantInfo.getId(),
+        Store store = Store.initStore(merchant.getId(),
                 cmd.getName(),
                 cmd.getCode(),
                 cmd.getOwnerId(),

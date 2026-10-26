@@ -1,6 +1,5 @@
 package com.dotran.oms.store.application.service.storeproduct;
 
-import com.dotran.oms.core.domain.MerchantInfo;
 import com.dotran.oms.core.domain.id.ProductId;
 import com.dotran.oms.core.domain.id.StoreId;
 import com.dotran.oms.core.domain.id.MerchantId;
@@ -34,6 +33,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.verifyNoInteractions;
 
 @ExtendWith(MockitoExtension.class)
 @DisplayName("SearchProductService")
@@ -47,9 +47,6 @@ class SearchProductServiceTest {
     @InjectMocks
     private SearchProductService searchProductService;
 
-    private MerchantInfo merchantInfo(MerchantId id) {
-        return MerchantInfo.builder().id(id).code("ACME").name("ACME Corp").status("ACTIVE").build();
-    }
 
     private Store store(MerchantId merchantId, StoreId storeId) {
         return Store.builder()
@@ -72,10 +69,11 @@ class SearchProductServiceTest {
                 .build();
         DomainPageRequest pageRequest = DomainPageRequest.builder().pageNumber(0).pageSize(10).build();
 
-        when(merchantRepository.findByMerchantId(cmd.getMerchantId())).thenReturn(Optional.empty());
+        when(merchantRepository.existsById(cmd.getMerchantId())).thenReturn(false);
 
         assertThatThrownBy(() -> searchProductService.search(cmd, pageRequest))
                 .isInstanceOf(NotFoundException.class);
+        verifyNoInteractions(storeRepository);
     }
 
     @Test
@@ -88,7 +86,7 @@ class SearchProductServiceTest {
                 .build();
         DomainPageRequest pageRequest = DomainPageRequest.builder().pageNumber(0).pageSize(10).build();
 
-        when(merchantRepository.findByMerchantId(merchantId)).thenReturn(Optional.of(merchantInfo(merchantId)));
+        when(merchantRepository.existsById(merchantId)).thenReturn(true);
         when(storeRepository.findByMerchantIdAndStoreId(any(), any())).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> searchProductService.search(cmd, pageRequest))
@@ -121,7 +119,7 @@ class SearchProductServiceTest {
                 .isLast(true)
                 .build();
 
-        when(merchantRepository.findByMerchantId(merchantId)).thenReturn(Optional.of(merchantInfo(merchantId)));
+        when(merchantRepository.existsById(merchantId)).thenReturn(true);
         when(storeRepository.findByMerchantIdAndStoreId(any(), any())).thenReturn(Optional.of(store(merchantId, storeId)));
         when(repository.searchProducts(any(), any(), any())).thenReturn(pagedResult);
         when(mapper.fromStoreProductToPreview(product)).thenReturn(reviewDto);

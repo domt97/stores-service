@@ -46,9 +46,6 @@ aws:
   access-key: ${AWS_ACCESS_KEY:test}
   secret-key: ${AWS_SECRET_KEY:test}
 
-  dynamodb:
-    table:
-      merchant-info: ${AWS_DYNAMODB_TABLE:merchant_info}
   s3:
     store-product-bucket: ${AWS_S3_STORE_PRODUCT_BUCKET:store-products}
 

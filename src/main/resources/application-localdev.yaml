@@ -1,2 +1,1 @@
-AWS_DYNAMODB_TABLE: localdev_merchant_info
 AWS_S3_STORE_PRODUCT_BUCKET: localdev_store_products

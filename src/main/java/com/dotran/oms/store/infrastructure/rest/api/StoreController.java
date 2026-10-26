@@ -63,6 +63,7 @@ public class StoreController {
             @ApiResponse(responseCode = "201", description = "Store created successfully",
                     content = @Content(mediaType = "application/json", schema = @Schema(implementation = StoreDetailResponse.class))),
             @ApiResponse(responseCode = "400", description = "Invalid request body", content = @Content),
+            @ApiResponse(responseCode = "404", description = "Merchant not found", content = @Content),
             @ApiResponse(responseCode = "409", description = "Store already exists", content = @Content)
     })
     @PostMapping("/merchants/{merchantId}/stores")
@@ -71,6 +72,7 @@ public class StoreController {
             @Parameter(description = "Merchant ID", required = true) @PathVariable UUID merchantId,
             @RequestBody @Valid CreateStoreRequest createStoreRequest) {
         CreateStoreCmd createStoreCmd = storeRestMapper.fromRequestToCmd(createStoreRequest);
+        createStoreCmd.setMerchantId(MerchantId.of(merchantId));
         StoreDetailDto storeDetailDto = createStoreUseCase.create(createStoreCmd);
         return storeRestMapper.toStoreDetailResponse(storeDetailDto);
     }

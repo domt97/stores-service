@@ -5,7 +5,6 @@ Store Management microservice for the **Order Management System (OMS)** — a mu
 [![Java](https://img.shields.io/badge/Java-17-blue)](https://openjdk.org/projects/jdk/17/)
 [![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.2.3-brightgreen)](https://spring.io/projects/spring-boot)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-blue)](https://www.postgresql.org/)
-[![DynamoDB](https://img.shields.io/badge/AWS-DynamoDB-orange)](https://aws.amazon.com/dynamodb/)
 
 ---
 
@@ -22,11 +21,11 @@ Store Management microservice for the **Order Management System (OMS)** — a mu
 │   │  [this service]   │ ◄──── REST ─────────►│                              │   │
 │   │                   │                      └──────────────────────────────┘   │
 │   └─────────┬─────────┘                                                         │
-│             │  reads merchant metadata                                          │
+│             │  owns merchants (Postgres)                                        │
 │             ▼                                                                   │
 │   ┌──────────────────┐     ┌──────────────────────────────┐                     │
-│   │  DynamoDB        │     │  promotion-service           │                     │
-│   │  (MerchantInfo)  │     │  (ACL via PromotionClient)   │                     │
+│   │  Postgres        │     │  promotion-service           │                     │
+│   │  (DB store)      │     │  (ACL via PromotionClient)   │                     │
 │   └──────────────────┘     └──────────────────────────────┘                     │
 │                                                                                 │
 └─────────────────────────────────────────────────────────────────────────────────┘
@@ -65,7 +64,7 @@ The service follows **Domain-Driven Design (DDD)** with **Hexagonal Architecture
                             ▲ implemented by
 ┌──────────────────────────────────────────────────────────────────┐
 │  SECONDARY ADAPTERS  (Driven Side)                               │
-│  JPA Persistence · DynamoDB · S3 · REST Clients                  │
+│  JPA Persistence · S3 · REST Clients                             │
 └──────────────────────────────────────────────────────────────────┘
 ```
 
@@ -142,7 +141,7 @@ No polling from the application — Debezium pushes changes from the WAL, guaran
 | Framework | Spring Boot 3.2.3 |
 | ORM | Spring Data JPA · Hibernate 6.4 |
 | Primary DB | PostgreSQL 16 |
-| Merchant info | AWS DynamoDB (Enhanced Client) |
+| Merchants | PostgreSQL (table `merchants`, owned by this service) |
 | File Storage | AWS S3 |
 | Mapping | MapStruct 1.6.3 |
 | Validation | Jakarta Validation · Hibernate Validator 8.0 |
@@ -165,27 +164,11 @@ No polling from the application — Debezium pushes changes from the WAL, guaran
 
 ## Getting Started
 
-> **Tenant → merchant rename (2026-10).** The old `tenant` concept is now `merchant`: column `merchant_id`,
-> `MerchantId`, DynamoDB table `<profile>_merchant_info`, REST `/v1/store/merchants/{merchantId}/...`, body/response field
-> `merchantId` (was `tenantId`; `CreateStoreRequest`, `StoreDetailResponse`) and the `ProductCreated` payload field `merchantId`.
-> Rollout on every machine, in this order:
->    1. Stop **both** services and delete the Debezium connector: `curl -X DELETE http://localhost:9084/connectors/postgres-cdc`.
->    2. Drop and recreate the `store` and `inventory` databases (Flyway would otherwise fail with a checksum mismatch: the original migrations were edited in place).
->    3. Kafka: **delete the topic `ProductCreated` and the consumer group `product-consumer`**, or keep both and reset the group's offsets to latest. Commands (Kafka runs in the `kafka` container):
->       - delete: `docker exec kafka kafka-topics --bootstrap-server localhost:9092 --delete --topic ProductCreated` and `docker exec kafka kafka-consumer-groups --bootstrap-server localhost:9092 --delete --group product-consumer`
->       - or reset: `docker exec kafka kafka-consumer-groups --bootstrap-server localhost:9092 --group product-consumer --reset-offsets --to-latest --topic ProductCreated --execute`
->       Never delete the group alone: with `auto-offset-reset: earliest` it would replay every old message.
->    4. Recreate the DynamoDB table `localdev_merchant_info` with its items (`./localstack/localstack.sh`).
->    5. Start stores-service (Flyway creates `outbox_events`), register the Debezium connector, then start inventory-service.
->    6. Smoke test: create a product and check that an inventory row with `merchant_id` appears.
->
->    If step 3 is missed, each old message logs 10 ERRORs (null `merchantId` violates `NOT NULL`) and is skipped; nothing is written.
-
 ### Prerequisites
 
 - Java 17+
 - PostgreSQL 12+
-- AWS credentials (for DynamoDB / S3; or LocalStack for local dev)
+- AWS credentials (for S3; or LocalStack for local dev)
 
 ### Database Setup
 
@@ -306,5 +289,5 @@ src/main/java/com/dotran/oms/store/
     ├── rest/           REST controllers, request/response DTOs
     ├── persistence/    JPA adapters, entities, Spring Data repos
     ├── mapper/         Persistence-layer MapStruct mappers
-    └── cloud/          AWS S3, DynamoDB adapters
+    └── cloud/          AWS S3 adapters
 ```

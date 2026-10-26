@@ -27,7 +27,7 @@ public abstract class StoreRestMapper {
     @Autowired
     protected InternalIdMapper idMapper;
 
-    @Mapping(target = "merchantId", expression = "java(idMapper.toMerchantId(request.getMerchantId()))")
+    @Mapping(target = "merchantId", ignore = true) // taken from the path by the controller
     @Mapping(target = "ownerId", expression = "java(idMapper.toCustomerId(request.getOwnerId()))")
     public abstract CreateStoreCmd fromRequestToCmd(CreateStoreRequest request);
 

@@ -15,6 +15,7 @@ public class Constants {
 
     // Store business error
     public static final String ERROR_MSG_MERCHANT_NOT_FOUND = "Merchant not found";
+    public static final String ERROR_MSG_MERCHANT_CODE_ALREADY_EXISTS = "Merchant code already exists";
     public static final String ERROR_MSG_STORE_NOT_FOUND = "Store not found";
     public static final String ERROR_MSG_PRODUCT_NOT_FOUND = "Product not found";
     public static final String ERROR_MSG_STORE_AVAILABILITY_NOT_FOUND = "Store availability not found";

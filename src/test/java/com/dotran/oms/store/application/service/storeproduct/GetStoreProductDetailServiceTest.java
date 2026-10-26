@@ -1,6 +1,5 @@
 package com.dotran.oms.store.application.service.storeproduct;
 
-import com.dotran.oms.core.domain.MerchantInfo;
 import com.dotran.oms.core.domain.id.ProductId;
 import com.dotran.oms.core.domain.id.StoreId;
 import com.dotran.oms.core.domain.id.MerchantId;
@@ -30,6 +29,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.verifyNoInteractions;
 
 @ExtendWith(MockitoExtension.class)
 @DisplayName("GetStoreProductDetailService")
@@ -43,9 +43,6 @@ class GetStoreProductDetailServiceTest {
     @InjectMocks
     private GetStoreProductDetailService getStoreProductDetailService;
 
-    private MerchantInfo merchantInfo(MerchantId id) {
-        return MerchantInfo.builder().id(id).code("ACME").name("ACME Corp").status("ACTIVE").build();
-    }
 
     private Store store(MerchantId merchantId, StoreId storeId) {
         return Store.builder()
@@ -62,18 +59,19 @@ class GetStoreProductDetailServiceTest {
     @Test
     @DisplayName("throws NotFoundException when merchant does not exist")
     void throwsException_whenMerchantNotFound() {
-        when(merchantRepository.findByMerchantId(any())).thenReturn(Optional.empty());
+        when(merchantRepository.existsById(any())).thenReturn(false);
 
         assertThatThrownBy(() -> getStoreProductDetailService.getProductById(
                 UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID()))
                 .isInstanceOf(NotFoundException.class);
+        verifyNoInteractions(storeRepository);
     }
 
     @Test
     @DisplayName("throws NotFoundException when store does not exist")
     void throwsException_whenStoreNotFound() {
         MerchantId merchantId = MerchantId.newMerchantId();
-        when(merchantRepository.findByMerchantId(any())).thenReturn(Optional.of(merchantInfo(merchantId)));
+        when(merchantRepository.existsById(any())).thenReturn(true);
         when(storeRepository.findByMerchantIdAndStoreId(any(), any())).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> getStoreProductDetailService.getProductById(
@@ -87,7 +85,7 @@ class GetStoreProductDetailServiceTest {
         MerchantId merchantId = MerchantId.newMerchantId();
         StoreId storeId = StoreId.newStoreId();
 
-        when(merchantRepository.findByMerchantId(any())).thenReturn(Optional.of(merchantInfo(merchantId)));
+        when(merchantRepository.existsById(any())).thenReturn(true);
         when(storeRepository.findByMerchantIdAndStoreId(any(), any())).thenReturn(Optional.of(store(merchantId, storeId)));
         when(repository.getByStoreIdAndProductId(any(), any())).thenReturn(Optional.empty());
 
@@ -109,7 +107,7 @@ class GetStoreProductDetailServiceTest {
                 .name("Product")
                 .build();
 
-        when(merchantRepository.findByMerchantId(any())).thenReturn(Optional.of(merchantInfo(merchantId)));
+        when(merchantRepository.existsById(any())).thenReturn(true);
         when(storeRepository.findByMerchantIdAndStoreId(any(), any())).thenReturn(Optional.of(store(merchantId, storeId)));
         when(repository.getByStoreIdAndProductId(any(), any())).thenReturn(Optional.of(product));
         when(mapper.fromStoreProduct(product)).thenReturn(expectedDto);

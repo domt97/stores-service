@@ -2,7 +2,6 @@ package com.dotran.oms.store.application.service.storeproduct;
 
 import com.dotran.oms.core.annotation.UseCase;
 import com.dotran.oms.store.application.repository.MerchantRepository;
-import com.dotran.oms.core.domain.MerchantInfo;
 import com.dotran.oms.core.domain.id.ProductId;
 import com.dotran.oms.core.domain.id.StoreId;
 import com.dotran.oms.core.domain.id.MerchantId;
@@ -32,10 +31,11 @@ public class GetStoreProductDetailService implements GetStoreProductDetailUseCas
     @Override
     @Transactional
     public StoreProductDetailDto getProductById(UUID merchantId, UUID storeId, UUID productId) {
-        MerchantInfo merchantInfo = merchantRepository.findByMerchantId(MerchantId.of(merchantId))
-                .orElseThrow(() -> new NotFoundException(Constants.ERROR_MSG_MERCHANT_NOT_FOUND));
+        if (!merchantRepository.existsById(MerchantId.of(merchantId))) {
+            throw new NotFoundException(Constants.ERROR_MSG_MERCHANT_NOT_FOUND);
+        }
 
-        Store store = storeRepository.findByMerchantIdAndStoreId(merchantInfo.getId(), StoreId.of(storeId))
+        Store store = storeRepository.findByMerchantIdAndStoreId(MerchantId.of(merchantId), StoreId.of(storeId))
                 .orElseThrow(() -> new NotFoundException(Constants.ERROR_MSG_STORE_NOT_FOUND));
 
         StoreProduct storeProduct = repository.getByStoreIdAndProductId(store.getId(), ProductId.of(productId))
