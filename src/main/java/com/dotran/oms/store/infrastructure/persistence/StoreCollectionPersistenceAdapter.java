@@ -105,6 +105,10 @@ public class StoreCollectionPersistenceAdapter implements StoreCollectionReposit
     }
 
     private List<ProductCollectionEntity> createProductCollectionList(StoreCollectionEntity collectionEntity, List<ProductId> productIds) {
+        if (CollectionUtils.isEmpty(productIds)) {
+            return new ArrayList<>();
+        }
+
         List<StoreProductEntity> productEntityList = storeProductRepository
                 .findAllByIdIn(productIds
                         .stream()
