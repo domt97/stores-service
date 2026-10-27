@@ -34,6 +34,7 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -42,6 +43,7 @@ import static org.mockito.Mockito.RETURNS_DEEP_STUBS;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -100,32 +102,36 @@ class StoreProductPersistenceAdapterTest {
     }
 
     @Test
-    @DisplayName("getProductsByListOfProductIds: returns empty list when input is null")
-    void getByIds_returnsEmpty_whenNull() {
-        List<StoreProduct> result = storeProductPersistenceAdapter.getProductsByListOfProductIds(null);
+    @DisplayName("findExistingProductIds: returns empty set without querying when input is null")
+    void findExistingProductIds_returnsEmpty_whenNull() {
+        Set<ProductId> result = storeProductPersistenceAdapter.findExistingProductIds(StoreId.newStoreId(), null);
+
         assertThat(result).isEmpty();
+        verifyNoInteractions(repository);
     }
 
     @Test
-    @DisplayName("getProductsByListOfProductIds: returns empty list when input is empty")
-    void getByIds_returnsEmpty_whenEmpty() {
-        List<StoreProduct> result = storeProductPersistenceAdapter.getProductsByListOfProductIds(List.of());
+    @DisplayName("findExistingProductIds: returns empty set without querying when input is empty")
+    void findExistingProductIds_returnsEmpty_whenEmpty() {
+        Set<ProductId> result = storeProductPersistenceAdapter.findExistingProductIds(StoreId.newStoreId(), List.of());
+
         assertThat(result).isEmpty();
+        verifyNoInteractions(repository);
     }
 
     @Test
-    @DisplayName("getProductsByListOfProductIds: fetches from repository and returns mapped products")
-    void getByIds_returnsMappedProducts_whenListHasItems() {
-        ProductId productId = ProductId.newProductId();
-        StoreProductEntity entity = mock(StoreProductEntity.class);
-        StoreProduct product = buildProduct();
+    @DisplayName("findExistingProductIds: queries scoped by store and returns only the ids found there")
+    void findExistingProductIds_queriesByStore_andMapsIds() {
+        StoreId storeId = StoreId.newStoreId();
+        ProductId inStore = ProductId.newProductId();
+        ProductId elsewhere = ProductId.newProductId();
 
-        when(repository.findAllByIdIn(List.of(productId.getValue()))).thenReturn(List.of(entity));
-        when(mapper.fromEntity(entity)).thenReturn(product);
+        when(repository.findIdsByStoreIdAndIdIn(storeId.getValue(), List.of(inStore.getValue(), elsewhere.getValue())))
+                .thenReturn(Set.of(inStore.getValue()));
 
-        List<StoreProduct> result = storeProductPersistenceAdapter.getProductsByListOfProductIds(List.of(productId));
+        Set<ProductId> result = storeProductPersistenceAdapter.findExistingProductIds(storeId, List.of(inStore, elsewhere));
 
-        assertThat(result).containsExactly(product);
+        assertThat(result).containsExactly(inStore);
     }
 
     @Test

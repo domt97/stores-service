@@ -7,14 +7,13 @@ import com.dotran.oms.core.domain.id.StoreId;
 import com.dotran.oms.core.exception.NotFoundException;
 import com.dotran.oms.core.util.CollectionUtils;
 import com.dotran.oms.store.application.repository.StoreCollectionRepository;
+import com.dotran.oms.store.common.constants.Constants;
 import com.dotran.oms.store.common.id.StoreCollectionId;
 import com.dotran.oms.store.domain.model.StoreCollection;
 import com.dotran.oms.store.infrastructure.mapper.StoreCollectionPersistenceMapper;
 import com.dotran.oms.store.infrastructure.persistence.entity.ProductCollectionEntity;
 import com.dotran.oms.store.infrastructure.persistence.entity.StoreCollectionEntity;
-import com.dotran.oms.store.infrastructure.persistence.entity.StoreProductEntity;
 import com.dotran.oms.store.infrastructure.persistence.jpa.SpringDataStoreCollectionRepository;
-import com.dotran.oms.store.infrastructure.persistence.jpa.SpringDataStoreProductRepository;
 import lombok.RequiredArgsConstructor;
 
 import java.util.ArrayList;
@@ -29,7 +28,6 @@ import java.util.stream.Collectors;
 public class StoreCollectionPersistenceAdapter implements StoreCollectionRepository {
 
     private final SpringDataStoreCollectionRepository storeCollectionRepository;
-    private final SpringDataStoreProductRepository storeProductRepository;
     private final StoreCollectionPersistenceMapper storeCollectionPersistenceMapper;
 
     @Override
@@ -49,14 +47,13 @@ public class StoreCollectionPersistenceAdapter implements StoreCollectionReposit
 
     @Override
     public StoreCollection addProducts(StoreCollection storeCollection, List<ProductId> productIds) {
-        StoreCollectionEntity storeCollectionEntity = storeCollectionRepository
-                .findById(storeCollection.getId().getValue())
-                .orElseThrow(NotFoundException::new);
+        StoreCollectionEntity storeCollectionEntity = this.getEntity(storeCollection);
 
         List<ProductCollectionEntity> newProductCollections =
                 this.createProductCollectionList(storeCollectionEntity, productIds);
 
         storeCollectionEntity.getProducts().addAll(newProductCollections);
+        storeCollectionEntity.setUpdatedAt(storeCollection.getUpdatedAt());
 
         StoreCollectionEntity updatedCollection = storeCollectionRepository.saveAndFlush(storeCollectionEntity);
 
@@ -65,9 +62,7 @@ public class StoreCollectionPersistenceAdapter implements StoreCollectionReposit
 
     @Override
     public StoreCollection removeProducts(StoreCollection storeCollection, List<ProductId> toRemoveProductIds) {
-        StoreCollectionEntity storeCollectionEntity = storeCollectionRepository
-                .findById(storeCollection.getId().getValue())
-                .orElseThrow(NotFoundException::new);
+        StoreCollectionEntity storeCollectionEntity = this.getEntity(storeCollection);
 
         if (CollectionUtils.isEmpty(storeCollectionEntity.getProducts())
                 || CollectionUtils.isEmpty(toRemoveProductIds)) {
@@ -81,6 +76,7 @@ public class StoreCollectionPersistenceAdapter implements StoreCollectionReposit
         storeCollectionEntity.getProducts().removeIf(productCollectionEntity ->
                 toRemoveProductIdsSet.contains(productCollectionEntity.getProductId())
         );
+        storeCollectionEntity.setUpdatedAt(storeCollection.getUpdatedAt());
 
         StoreCollectionEntity updatedStoreCollectionEntity = storeCollectionRepository.saveAndFlush(storeCollectionEntity);
 
@@ -88,9 +84,9 @@ public class StoreCollectionPersistenceAdapter implements StoreCollectionReposit
     }
 
     @Override
-    public Optional<StoreCollection> getById(StoreCollectionId storeCollectionId) {
+    public Optional<StoreCollection> getByStoreIdAndId(StoreId storeId, StoreCollectionId storeCollectionId) {
         return storeCollectionRepository
-                .findById(storeCollectionId.getValue())
+                .findByIdAndStoreId(storeCollectionId.getValue(), storeId.getValue())
                 .map(storeCollectionPersistenceMapper::toStoreCollection);
     }
 
@@ -104,21 +100,24 @@ public class StoreCollectionPersistenceAdapter implements StoreCollectionReposit
                 .toList();
     }
 
+    // Defence in depth: the service has already loaded the collection scoped by store.
+    private StoreCollectionEntity getEntity(StoreCollection storeCollection) {
+        return storeCollectionRepository
+                .findByIdAndStoreId(storeCollection.getId().getValue(), storeCollection.getStoreId().getValue())
+                .orElseThrow(() -> new NotFoundException(Constants.ERROR_MSG_COLLECTION_NOT_FOUND));
+    }
+
+    // Product ids are validated against the collection's store by the use case; the FK backs it.
     private List<ProductCollectionEntity> createProductCollectionList(StoreCollectionEntity collectionEntity, List<ProductId> productIds) {
         if (CollectionUtils.isEmpty(productIds)) {
             return new ArrayList<>();
         }
 
-        List<StoreProductEntity> productEntityList = storeProductRepository
-                .findAllByIdIn(productIds
-                        .stream()
-                        .map(BaseId::getValue).toList());
-
         List<ProductCollectionEntity> productCollectionEntities = new ArrayList<>();
-        for (StoreProductEntity productEntity : productEntityList) {
+        for (ProductId productId : productIds) {
             ProductCollectionEntity productCollectionEntity = new ProductCollectionEntity();
             productCollectionEntity.setCollection(collectionEntity);
-            productCollectionEntity.setProductId(productEntity.getId());
+            productCollectionEntity.setProductId(productId.getValue());
             productCollectionEntities.add(productCollectionEntity);
         }
 

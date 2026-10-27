@@ -21,8 +21,12 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.jpa.domain.Specification;
 
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @PersistenceAdapter
 @RequiredArgsConstructor
@@ -50,15 +54,15 @@ public class StoreProductPersistenceAdapter implements StoreProductRepository {
     }
 
     @Override
-    public List<StoreProduct> getProductsByListOfProductIds(List<ProductId> productIds) {
-        if (null == productIds || productIds.isEmpty()) {
-            return new ArrayList<>();
+    public Set<ProductId> findExistingProductIds(StoreId storeId, Collection<ProductId> productIds) {
+        if (CollectionUtils.isEmpty(productIds)) {
+            return new HashSet<>();
         }
 
-        return repository.findAllByIdIn(productIds.stream().map(ProductId::getValue).toList())
+        return repository.findIdsByStoreIdAndIdIn(storeId.getValue(), productIds.stream().map(ProductId::getValue).toList())
                 .stream()
-                .map(mapper::fromEntity)
-                .toList();
+                .map(ProductId::of)
+                .collect(Collectors.toSet());
     }
 
     @Override

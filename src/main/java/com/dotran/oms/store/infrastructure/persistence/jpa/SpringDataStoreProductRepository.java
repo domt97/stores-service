@@ -5,10 +5,13 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 
 public interface SpringDataStoreProductRepository extends JpaRepository<StoreProductEntity, UUID>, JpaSpecificationExecutor<StoreProductEntity> {
@@ -17,5 +20,6 @@ public interface SpringDataStoreProductRepository extends JpaRepository<StorePro
 
     Page<StoreProductEntity> findByStoreId(UUID storeId, Pageable pageable);
 
-    List<StoreProductEntity> findAllByIdIn(Collection<UUID> ids);
+    @Query("select p.id from StoreProductEntity p where p.storeId = :storeId and p.id in :ids")
+    Set<UUID> findIdsByStoreIdAndIdIn(@Param("storeId") UUID storeId, @Param("ids") Collection<UUID> ids);
 }

@@ -62,7 +62,7 @@ public class StoreCollectionController {
             @ApiResponse(responseCode = "201", description = "Collection created successfully",
                     content = @Content(mediaType = "application/json", schema = @Schema(implementation = StoreCollectionResponse.class))),
             @ApiResponse(responseCode = "400", description = "Invalid request body", content = @Content),
-            @ApiResponse(responseCode = "404", description = "Store not found", content = @Content)
+            @ApiResponse(responseCode = "404", description = "Store not found, or a product is not in this store", content = @Content)
     })
     @PostMapping("/merchants/{merchantId}/stores/{storeId}/collections")
     @ResponseStatus(HttpStatus.CREATED)
@@ -83,6 +83,7 @@ public class StoreCollectionController {
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Collections retrieved successfully",
                     content = @Content(mediaType = "application/json", schema = @Schema(implementation = StoreCollectionResponse.class))),
+            @ApiResponse(responseCode = "404", description = "Store not found", content = @Content)
     })
     @GetMapping("/merchants/{merchantId}/stores/{storeId}/collections")
     @ResponseStatus(HttpStatus.OK)
@@ -106,7 +107,7 @@ public class StoreCollectionController {
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Collection found",
                     content = @Content(mediaType = "application/json", schema = @Schema(implementation = StoreCollectionResponse.class))),
-            @ApiResponse(responseCode = "404", description = "Collection not found", content = @Content)
+            @ApiResponse(responseCode = "404", description = "Store or collection not found", content = @Content)
     })
     @GetMapping("/merchants/{merchantId}/stores/{storeId}/collections/{collectionId}")
     @ResponseStatus(HttpStatus.OK)
@@ -129,7 +130,9 @@ public class StoreCollectionController {
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Products added successfully",
                     content = @Content(mediaType = "application/json", schema = @Schema(implementation = StoreCollectionResponse.class))),
-            @ApiResponse(responseCode = "404", description = "Collection or products not found", content = @Content)
+            @ApiResponse(responseCode = "400", description = "A product id is missing", content = @Content),
+            @ApiResponse(responseCode = "404", description = "Store or collection not found, or a product is not in this store", content = @Content),
+            @ApiResponse(responseCode = "422", description = "Empty list, or a product is already in the collection", content = @Content)
     })
     @PostMapping("/merchants/{merchantId}/stores/{storeId}/collections/{collectionId}/add-products")
     @ResponseStatus(HttpStatus.OK)
@@ -155,7 +158,9 @@ public class StoreCollectionController {
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Products removed successfully",
                     content = @Content(mediaType = "application/json", schema = @Schema(implementation = StoreCollectionResponse.class))),
-            @ApiResponse(responseCode = "404", description = "Collection or products not found", content = @Content)
+            @ApiResponse(responseCode = "400", description = "A product id is missing", content = @Content),
+            @ApiResponse(responseCode = "404", description = "Store or collection not found", content = @Content),
+            @ApiResponse(responseCode = "422", description = "Empty list, or a product is not in the collection", content = @Content)
     })
     @PostMapping("/merchants/{merchantId}/stores/{storeId}/collections/{collectionId}/remove-products")
     @ResponseStatus(HttpStatus.OK)
