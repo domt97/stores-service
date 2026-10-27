@@ -9,9 +9,7 @@ import com.dotran.oms.store.domain.model.StoreCollection;
 import com.dotran.oms.store.infrastructure.mapper.StoreCollectionPersistenceMapper;
 import com.dotran.oms.store.infrastructure.persistence.entity.ProductCollectionEntity;
 import com.dotran.oms.store.infrastructure.persistence.entity.StoreCollectionEntity;
-import com.dotran.oms.store.infrastructure.persistence.entity.StoreProductEntity;
 import com.dotran.oms.store.infrastructure.persistence.jpa.SpringDataStoreCollectionRepository;
-import com.dotran.oms.store.infrastructure.persistence.jpa.SpringDataStoreProductRepository;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -19,15 +17,17 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
-import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -35,7 +35,6 @@ import static org.mockito.Mockito.when;
 class StoreCollectionPersistenceAdapterTest {
 
     @Mock private SpringDataStoreCollectionRepository storeCollectionRepository;
-    @Mock private SpringDataStoreProductRepository storeProductRepository;
     @Mock private StoreCollectionPersistenceMapper storeCollectionPersistenceMapper;
 
     @InjectMocks
@@ -48,34 +47,43 @@ class StoreCollectionPersistenceAdapterTest {
                 .name("Test Collection")
                 .status(CollectionStatus.ACTIVE)
                 .productIds(new ArrayList<>())
+                .updatedAt(Instant.parse("2026-10-27T10:00:00Z"))
                 .build();
     }
 
-    @Test
-    @DisplayName("getById: returns mapped domain when found")
-    void getById_returnsDomain_whenFound() {
-        StoreCollectionId id = StoreCollectionId.generateId();
-        StoreCollectionEntity entity = mock(StoreCollectionEntity.class);
-        StoreCollection expected = buildCollection(StoreId.newStoreId());
-
-        when(storeCollectionRepository.findById(id.getValue())).thenReturn(Optional.of(entity));
-        when(storeCollectionPersistenceMapper.toStoreCollection(entity)).thenReturn(expected);
-
-        Optional<StoreCollection> result = adapter.getById(id);
-
-        assertThat(result).contains(expected);
+    private ProductCollectionEntity link(StoreCollectionEntity collection, ProductId productId) {
+        ProductCollectionEntity link = new ProductCollectionEntity();
+        link.setCollection(collection);
+        link.setProductId(productId.getValue());
+        return link;
     }
 
     @Test
-    @DisplayName("getById: returns empty when not found")
-    void getById_returnsEmpty_whenNotFound() {
+    @DisplayName("getByStoreIdAndId: looks up by collection id and store id and returns mapped domain")
+    void getByStoreIdAndId_returnsDomain_whenFound() {
+        StoreId storeId = StoreId.newStoreId();
+        StoreCollectionId id = StoreCollectionId.generateId();
+        StoreCollectionEntity entity = mock(StoreCollectionEntity.class);
+        StoreCollection expected = buildCollection(storeId);
+
+        when(storeCollectionRepository.findByIdAndStoreId(id.getValue(), storeId.getValue())).thenReturn(Optional.of(entity));
+        when(storeCollectionPersistenceMapper.toStoreCollection(entity)).thenReturn(expected);
+
+        Optional<StoreCollection> result = adapter.getByStoreIdAndId(storeId, id);
+
+        assertThat(result).contains(expected);
+        verify(storeCollectionRepository, never()).findById(any());
+    }
+
+    @Test
+    @DisplayName("getByStoreIdAndId: returns empty when the collection is not in the store")
+    void getByStoreIdAndId_returnsEmpty_whenNotInStore() {
+        StoreId storeId = StoreId.newStoreId();
         StoreCollectionId id = StoreCollectionId.generateId();
 
-        when(storeCollectionRepository.findById(id.getValue())).thenReturn(Optional.empty());
+        when(storeCollectionRepository.findByIdAndStoreId(id.getValue(), storeId.getValue())).thenReturn(Optional.empty());
 
-        Optional<StoreCollection> result = adapter.getById(id);
-
-        assertThat(result).isEmpty();
+        assertThat(adapter.getByStoreIdAndId(storeId, id)).isEmpty();
     }
 
     @Test
@@ -106,109 +114,117 @@ class StoreCollectionPersistenceAdapterTest {
     }
 
     @Test
-    @DisplayName("create: maps, builds product links, saves, and returns domain")
-    void create_savesCollectionWithProducts() {
+    @DisplayName("create: saves an empty collection when it has no products")
+    void create_savesCollectionWithoutProducts() {
         StoreId storeId = StoreId.newStoreId();
         StoreCollection collection = buildCollection(storeId);
-        StoreCollectionEntity baseEntity = mock(StoreCollectionEntity.class);
+        StoreCollectionEntity baseEntity = new StoreCollectionEntity();
         StoreCollectionEntity savedEntity = mock(StoreCollectionEntity.class);
         StoreCollection expected = buildCollection(storeId);
 
         when(storeCollectionPersistenceMapper.toBaseEntity(collection)).thenReturn(baseEntity);
-        when(storeProductRepository.findAllByIdIn(any())).thenReturn(List.of());
         when(storeCollectionRepository.saveAndFlush(baseEntity)).thenReturn(savedEntity);
         when(storeCollectionPersistenceMapper.toStoreCollection(savedEntity)).thenReturn(expected);
 
         StoreCollection result = adapter.create(collection);
 
         assertThat(result).isEqualTo(expected);
+        assertThat(baseEntity.getProducts()).isEmpty();
     }
 
     @Test
-    @DisplayName("create: iterates product entities and links each one to the collection")
+    @DisplayName("create: builds one link row per product id of the collection")
     void create_withProductIds_linksEachProductToCollection() {
         StoreId storeId = StoreId.newStoreId();
-        ProductId productId = ProductId.newProductId();
+        ProductId first = ProductId.newProductId();
+        ProductId second = ProductId.newProductId();
         StoreCollection collection = StoreCollection.builder()
                 .id(StoreCollectionId.generateId())
                 .storeId(storeId)
                 .name("Collection with Products")
                 .status(CollectionStatus.ACTIVE)
-                .productIds(List.of(productId))
+                .productIds(List.of(first, second))
                 .build();
-        StoreCollectionEntity baseEntity = mock(StoreCollectionEntity.class);
-        StoreProductEntity productEntity = mock(StoreProductEntity.class);
+        StoreCollectionEntity baseEntity = new StoreCollectionEntity();
         StoreCollectionEntity savedEntity = mock(StoreCollectionEntity.class);
         StoreCollection expected = buildCollection(storeId);
 
         when(storeCollectionPersistenceMapper.toBaseEntity(collection)).thenReturn(baseEntity);
-        when(storeProductRepository.findAllByIdIn(any())).thenReturn(List.of(productEntity));
-        when(productEntity.getId()).thenReturn(productId.getValue());
         when(storeCollectionRepository.saveAndFlush(baseEntity)).thenReturn(savedEntity);
         when(storeCollectionPersistenceMapper.toStoreCollection(savedEntity)).thenReturn(expected);
 
         StoreCollection result = adapter.create(collection);
 
         assertThat(result).isEqualTo(expected);
+        assertThat(baseEntity.getProducts())
+                .extracting(ProductCollectionEntity::getProductId)
+                .containsExactly(first.getValue(), second.getValue());
+        assertThat(baseEntity.getProducts()).allMatch(link -> link.getCollection() == baseEntity);
     }
 
     @Test
-    @DisplayName("addProducts: finds collection, appends products, saves, returns domain")
+    @DisplayName("addProducts: reloads scoped by store, appends one link per id, copies updatedAt and saves")
     void addProducts_appendsAndSaves() {
-        StoreCollectionId collectionId = StoreCollectionId.generateId();
         StoreId storeId = StoreId.newStoreId();
         StoreCollection collection = buildCollection(storeId);
-        StoreProductEntity productEntity = mock(StoreProductEntity.class);
-        StoreCollectionEntity entity = mock(StoreCollectionEntity.class);
+        ProductId productId = ProductId.newProductId();
+        StoreCollectionEntity entity = new StoreCollectionEntity();
         StoreCollectionEntity savedEntity = mock(StoreCollectionEntity.class);
         StoreCollection expected = buildCollection(storeId);
 
-        List<ProductId> productIds = List.of(ProductId.newProductId());
-        when(storeCollectionRepository.findById(collection.getId().getValue())).thenReturn(Optional.of(entity));
-        when(entity.getProducts()).thenReturn(new ArrayList<>());
-        when(productEntity.getId()).thenReturn(UUID.randomUUID());
-        when(storeProductRepository.findAllByIdIn(any())).thenReturn(List.of(productEntity));
+        when(storeCollectionRepository.findByIdAndStoreId(collection.getId().getValue(), storeId.getValue()))
+                .thenReturn(Optional.of(entity));
         when(storeCollectionRepository.saveAndFlush(entity)).thenReturn(savedEntity);
         when(storeCollectionPersistenceMapper.toStoreCollection(savedEntity)).thenReturn(expected);
 
-        StoreCollection result = adapter.addProducts(collection, productIds);
+        StoreCollection result = adapter.addProducts(collection, List.of(productId));
 
         assertThat(result).isEqualTo(expected);
+        assertThat(entity.getProducts())
+                .extracting(ProductCollectionEntity::getProductId)
+                .containsExactly(productId.getValue());
+        assertThat(entity.getUpdatedAt()).isEqualTo(collection.getUpdatedAt());
     }
 
     @Test
-    @DisplayName("addProducts: throws NotFoundException when collection not found")
+    @DisplayName("addProducts: throws NotFoundException and saves nothing when collection is not in the store")
     void addProducts_throwsNotFoundException_whenCollectionNotFound() {
         StoreCollection collection = buildCollection(StoreId.newStoreId());
 
-        when(storeCollectionRepository.findById(collection.getId().getValue())).thenReturn(Optional.empty());
+        when(storeCollectionRepository.findByIdAndStoreId(collection.getId().getValue(), collection.getStoreId().getValue()))
+                .thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> adapter.addProducts(collection, List.of(ProductId.newProductId())))
                 .isInstanceOf(NotFoundException.class);
+
+        verify(storeCollectionRepository, never()).saveAndFlush(any());
     }
 
     @Test
-    @DisplayName("removeProducts: removes specified products and saves")
+    @DisplayName("removeProducts: removes specified products, copies updatedAt and saves")
     void removeProducts_removesProductsAndSaves() {
         StoreId storeId = StoreId.newStoreId();
         StoreCollection collection = buildCollection(storeId);
-        StoreCollectionEntity entity = mock(StoreCollectionEntity.class);
+        StoreCollectionEntity entity = new StoreCollectionEntity();
         StoreCollectionEntity savedEntity = mock(StoreCollectionEntity.class);
         StoreCollection expected = buildCollection(storeId);
-        ProductId productId = ProductId.newProductId();
+        ProductId toRemove = ProductId.newProductId();
+        ProductId toKeep = ProductId.newProductId();
+        entity.getProducts().add(link(entity, toRemove));
+        entity.getProducts().add(link(entity, toKeep));
 
-        ProductCollectionEntity productCollEntity = mock(ProductCollectionEntity.class);
-        when(productCollEntity.getProductId()).thenReturn(productId.getValue());
-        List<ProductCollectionEntity> products = new ArrayList<>(List.of(productCollEntity));
-
-        when(storeCollectionRepository.findById(collection.getId().getValue())).thenReturn(Optional.of(entity));
-        when(entity.getProducts()).thenReturn(products);
+        when(storeCollectionRepository.findByIdAndStoreId(collection.getId().getValue(), storeId.getValue()))
+                .thenReturn(Optional.of(entity));
         when(storeCollectionRepository.saveAndFlush(entity)).thenReturn(savedEntity);
         when(storeCollectionPersistenceMapper.toStoreCollection(savedEntity)).thenReturn(expected);
 
-        StoreCollection result = adapter.removeProducts(collection, List.of(productId));
+        StoreCollection result = adapter.removeProducts(collection, List.of(toRemove));
 
         assertThat(result).isEqualTo(expected);
+        assertThat(entity.getProducts())
+                .extracting(ProductCollectionEntity::getProductId)
+                .containsExactly(toKeep.getValue());
+        assertThat(entity.getUpdatedAt()).isEqualTo(collection.getUpdatedAt());
     }
 
     @Test
@@ -216,26 +232,30 @@ class StoreCollectionPersistenceAdapterTest {
     void removeProducts_returnsEarly_whenEntityHasNoProducts() {
         StoreId storeId = StoreId.newStoreId();
         StoreCollection collection = buildCollection(storeId);
-        StoreCollectionEntity entity = mock(StoreCollectionEntity.class);
+        StoreCollectionEntity entity = new StoreCollectionEntity();
         StoreCollection expected = buildCollection(storeId);
 
-        // entity.getProducts() returns null by default → CollectionUtils.isEmpty(null) = true → early return
-        when(storeCollectionRepository.findById(collection.getId().getValue())).thenReturn(Optional.of(entity));
+        when(storeCollectionRepository.findByIdAndStoreId(collection.getId().getValue(), storeId.getValue()))
+                .thenReturn(Optional.of(entity));
         when(storeCollectionPersistenceMapper.toStoreCollection(entity)).thenReturn(expected);
 
         StoreCollection result = adapter.removeProducts(collection, List.of(ProductId.newProductId()));
 
         assertThat(result).isEqualTo(expected);
+        verify(storeCollectionRepository, never()).saveAndFlush(any());
     }
 
     @Test
-    @DisplayName("removeProducts: throws NotFoundException when collection not found")
+    @DisplayName("removeProducts: throws NotFoundException and saves nothing when collection is not in the store")
     void removeProducts_throwsNotFoundException_whenCollectionNotFound() {
         StoreCollection collection = buildCollection(StoreId.newStoreId());
 
-        when(storeCollectionRepository.findById(collection.getId().getValue())).thenReturn(Optional.empty());
+        when(storeCollectionRepository.findByIdAndStoreId(collection.getId().getValue(), collection.getStoreId().getValue()))
+                .thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> adapter.removeProducts(collection, List.of(ProductId.newProductId())))
                 .isInstanceOf(NotFoundException.class);
+
+        verify(storeCollectionRepository, never()).saveAndFlush(any());
     }
 }

@@ -18,6 +18,8 @@ public class Constants {
     public static final String ERROR_MSG_MERCHANT_CODE_ALREADY_EXISTS = "Merchant code already exists";
     public static final String ERROR_MSG_STORE_NOT_FOUND = "Store not found";
     public static final String ERROR_MSG_PRODUCT_NOT_FOUND = "Product not found";
+    public static final String ERROR_MSG_COLLECTION_NOT_FOUND = "Collection not found";
+    public static final String ERROR_MSG_PRODUCT_ID_REQUIRED = "Product id must not be null";
     public static final String ERROR_MSG_STORE_AVAILABILITY_NOT_FOUND = "Store availability not found";
     public static final String ERROR_MSG_STORE_ALREADY_CLOSED = "Store is already closed";
     public static final String ERROR_MSG_STORE_IS_NOT_CLOSED = "Store is not closed";

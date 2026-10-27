@@ -16,7 +16,7 @@ public interface StoreCollectionRepository {
 
     StoreCollection removeProducts(StoreCollection storeCollection, List<ProductId> toRemoveProductIds);
 
-    Optional<StoreCollection> getById(StoreCollectionId storeCollectionId);
+    Optional<StoreCollection> getByStoreIdAndId(StoreId storeId, StoreCollectionId storeCollectionId);
 
     List<StoreCollection> getListCollectionByStoreId(StoreId storeId);
 }

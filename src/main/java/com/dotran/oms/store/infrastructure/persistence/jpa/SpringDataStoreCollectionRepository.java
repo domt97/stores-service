@@ -4,9 +4,12 @@ import com.dotran.oms.store.infrastructure.persistence.entity.StoreCollectionEnt
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 public interface SpringDataStoreCollectionRepository extends JpaRepository<StoreCollectionEntity, UUID> {
 
     List<StoreCollectionEntity> findAllByStoreId(UUID storeId);
+
+    Optional<StoreCollectionEntity> findByIdAndStoreId(UUID id, UUID storeId);
 }
