@@ -43,6 +43,7 @@ Areas used across packages: `merchant`, `store`, `storeconfig`, `storeproduct`, 
 
 Plain JUnit 5 + Mockito (`@ExtendWith(MockitoExtension.class)`, `@Mock`/`@InjectMocks`, `@DisplayName`), no Spring context, no DB.
 Build test data with the aggregate builders. Run: `./gradlew test`.
+Controller tests call the controller methods directly (no MockMvc), so Jakarta constraints on request DTOs (`@NotNull`, `@Digits`, `@Size`…) never run in them. Every request DTO with constraints gets a small test with a plain `jakarta.validation.Validator` (e.g. `CreateProductSkuRequestTest`).
 
 ## Git workflow
 
