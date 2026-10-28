@@ -3,6 +3,7 @@ package com.dotran.oms.store.domain.model;
 import com.dotran.oms.core.domain.id.ProductId;
 import com.dotran.oms.core.domain.id.SKU;
 import com.dotran.oms.core.domain.id.StoreId;
+import com.dotran.oms.core.exception.ValidationException;
 import com.dotran.oms.store.common.id.ProductSkuId;
 import com.dotran.oms.store.domain.enums.ProductStatus;
 import org.junit.jupiter.api.DisplayName;
@@ -14,6 +15,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @DisplayName("StoreProduct")
 class StoreProductTest {
@@ -69,7 +71,7 @@ class StoreProductTest {
         @DisplayName("preserves existing skus list when already set")
         void preservesExistingSkus() {
             ProductId productId = ProductId.newProductId();
-            ProductSku sku = buildSku(productId, BigDecimal.TEN, "USD");
+            ProductSku sku = buildSku(productId, BigDecimal.TEN, "VND");
             StoreProduct product = StoreProduct.builder()
                     .id(productId)
                     .storeId(StoreId.newStoreId())
@@ -135,7 +137,7 @@ class StoreProductTest {
                     .name("Product")
                     .skus(new ArrayList<>())
                     .build();
-            ProductSku sku = buildSku(productId, BigDecimal.TEN, "USD");
+            ProductSku sku = buildSku(productId, BigDecimal.TEN, "VND");
             product.addSku(sku);
             assertThat(product.getSkus()).containsExactly(sku);
         }
@@ -167,9 +169,9 @@ class StoreProductTest {
         private StoreProduct productWithSkus() {
             ProductId productId = ProductId.newProductId();
             List<ProductSku> skus = List.of(
-                    buildSku(productId, new BigDecimal("10.00"), "USD"),
-                    buildSku(productId, new BigDecimal("30.00"), "USD"),
-                    buildSku(productId, new BigDecimal("20.00"), "USD")
+                    buildSku(productId, new BigDecimal("10.00"), "VND"),
+                    buildSku(productId, new BigDecimal("30.00"), "VND"),
+                    buildSku(productId, new BigDecimal("20.00"), "VND")
             );
             return StoreProduct.builder()
                     .id(productId)
@@ -200,7 +202,7 @@ class StoreProductTest {
         @Test
         @DisplayName("getCurrency returns the currency of the first SKU")
         void getCurrency_returnsFirstSkuCurrency() {
-            assertThat(productWithSkus().getCurrency()).isEqualTo("USD");
+            assertThat(productWithSkus().getCurrency()).isEqualTo("VND");
         }
 
         @Test
@@ -219,6 +221,130 @@ class StoreProductTest {
         @DisplayName("getListOfSKUs extracts SKU identifiers from all SKUs")
         void getListOfSKUs_extractsSkuValues() {
             assertThat(productWithSkus().getListOfSKUs()).hasSize(3);
+        }
+    }
+
+    @Nested
+    @DisplayName("sale rule (3-letter currency, price ≥ 0 with ≤ 2 decimals, whole VND)")
+    class SaleRule {
+
+        private StoreProduct productWith(ProductSku... skus) {
+            return StoreProduct.builder()
+                    .id(ProductId.newProductId())
+                    .storeId(StoreId.newStoreId())
+                    .name("Product")
+                    .skus(new ArrayList<>(List.of(skus)))
+                    .build();
+        }
+
+        @Test
+        @DisplayName("initState accepts VND with a whole price, including 10.00 and 0")
+        void initState_acceptsWholeVnd() {
+            ProductId productId = ProductId.newProductId();
+            StoreProduct product = productWith(
+                    buildSku(productId, new BigDecimal("10.00"), "VND"),
+                    buildSku(productId, BigDecimal.ZERO, "VND"),
+                    buildSku(productId, new BigDecimal("25000"), "VND"));
+
+            product.initState();
+
+            assertThat(product.getSkus()).extracting(ProductSku::getCurrency).containsOnly("VND");
+        }
+
+        @Test
+        @DisplayName("initState accepts another currency with up to 2 decimals")
+        void initState_acceptsOtherCurrency() {
+            ProductId productId = ProductId.newProductId();
+            StoreProduct product = productWith(
+                    buildSku(productId, new BigDecimal("9.99"), "USD"),
+                    buildSku(productId, new BigDecimal("12.5"), "EUR"));
+
+            product.initState();
+
+            assertThat(product.getSkus()).extracting(ProductSku::getCurrency).containsExactly("USD", "EUR");
+        }
+
+        @Test
+        @DisplayName("initState normalises the currency code to upper case without surrounding spaces")
+        void initState_normalisesCurrency() {
+            ProductId productId = ProductId.newProductId();
+            StoreProduct product = productWith(
+                    buildSku(productId, BigDecimal.TEN, "vnd"),
+                    buildSku(productId, BigDecimal.TEN, " usd "));
+
+            product.initState();
+
+            assertThat(product.getSkus()).extracting(ProductSku::getCurrency).containsExactly("VND", "USD");
+        }
+
+        @Test
+        @DisplayName("initState rejects a currency that is not a 3-letter code, or null, without a NullPointerException")
+        void initState_rejectsInvalidCurrency() {
+            for (String currency : new String[]{"US", "DOLLAR", "U5D", "", null}) {
+                StoreProduct product = productWith(buildSku(ProductId.newProductId(), BigDecimal.TEN, currency));
+
+                assertThatThrownBy(product::initState)
+                        .as("currency %s", currency)
+                        .isInstanceOf(ValidationException.class)
+                        .hasMessageContaining("SKU-001");
+            }
+        }
+
+        @Test
+        @DisplayName("initState rejects a fractional VND price")
+        void initState_rejectsFractionalVnd() {
+            StoreProduct product = productWith(buildSku(ProductId.newProductId(), new BigDecimal("10.5"), "VND"));
+
+            assertThatThrownBy(product::initState)
+                    .isInstanceOf(ValidationException.class)
+                    .hasMessageContaining("VND");
+        }
+
+        @Test
+        @DisplayName("initState rejects a negative, missing or too large price, and more than 2 decimals in any currency")
+        void initState_rejectsInvalidPrice() {
+            Object[][] cases = {{new BigDecimal("-1"), "VND"}, {null, "VND"}, {new BigDecimal("9.999"), "USD"}, {new BigDecimal("-0.01"), "USD"}, {new BigDecimal("1E16"), "VND"}};
+            for (Object[] c : cases) {
+                StoreProduct product = productWith(buildSku(ProductId.newProductId(), (BigDecimal) c[0], (String) c[1]));
+
+                assertThatThrownBy(product::initState)
+                        .as("price %s %s", c[0], c[1])
+                        .isInstanceOf(ValidationException.class);
+            }
+        }
+
+        @Test
+        @DisplayName("initState rejects the product when one of several SKUs breaks the rule")
+        void initState_rejectsMixedSkus() {
+            ProductId productId = ProductId.newProductId();
+            StoreProduct product = productWith(
+                    buildSku(productId, BigDecimal.TEN, "VND"),
+                    buildSku(productId, new BigDecimal("10.5"), "VND"));
+
+            assertThatThrownBy(product::initState).isInstanceOf(ValidationException.class);
+        }
+
+        @Test
+        @DisplayName("addSku rejects an invalid SKU and leaves the SKU list unchanged")
+        void addSku_rejectsInvalidSku() {
+            ProductId productId = ProductId.newProductId();
+            StoreProduct product = productWith(buildSku(productId, BigDecimal.TEN, "VND"));
+
+            assertThatThrownBy(() -> product.addSku(buildSku(productId, new BigDecimal("10.5"), "VND")))
+                    .isInstanceOf(ValidationException.class);
+
+            assertThat(product.getSkus()).hasSize(1);
+        }
+
+        @Test
+        @DisplayName("addSku normalises the currency of the added SKU")
+        void addSku_normalisesCurrency() {
+            ProductId productId = ProductId.newProductId();
+            StoreProduct product = productWith();
+
+            product.addSku(buildSku(productId, BigDecimal.TEN, "usd"));
+
+            assertThat(product.getSkus()).extracting(ProductSku::getCurrency).containsExactly("USD");
         }
     }
 }

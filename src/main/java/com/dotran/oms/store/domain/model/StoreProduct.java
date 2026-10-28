@@ -34,9 +34,11 @@ public class StoreProduct extends AggregateRoot<ProductId> {
     private Instant updatedAt;
 
     public void initState() {
+        // Own mutable copies: callers may pass immutable lists (e.g. Stream.toList() in the mapper).
+        this.skus = this.skus != null ? new ArrayList<>(this.skus) : new ArrayList<>();
+        this.images = this.images != null ? new ArrayList<>(this.images) : new ArrayList<>();
+        this.skus.forEach(ProductSku::normaliseForSale);
         this.status = ProductStatus.ACTIVE;
-        this.skus = this.skus != null ? this.skus : new ArrayList<>();
-        this.images = this.images != null ? this.images : new ArrayList<>();
         this.createdAt = this.updatedAt = Instant.now();
     }
 
@@ -51,6 +53,7 @@ public class StoreProduct extends AggregateRoot<ProductId> {
     }
 
     public void addSku(ProductSku sku) {
+        sku.normaliseForSale();
         this.skus.add(sku);
         this.updatedAt = Instant.now();
     }

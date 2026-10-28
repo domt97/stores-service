@@ -62,8 +62,8 @@ public class StoreProductController {
     @ApiResponses(value = {
             @ApiResponse(responseCode = "201", description = "Product created successfully",
                     content = @Content(mediaType = "application/json", schema = @Schema(implementation = StoreProductResponse.class))),
-            @ApiResponse(responseCode = "400", description = "Invalid request body", content = @Content),
-            @ApiResponse(responseCode = "404", description = "Store not found", content = @Content)
+            @ApiResponse(responseCode = "400", description = "Invalid request body, a currency that is not a 3-letter code, a negative price, more than 2 decimals, or a VND price that is not whole", content = @Content),
+            @ApiResponse(responseCode = "404", description = "Merchant not found, or store not found for this merchant", content = @Content)
     })
     @PostMapping("/merchants/{merchantId}/stores/{storeId}/products")
     @ResponseStatus(HttpStatus.CREATED)

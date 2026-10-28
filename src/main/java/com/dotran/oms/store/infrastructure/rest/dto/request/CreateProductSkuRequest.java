@@ -1,6 +1,7 @@
 package com.dotran.oms.store.infrastructure.rest.dto.request;
 
 import jakarta.validation.constraints.DecimalMin;
+import jakarta.validation.constraints.Digits;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
@@ -26,20 +27,25 @@ public class CreateProductSkuRequest {
 
     @NotNull
     @DecimalMin(value = "0.0", inclusive = true)
+    @Digits(integer = 16, fraction = 2)
     private BigDecimal price;
 
     @NotBlank @Size(min = 3, max = 3)
     private String currency;
 
     @DecimalMin(value = "0.0", inclusive = true)
+    @Digits(integer = 8, fraction = 2)
     private BigDecimal weight;
 
     @DecimalMin(value = "0.0", inclusive = true)
+    @Digits(integer = 8, fraction = 2)
     private BigDecimal length;
 
     @DecimalMin(value = "0.0", inclusive = true)
+    @Digits(integer = 8, fraction = 2)
     private BigDecimal width;
 
     @DecimalMin(value = "0.0", inclusive = true)
+    @Digits(integer = 8, fraction = 2)
     private BigDecimal height;
 }
