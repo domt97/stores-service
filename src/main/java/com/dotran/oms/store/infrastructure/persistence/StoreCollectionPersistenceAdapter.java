@@ -100,6 +100,11 @@ public class StoreCollectionPersistenceAdapter implements StoreCollectionReposit
                 .toList();
     }
 
+    @Override
+    public boolean existsByStoreIdAndId(StoreId storeId, StoreCollectionId storeCollectionId) {
+        return storeCollectionRepository.existsByIdAndStoreId(storeCollectionId.getValue(), storeId.getValue());
+    }
+
     // Defence in depth: the service has already loaded the collection scoped by store.
     private StoreCollectionEntity getEntity(StoreCollection storeCollection) {
         return storeCollectionRepository

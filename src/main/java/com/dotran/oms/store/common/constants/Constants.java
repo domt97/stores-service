@@ -19,6 +19,10 @@ public class Constants {
     public static final String ERROR_MSG_STORE_NOT_FOUND = "Store not found";
     public static final String ERROR_MSG_PRODUCT_NOT_FOUND = "Product not found";
     public static final String ERROR_MSG_COLLECTION_NOT_FOUND = "Collection not found";
+    public static final String ERROR_MSG_INVALID_SORT_FIELD = "sortBy must be one of createdAt, updatedAt, name, id";
+    public static final String ERROR_MSG_INVALID_SORT_DIRECTION = "direction must be ASC or DESC";
+    public static final String ERROR_MSG_INVALID_PAGE = "pageNumber must be 0 or more and pageSize 1 or more";
+    public static final String ERROR_MSG_INVALID_PAGE_MAX = "pageNumber must be 0 or more and pageSize between 1 and %d";
     public static final String ERROR_MSG_PRODUCT_ID_REQUIRED = "Product id must not be null";
     public static final String ERROR_MSG_STORE_AVAILABILITY_NOT_FOUND = "Store availability not found";
     public static final String ERROR_MSG_STORE_ALREADY_CLOSED = "Store is already closed";

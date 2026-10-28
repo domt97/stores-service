@@ -7,11 +7,13 @@ import com.dotran.oms.core.domain.id.MerchantId;
 import com.dotran.oms.store.application.command.collection.AddProductCollectionCmd;
 import com.dotran.oms.store.application.command.collection.CreateStoreCollectionCmd;
 import com.dotran.oms.store.application.command.collection.GetCollectionDetailCmd;
+import com.dotran.oms.store.application.command.collection.GetCollectionProductsCmd;
 import com.dotran.oms.store.application.command.collection.GetListCollectionCmd;
 import com.dotran.oms.store.application.command.collection.RemoveProductCollectionCmd;
 import com.dotran.oms.store.application.dto.StoreCollectionDto;
 import com.dotran.oms.store.application.usecase.collection.AddProductCollectionUseCase;
 import com.dotran.oms.store.application.usecase.collection.CreateStoreCollectionUseCase;
+import com.dotran.oms.store.application.usecase.collection.GetCollectionProductsUseCase;
 import com.dotran.oms.store.application.usecase.collection.GetListStoreCollectionUseCase;
 import com.dotran.oms.store.application.usecase.collection.GetStoreCollectionUseCase;
 import com.dotran.oms.store.application.usecase.collection.RemoveProductFromCollectionUseCase;
@@ -19,6 +21,10 @@ import com.dotran.oms.store.common.id.StoreCollectionId;
 import com.dotran.oms.store.infrastructure.rest.dto.request.UpsertStoreCollectionRequest;
 import com.dotran.oms.store.infrastructure.rest.dto.response.StoreCollectionResponse;
 import com.dotran.oms.store.infrastructure.rest.mapper.StoreCollectionRestMapper;
+import com.dotran.oms.store.infrastructure.rest.mapper.StoreProductRestMapper;
+import com.dotran.oms.store.infrastructure.rest.dto.response.StoreProductPreviewResponse;
+import com.dotran.oms.core.domain.page.DomainPageRequest;
+import com.dotran.oms.core.domain.page.PagedResult;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -55,7 +61,11 @@ public class StoreCollectionController {
     private final GetListStoreCollectionUseCase getListStoreCollectionUseCase;
     private final AddProductCollectionUseCase addProductCollectionUseCase;
     private final RemoveProductFromCollectionUseCase removeProductCollectionUseCase;
+    private final GetCollectionProductsUseCase getCollectionProductsUseCase;
     private final StoreCollectionRestMapper restMapper;
+    private final StoreProductRestMapper storeProductRestMapper;
+
+    static final int MAX_PAGE_SIZE = 100;
 
     @Operation(summary = "Create a collection", description = "Creates a new product collection in the specified store")
     @ApiResponses(value = {
@@ -124,6 +134,36 @@ public class StoreCollectionController {
         StoreCollectionDto storeCollectionDto = getStoreCollectionUseCase.getCollectionById(cmd);
 
         return restMapper.fromDtoToResponse(storeCollectionDto);
+    }
+
+    @Operation(summary = "List the products in a collection", description = "Products of the collection, paged and ordered by name then id")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Products retrieved",
+                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = PagedResult.class))),
+            @ApiResponse(responseCode = "400", description = "Invalid page number or size (1-" + MAX_PAGE_SIZE + ")", content = @Content),
+            @ApiResponse(responseCode = "404", description = "Store or collection not found", content = @Content)
+    })
+    @GetMapping("/merchants/{merchantId}/stores/{storeId}/collections/{collectionId}/products")
+    @ResponseStatus(HttpStatus.OK)
+    public PagedResult<StoreProductPreviewResponse> getProducts(
+            @Parameter(description = "Merchant ID", required = true) @PathVariable UUID merchantId,
+            @Parameter(description = "Store ID", required = true) @PathVariable UUID storeId,
+            @Parameter(description = "Collection ID", required = true) @PathVariable UUID collectionId,
+            @Parameter(description = "Page number", example = "0") @RequestParam(defaultValue = "0") Integer pageNumber,
+            @Parameter(description = "Page size", example = "20") @RequestParam(defaultValue = "20") Integer pageSize) {
+        RestPaging.check(pageNumber, pageSize, MAX_PAGE_SIZE);
+        GetCollectionProductsCmd cmd = GetCollectionProductsCmd.builder()
+                .merchantId(MerchantId.of(merchantId))
+                .storeId(StoreId.of(storeId))
+                .storeCollectionId(StoreCollectionId.of(collectionId))
+                .build();
+        DomainPageRequest pageRequest = DomainPageRequest.builder()
+                .pageNumber(pageNumber)
+                .pageSize(pageSize)
+                .build();
+
+        return getCollectionProductsUseCase.getProducts(cmd, pageRequest)
+                .map(storeProductRestMapper::toStoreProductPreviewResponse);
     }
 
     @Operation(summary = "Add products to collection", description = "Adds one or more products to an existing collection")

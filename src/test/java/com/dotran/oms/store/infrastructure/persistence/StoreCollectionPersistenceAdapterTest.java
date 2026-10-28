@@ -76,6 +76,18 @@ class StoreCollectionPersistenceAdapterTest {
     }
 
     @Test
+    @DisplayName("existsByStoreIdAndId: checks collection id and store id together")
+    void existsByStoreIdAndId_delegates() {
+        StoreId storeId = StoreId.newStoreId();
+        StoreCollectionId id = StoreCollectionId.generateId();
+
+        when(storeCollectionRepository.existsByIdAndStoreId(id.getValue(), storeId.getValue())).thenReturn(true);
+
+        assertThat(adapter.existsByStoreIdAndId(storeId, id)).isTrue();
+        verify(storeCollectionRepository, never()).existsById(any());
+    }
+
+    @Test
     @DisplayName("getByStoreIdAndId: returns empty when the collection is not in the store")
     void getByStoreIdAndId_returnsEmpty_whenNotInStore() {
         StoreId storeId = StoreId.newStoreId();

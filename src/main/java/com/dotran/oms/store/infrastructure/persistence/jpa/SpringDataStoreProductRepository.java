@@ -20,6 +20,13 @@ public interface SpringDataStoreProductRepository extends JpaRepository<StorePro
 
     Page<StoreProductEntity> findByStoreId(UUID storeId, Pageable pageable);
 
+    @Query(value = "select p from StoreProductEntity p where p.storeId = :storeId and exists ("
+            + "select 1 from ProductCollectionEntity pc where pc.collection.id = :collectionId and pc.productId = p.id) "
+            + "order by p.name asc, p.id asc",
+            countQuery = "select count(p) from StoreProductEntity p where p.storeId = :storeId and exists ("
+                    + "select 1 from ProductCollectionEntity pc where pc.collection.id = :collectionId and pc.productId = p.id)")
+    Page<StoreProductEntity> findInCollection(@Param("storeId") UUID storeId, @Param("collectionId") UUID collectionId, Pageable pageable);
+
     @Query("select p.id from StoreProductEntity p where p.storeId = :storeId and p.id in :ids")
     Set<UUID> findIdsByStoreIdAndIdIn(@Param("storeId") UUID storeId, @Param("ids") Collection<UUID> ids);
 }

@@ -8,6 +8,7 @@ import com.dotran.oms.core.exception.NotFoundException;
 import com.dotran.oms.store.application.command.storeproduct.SearchProductCmd;
 import com.dotran.oms.store.application.dto.StoreProductReviewDto;
 import com.dotran.oms.store.application.mapper.StoreProductMapper;
+import com.dotran.oms.store.application.repository.StoreCollectionRepository;
 import com.dotran.oms.store.application.repository.StoreProductRepository;
 import com.dotran.oms.store.application.repository.StoreRepository;
 import com.dotran.oms.store.application.usecase.storeproduct.SearchProductUseCase;
@@ -24,6 +25,7 @@ public class SearchProductService implements SearchProductUseCase {
     private final StoreProductRepository repository;
     private final MerchantRepository merchantRepository;
     private final StoreRepository storeRepository;
+    private final StoreCollectionRepository storeCollectionRepository;
     private final StoreProductMapper mapper;
 
     @Override
@@ -36,8 +38,13 @@ public class SearchProductService implements SearchProductUseCase {
         Store store = storeRepository.findByMerchantIdAndStoreId(searchCmd.getMerchantId(), searchCmd.getStoreId())
                 .orElseThrow(() -> new NotFoundException(Constants.ERROR_MSG_STORE_NOT_FOUND));
 
+        if (searchCmd.getNotInCollectionId() != null
+                && !storeCollectionRepository.existsByStoreIdAndId(store.getId(), searchCmd.getNotInCollectionId())) {
+            throw new NotFoundException(Constants.ERROR_MSG_COLLECTION_NOT_FOUND);
+        }
+
         PagedResult<StoreProduct> storeProductPagedResult = repository
-                .searchProducts(store.getId(), searchCmd.getPriceRange(), pageRequest);
+                .searchProducts(store.getId(), searchCmd.getPriceRange(), searchCmd.getNotInCollectionId(), pageRequest);
 
         return storeProductPagedResult.map(mapper::fromStoreProductToPreview);
     }

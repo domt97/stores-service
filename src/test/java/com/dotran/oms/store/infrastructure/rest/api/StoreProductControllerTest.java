@@ -1,8 +1,12 @@
 package com.dotran.oms.store.infrastructure.rest.api;
 
+import com.dotran.oms.core.domain.page.DomainPageRequest;
 import com.dotran.oms.core.domain.page.PagedResult;
+import com.dotran.oms.core.exception.ValidationException;
 import com.dotran.oms.core.io.template.imp.ImportResult;
 import com.dotran.oms.store.application.command.storeproduct.CreateStoreProductCmd;
+import com.dotran.oms.store.application.command.storeproduct.SearchProductCmd;
+import com.dotran.oms.store.common.id.StoreCollectionId;
 import com.dotran.oms.store.application.dto.StoreProductDetailDto;
 import com.dotran.oms.store.application.dto.StoreProductReviewDto;
 import com.dotran.oms.store.application.usecase.impex.ImportStoreProductUseCase;
@@ -17,6 +21,7 @@ import com.dotran.oms.store.infrastructure.rest.mapper.StoreProductRestMapper;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -25,8 +30,10 @@ import java.util.List;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -91,12 +98,44 @@ class StoreProductControllerTest {
                 .pageNumber(0).pageSize(10).totalElements(1).totalPages(1).isLast(true)
                 .build();
 
-        when(searchProductUseCase.search(any(), any())).thenReturn(pagedDtos);
+        ArgumentCaptor<SearchProductCmd> cmdCaptor = ArgumentCaptor.forClass(SearchProductCmd.class);
+        ArgumentCaptor<DomainPageRequest> pageCaptor = ArgumentCaptor.forClass(DomainPageRequest.class);
+        when(searchProductUseCase.search(cmdCaptor.capture(), pageCaptor.capture())).thenReturn(pagedDtos);
         when(storeProductRestMapper.toStoreProductPreviewResponse(reviewDto)).thenReturn(previewResponse);
 
-        PagedResult<StoreProductPreviewResponse> result = controller.getStoreProducts(merchantId, storeId, 10, 0, null, null);
+        PagedResult<StoreProductPreviewResponse> result = controller.getStoreProducts(merchantId, storeId, 10, 0, null, null, null);
 
         assertThat(result.getContent()).containsExactly(previewResponse);
+        assertThat(cmdCaptor.getValue().getNotInCollectionId()).isNull();
+        assertThat(pageCaptor.getValue().getSortBy()).isNull();
+        assertThat(pageCaptor.getValue().getPageSize()).isEqualTo(10);
+    }
+
+    @Test
+    @DisplayName("getStoreProducts: notInCollectionId reaches the command")
+    void getStoreProducts_passesNotInCollectionId() {
+        UUID collectionId = UUID.randomUUID();
+        PagedResult<StoreProductReviewDto> empty = PagedResult.<StoreProductReviewDto>builder()
+                .content(List.of()).pageNumber(0).pageSize(20).totalElements(0).totalPages(0).isLast(true).build();
+        ArgumentCaptor<SearchProductCmd> cmdCaptor = ArgumentCaptor.forClass(SearchProductCmd.class);
+        when(searchProductUseCase.search(cmdCaptor.capture(), any())).thenReturn(empty);
+
+        controller.getStoreProducts(UUID.randomUUID(), UUID.randomUUID(), 20, 0, "createdAt", "DESC", collectionId);
+
+        assertThat(cmdCaptor.getValue().getNotInCollectionId()).isEqualTo(StoreCollectionId.of(collectionId));
+    }
+
+    @Test
+    @DisplayName("getStoreProducts: negative page or page size below 1 → ValidationException, use case never called")
+    void getStoreProducts_invalidPage_rejected() {
+        UUID merchantId = UUID.randomUUID();
+        UUID storeId = UUID.randomUUID();
+
+        assertThatThrownBy(() -> controller.getStoreProducts(merchantId, storeId, 0, 0, null, null, null))
+                .isInstanceOf(ValidationException.class);
+        assertThatThrownBy(() -> controller.getStoreProducts(merchantId, storeId, 10, -1, null, null, null))
+                .isInstanceOf(ValidationException.class);
+        verifyNoInteractions(searchProductUseCase);
     }
 
     @Test

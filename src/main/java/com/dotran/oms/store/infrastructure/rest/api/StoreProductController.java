@@ -40,6 +40,8 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.dotran.oms.store.common.id.StoreCollectionId;
+
 import java.util.UUID;
 
 @Tag(name = "Store Product Management", description = "APIs for managing products within a store, including creation, retrieval and listing")
@@ -100,7 +102,8 @@ public class StoreProductController {
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Products retrieved successfully",
                     content = @Content(mediaType = "application/json", schema = @Schema(implementation = PagedResult.class))),
-            @ApiResponse(responseCode = "404", description = "Store not found", content = @Content)
+            @ApiResponse(responseCode = "400", description = "Invalid page number or size, sort field or direction", content = @Content),
+            @ApiResponse(responseCode = "404", description = "Store not found, or notInCollectionId is not a collection of this store", content = @Content)
     })
     @GetMapping("/merchants/{merchantId}/stores/{storeId}/products/search")
     @ResponseStatus(HttpStatus.OK)
@@ -109,11 +112,15 @@ public class StoreProductController {
             @Parameter(description = "Store ID", required = true) @PathVariable UUID storeId,
             @Parameter(description = "Page size", example = "10") @RequestParam(defaultValue = "10") Integer pageSize,
             @Parameter(description = "Page number", example = "0") @RequestParam(defaultValue = "0") Integer pageNumber,
-            @Parameter(description = "Sort by field", example = "createdAt") @RequestParam(required = false) String sortBy,
-            @Parameter(description = "Sort direction", example = "DESC") @RequestParam(required = false) String direction) {
+            @Parameter(description = "Sort field: createdAt (default, DESC), updatedAt, name or id; id is always the last sort key", example = "createdAt") @RequestParam(required = false) String sortBy,
+            @Parameter(description = "Sort direction", example = "DESC") @RequestParam(required = false) String direction,
+            @Parameter(description = "Leave out the products already in this collection of the store") @RequestParam(required = false) UUID notInCollectionId) {
+        // No upper bound here: the storefront relies on larger pages (oms-workspace integration.md, Front-end consumers).
+        RestPaging.check(pageNumber, pageSize);
         SearchProductCmd searchProductCmd = SearchProductCmd.builder()
                 .merchantId(MerchantId.of(merchantId))
                 .storeId(StoreId.of(storeId))
+                .notInCollectionId(notInCollectionId == null ? null : StoreCollectionId.of(notInCollectionId))
                 .build();
         DomainPageRequest pageRequest = DomainPageRequest.builder()
                 .pageNumber(pageNumber)
