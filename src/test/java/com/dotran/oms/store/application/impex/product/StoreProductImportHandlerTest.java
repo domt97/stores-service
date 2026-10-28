@@ -17,6 +17,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -55,6 +56,10 @@ class StoreProductImportHandlerTest {
     }
 
     private ProductImportData validData() {
+        return dataWithSku("VND", new BigDecimal("10.00"));
+    }
+
+    private ProductImportData dataWithSku(String currency, BigDecimal price) {
         ProductImportRow product = ProductImportRow.builder()
                 .reference("REF-001")
                 .name("Product One")
@@ -64,8 +69,8 @@ class StoreProductImportHandlerTest {
                 .productRef("REF-001")
                 .sku(SKU.of("SKU-001"))
                 .name("Variant")
-                .price(new BigDecimal("10.00"))
-                .currency("USD")
+                .price(price)
+                .currency(currency)
                 .build();
         ProductImageImportRow image = ProductImageImportRow.builder()
                 .productRef("REF-001")
@@ -142,7 +147,7 @@ class StoreProductImportHandlerTest {
             ProductImportData dataWithNoImage = ProductImportData.builder()
                     .products(List.of(ProductImportRow.builder().reference("REF-001").name("P1").build()))
                     .skus(List.of(ProductSKUImportRow.builder().productRef("REF-001")
-                            .sku(SKU.of("SKU-001")).name("V").price(BigDecimal.TEN).currency("USD").build()))
+                            .sku(SKU.of("SKU-001")).name("V").price(BigDecimal.TEN).currency("VND").build()))
                     .images(List.of())
                     .build();
 
@@ -155,6 +160,36 @@ class StoreProductImportHandlerTest {
     @Nested
     @DisplayName("execute (full pipeline)")
     class Execute {
+
+        @Test
+        @DisplayName("rejects a non-VND or fractional SKU row before anything is saved")
+        void rejectsInvalidSkuRow_beforeSaving() {
+            when(merchantRepository.existsById(merchantId)).thenReturn(true);
+            when(storeRepository.existsByMerchantIdAndStoreId(merchantId, storeId)).thenReturn(true);
+
+            assertThatThrownBy(() -> handler.execute(context(), dataWithSku("USD", new BigDecimal("10.00"))))
+                    .isInstanceOf(ValidationException.class);
+            assertThatThrownBy(() -> handler.execute(context(), dataWithSku("VND", new BigDecimal("10.50"))))
+                    .isInstanceOf(ValidationException.class);
+
+            verify(storeProductRepository, never()).saveAll(any());
+            verify(outboxEventRepository, never()).saveAll(any());
+        }
+
+        @Test
+        @DisplayName("normalises a lower-case currency from the file to VND")
+        void normalisesCurrency_fromFile() {
+            when(merchantRepository.existsById(merchantId)).thenReturn(true);
+            when(storeRepository.existsByMerchantIdAndStoreId(merchantId, storeId)).thenReturn(true);
+            when(storeProductRepository.saveAll(any())).thenAnswer(inv -> inv.getArgument(0));
+            when(outboxEventHelper.createProductCreatedOutboxEvents(any(), any())).thenReturn(List.of());
+
+            handler.execute(context(), dataWithSku(" vnd ", new BigDecimal("10000")));
+
+            ArgumentCaptor<List<StoreProduct>> captor = ArgumentCaptor.forClass(List.class);
+            verify(storeProductRepository).saveAll(captor.capture());
+            assertThat(captor.getValue().get(0).getSkus().get(0).getCurrency()).isEqualTo("VND");
+        }
 
         @Test
         @DisplayName("processes valid data and returns SUCCESS result")
