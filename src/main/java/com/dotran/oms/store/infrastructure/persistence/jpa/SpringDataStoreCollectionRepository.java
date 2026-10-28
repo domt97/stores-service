@@ -12,4 +12,6 @@ public interface SpringDataStoreCollectionRepository extends JpaRepository<Store
     List<StoreCollectionEntity> findAllByStoreId(UUID storeId);
 
     Optional<StoreCollectionEntity> findByIdAndStoreId(UUID id, UUID storeId);
+
+    boolean existsByIdAndStoreId(UUID id, UUID storeId);
 }

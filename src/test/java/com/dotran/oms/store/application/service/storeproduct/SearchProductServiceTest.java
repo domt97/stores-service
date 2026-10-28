@@ -9,9 +9,12 @@ import com.dotran.oms.core.exception.NotFoundException;
 import com.dotran.oms.store.application.command.storeproduct.SearchProductCmd;
 import com.dotran.oms.store.application.dto.StoreProductReviewDto;
 import com.dotran.oms.store.application.mapper.StoreProductMapper;
+import com.dotran.oms.store.application.repository.StoreCollectionRepository;
 import com.dotran.oms.store.application.repository.StoreProductRepository;
 import com.dotran.oms.store.application.repository.StoreRepository;
 import com.dotran.oms.store.application.repository.MerchantRepository;
+import com.dotran.oms.store.common.constants.Constants;
+import com.dotran.oms.store.common.id.StoreCollectionId;
 import com.dotran.oms.store.domain.enums.StoreStatus;
 import com.dotran.oms.store.domain.model.Store;
 import com.dotran.oms.store.domain.model.StoreProduct;
@@ -31,6 +34,10 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -42,6 +49,7 @@ class SearchProductServiceTest {
     @Mock private StoreProductRepository repository;
     @Mock private MerchantRepository merchantRepository;
     @Mock private StoreRepository storeRepository;
+    @Mock private StoreCollectionRepository storeCollectionRepository;
     @Mock private StoreProductMapper mapper;
 
     @InjectMocks
@@ -121,12 +129,83 @@ class SearchProductServiceTest {
 
         when(merchantRepository.existsById(merchantId)).thenReturn(true);
         when(storeRepository.findByMerchantIdAndStoreId(any(), any())).thenReturn(Optional.of(store(merchantId, storeId)));
-        when(repository.searchProducts(any(), any(), any())).thenReturn(pagedResult);
+        when(repository.searchProducts(eq(storeId), isNull(), isNull(), eq(pageRequest))).thenReturn(pagedResult);
         when(mapper.fromStoreProductToPreview(product)).thenReturn(reviewDto);
 
         PagedResult<StoreProductReviewDto> result = searchProductService.search(cmd, pageRequest);
 
         assertThat(result.getContent()).containsExactly(reviewDto);
         assertThat(result.getTotalElements()).isEqualTo(1);
+        // No collection filter: the collection repository is not touched
+        verifyNoInteractions(storeCollectionRepository);
+    }
+
+    @Test
+    @DisplayName("notInCollectionId of a collection not in the store → NotFoundException, no search")
+    void throwsException_whenExcludedCollectionNotInStore() {
+        MerchantId merchantId = MerchantId.newMerchantId();
+        StoreId storeId = StoreId.newStoreId();
+        StoreCollectionId collectionId = StoreCollectionId.of(UUID.randomUUID());
+        SearchProductCmd cmd = SearchProductCmd.builder()
+                .merchantId(merchantId)
+                .storeId(storeId)
+                .notInCollectionId(collectionId)
+                .build();
+        DomainPageRequest pageRequest = DomainPageRequest.builder().pageNumber(0).pageSize(10).build();
+
+        when(merchantRepository.existsById(merchantId)).thenReturn(true);
+        when(storeRepository.findByMerchantIdAndStoreId(merchantId, storeId)).thenReturn(Optional.of(store(merchantId, storeId)));
+        when(storeCollectionRepository.existsByStoreIdAndId(storeId, collectionId)).thenReturn(false);
+
+        assertThatThrownBy(() -> searchProductService.search(cmd, pageRequest))
+                .isInstanceOf(NotFoundException.class)
+                .hasMessage(Constants.ERROR_MSG_COLLECTION_NOT_FOUND);
+        verify(repository, never()).searchProducts(any(), any(), any(), any());
+    }
+
+    @Test
+    @DisplayName("store of another merchant with notInCollectionId → NotFoundException, collection never checked")
+    void throwsException_whenStoreNotFound_beforeCollectionCheck() {
+        MerchantId merchantId = MerchantId.newMerchantId();
+        SearchProductCmd cmd = SearchProductCmd.builder()
+                .merchantId(merchantId)
+                .storeId(StoreId.newStoreId())
+                .notInCollectionId(StoreCollectionId.of(UUID.randomUUID()))
+                .build();
+        DomainPageRequest pageRequest = DomainPageRequest.builder().pageNumber(0).pageSize(10).build();
+
+        when(merchantRepository.existsById(merchantId)).thenReturn(true);
+        when(storeRepository.findByMerchantIdAndStoreId(any(), any())).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> searchProductService.search(cmd, pageRequest))
+                .isInstanceOf(NotFoundException.class)
+                .hasMessage(Constants.ERROR_MSG_STORE_NOT_FOUND);
+        verifyNoInteractions(storeCollectionRepository, repository);
+    }
+
+    @Test
+    @DisplayName("notInCollectionId of the store's collection is passed to the search")
+    void passesExcludedCollection_whenInStore() {
+        MerchantId merchantId = MerchantId.newMerchantId();
+        StoreId storeId = StoreId.newStoreId();
+        StoreCollectionId collectionId = StoreCollectionId.of(UUID.randomUUID());
+        SearchProductCmd cmd = SearchProductCmd.builder()
+                .merchantId(merchantId)
+                .storeId(storeId)
+                .notInCollectionId(collectionId)
+                .build();
+        DomainPageRequest pageRequest = DomainPageRequest.builder().pageNumber(0).pageSize(10).build();
+        PagedResult<StoreProduct> empty = PagedResult.<StoreProduct>builder()
+                .content(List.of()).pageNumber(0).pageSize(10).totalElements(0).totalPages(0).isLast(true).build();
+
+        when(merchantRepository.existsById(merchantId)).thenReturn(true);
+        when(storeRepository.findByMerchantIdAndStoreId(merchantId, storeId)).thenReturn(Optional.of(store(merchantId, storeId)));
+        when(storeCollectionRepository.existsByStoreIdAndId(storeId, collectionId)).thenReturn(true);
+        when(repository.searchProducts(storeId, null, collectionId, pageRequest)).thenReturn(empty);
+
+        PagedResult<StoreProductReviewDto> result = searchProductService.search(cmd, pageRequest);
+
+        assertThat(result.getContent()).isEmpty();
+        verify(repository).searchProducts(storeId, null, collectionId, pageRequest);
     }
 }

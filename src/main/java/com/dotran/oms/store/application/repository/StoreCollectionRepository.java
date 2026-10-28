@@ -18,5 +18,7 @@ public interface StoreCollectionRepository {
 
     Optional<StoreCollection> getByStoreIdAndId(StoreId storeId, StoreCollectionId storeCollectionId);
 
+    boolean existsByStoreIdAndId(StoreId storeId, StoreCollectionId storeCollectionId);
+
     List<StoreCollection> getListCollectionByStoreId(StoreId storeId);
 }
