@@ -10,7 +10,7 @@ public class Constants {
     public static final String STORE = "Store";
     public static final String PRODUCT = "Product";
 
-    // Platform currency (BR-MER-01: one market, VND, no decimals)
+    // Platform currency (BR-MER-01: one market, VND, no decimals). SKUs may still carry other currencies.
     public static final String CURRENCY_VND = "VND";
 
     // Common error
@@ -21,8 +21,9 @@ public class Constants {
     public static final String ERROR_MSG_MERCHANT_CODE_ALREADY_EXISTS = "Merchant code already exists";
     public static final String ERROR_MSG_STORE_NOT_FOUND = "Store not found";
     public static final String ERROR_MSG_PRODUCT_NOT_FOUND = "Product not found";
-    public static final String ERROR_MSG_SKU_CURRENCY_NOT_SUPPORTED = "Currency must be VND (SKU %s)";
-    public static final String ERROR_MSG_SKU_PRICE_INVALID = "Price must be a whole, non-negative number of VND (SKU %s)";
+    public static final String ERROR_MSG_SKU_CURRENCY_INVALID = "Currency must be a 3-letter code (SKU %s)";
+    public static final String ERROR_MSG_SKU_PRICE_INVALID = "Price must be zero or more, below 10^16, with at most 2 decimals (SKU %s)";
+    public static final String ERROR_MSG_SKU_PRICE_NOT_WHOLE_VND = "A VND price must be a whole number (SKU %s)";
     public static final String ERROR_MSG_COLLECTION_NOT_FOUND = "Collection not found";
     public static final String ERROR_MSG_INVALID_SORT_FIELD = "sortBy must be one of createdAt, updatedAt, name, id";
     public static final String ERROR_MSG_INVALID_SORT_DIRECTION = "direction must be ASC or DESC";

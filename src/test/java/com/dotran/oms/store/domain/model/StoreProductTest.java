@@ -225,7 +225,7 @@ class StoreProductTest {
     }
 
     @Nested
-    @DisplayName("sale rule (BR-MER-01: VND, whole đồng, not negative)")
+    @DisplayName("sale rule (3-letter currency, price ≥ 0 with ≤ 2 decimals, whole VND)")
     class SaleRule {
 
         private StoreProduct productWith(ProductSku... skus) {
@@ -252,45 +252,63 @@ class StoreProductTest {
         }
 
         @Test
-        @DisplayName("initState normalises the currency code to VND (any case, surrounding spaces)")
+        @DisplayName("initState accepts another currency with up to 2 decimals")
+        void initState_acceptsOtherCurrency() {
+            ProductId productId = ProductId.newProductId();
+            StoreProduct product = productWith(
+                    buildSku(productId, new BigDecimal("9.99"), "USD"),
+                    buildSku(productId, new BigDecimal("12.5"), "EUR"));
+
+            product.initState();
+
+            assertThat(product.getSkus()).extracting(ProductSku::getCurrency).containsExactly("USD", "EUR");
+        }
+
+        @Test
+        @DisplayName("initState normalises the currency code to upper case without surrounding spaces")
         void initState_normalisesCurrency() {
             ProductId productId = ProductId.newProductId();
             StoreProduct product = productWith(
                     buildSku(productId, BigDecimal.TEN, "vnd"),
-                    buildSku(productId, BigDecimal.TEN, " VnD "));
+                    buildSku(productId, BigDecimal.TEN, " usd "));
 
             product.initState();
 
-            assertThat(product.getSkus()).extracting(ProductSku::getCurrency).containsExactly("VND", "VND");
-            assertThat(product.getCurrency()).isEqualTo("VND");
+            assertThat(product.getSkus()).extracting(ProductSku::getCurrency).containsExactly("VND", "USD");
         }
 
         @Test
-        @DisplayName("initState rejects a non-VND currency")
-        void initState_rejectsOtherCurrency() {
-            StoreProduct product = productWith(buildSku(ProductId.newProductId(), BigDecimal.TEN, "USD"));
+        @DisplayName("initState rejects a currency that is not a 3-letter code, or null, without a NullPointerException")
+        void initState_rejectsInvalidCurrency() {
+            for (String currency : new String[]{"US", "DOLLAR", "U5D", "", null}) {
+                StoreProduct product = productWith(buildSku(ProductId.newProductId(), BigDecimal.TEN, currency));
+
+                assertThatThrownBy(product::initState)
+                        .as("currency %s", currency)
+                        .isInstanceOf(ValidationException.class)
+                        .hasMessageContaining("SKU-001");
+            }
+        }
+
+        @Test
+        @DisplayName("initState rejects a fractional VND price")
+        void initState_rejectsFractionalVnd() {
+            StoreProduct product = productWith(buildSku(ProductId.newProductId(), new BigDecimal("10.5"), "VND"));
 
             assertThatThrownBy(product::initState)
                     .isInstanceOf(ValidationException.class)
-                    .hasMessageContaining("SKU-001");
+                    .hasMessageContaining("VND");
         }
 
         @Test
-        @DisplayName("initState rejects a null currency without a NullPointerException")
-        void initState_rejectsNullCurrency() {
-            StoreProduct product = productWith(buildSku(ProductId.newProductId(), BigDecimal.TEN, null));
-
-            assertThatThrownBy(product::initState).isInstanceOf(ValidationException.class);
-        }
-
-        @Test
-        @DisplayName("initState rejects a fractional, negative or missing price")
+        @DisplayName("initState rejects a negative, missing or too large price, and more than 2 decimals in any currency")
         void initState_rejectsInvalidPrice() {
-            for (BigDecimal price : new BigDecimal[]{new BigDecimal("10.5"), new BigDecimal("-1"), null}) {
-                StoreProduct product = productWith(buildSku(ProductId.newProductId(), price, "VND"));
+            Object[][] cases = {{new BigDecimal("-1"), "VND"}, {null, "VND"}, {new BigDecimal("9.999"), "USD"}, {new BigDecimal("-0.01"), "USD"}, {new BigDecimal("1E16"), "VND"}};
+            for (Object[] c : cases) {
+                StoreProduct product = productWith(buildSku(ProductId.newProductId(), (BigDecimal) c[0], (String) c[1]));
 
                 assertThatThrownBy(product::initState)
-                        .as("price %s", price)
+                        .as("price %s %s", c[0], c[1])
                         .isInstanceOf(ValidationException.class);
             }
         }
@@ -301,18 +319,18 @@ class StoreProductTest {
             ProductId productId = ProductId.newProductId();
             StoreProduct product = productWith(
                     buildSku(productId, BigDecimal.TEN, "VND"),
-                    buildSku(productId, BigDecimal.TEN, "USD"));
+                    buildSku(productId, new BigDecimal("10.5"), "VND"));
 
             assertThatThrownBy(product::initState).isInstanceOf(ValidationException.class);
         }
 
         @Test
-        @DisplayName("addSku rejects a non-VND SKU and leaves the SKU list unchanged")
-        void addSku_rejectsOtherCurrency() {
+        @DisplayName("addSku rejects an invalid SKU and leaves the SKU list unchanged")
+        void addSku_rejectsInvalidSku() {
             ProductId productId = ProductId.newProductId();
             StoreProduct product = productWith(buildSku(productId, BigDecimal.TEN, "VND"));
 
-            assertThatThrownBy(() -> product.addSku(buildSku(productId, BigDecimal.TEN, "USD")))
+            assertThatThrownBy(() -> product.addSku(buildSku(productId, new BigDecimal("10.5"), "VND")))
                     .isInstanceOf(ValidationException.class);
 
             assertThat(product.getSkus()).hasSize(1);
@@ -324,9 +342,9 @@ class StoreProductTest {
             ProductId productId = ProductId.newProductId();
             StoreProduct product = productWith();
 
-            product.addSku(buildSku(productId, BigDecimal.TEN, "vnd"));
+            product.addSku(buildSku(productId, BigDecimal.TEN, "usd"));
 
-            assertThat(product.getSkus()).extracting(ProductSku::getCurrency).containsExactly("VND");
+            assertThat(product.getSkus()).extracting(ProductSku::getCurrency).containsExactly("USD");
         }
     }
 }

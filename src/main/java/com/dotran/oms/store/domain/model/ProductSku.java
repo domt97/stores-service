@@ -14,11 +14,16 @@ import lombok.experimental.SuperBuilder;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.Locale;
+import java.util.regex.Pattern;
 
 @Getter
 @SuperBuilder
 @EqualsAndHashCode(callSuper = true)
 public class ProductSku extends BaseDomain<ProductSkuId> {
+
+    private static final Pattern CURRENCY_CODE = Pattern.compile("[A-Z]{3}");
+    // product_skus.price is NUMERIC(18,2): at most 16 integer digits.
+    private static final BigDecimal PRICE_LIMIT = BigDecimal.TEN.pow(16);
 
     private ProductId productId;
     private SKU sku;
@@ -39,20 +44,26 @@ public class ProductSku extends BaseDomain<ProductSkuId> {
     }
 
     /**
-     * BR-MER-01: a SKU is sold in VND, in whole đồng, never below zero.
-     * Normalises the currency code (any case, surrounding spaces) to {@code VND}.
+     * A SKU price is a 3-letter currency code (stored upper-case) and an amount of zero or more with at most
+     * 2 decimals (the column scale). A VND price must be a whole number of đồng (BR-MER-01).
      */
     public void normaliseForSale() {
         String skuCode = this.sku != null ? this.sku.getValue() : null;
+        String currencyCode = this.currency != null ? this.currency.trim().toUpperCase(Locale.ROOT) : null;
 
-        if (null == this.currency || !Constants.CURRENCY_VND.equals(this.currency.trim().toUpperCase(Locale.ROOT))) {
-            throw new ValidationException(String.format(Constants.ERROR_MSG_SKU_CURRENCY_NOT_SUPPORTED, skuCode));
+        if (null == currencyCode || !CURRENCY_CODE.matcher(currencyCode).matches()) {
+            throw new ValidationException(String.format(Constants.ERROR_MSG_SKU_CURRENCY_INVALID, skuCode));
         }
 
-        if (null == this.price || this.price.signum() < 0 || this.price.stripTrailingZeros().scale() > 0) {
+        if (null == this.price || this.price.signum() < 0 || this.price.stripTrailingZeros().scale() > 2
+                || this.price.compareTo(PRICE_LIMIT) >= 0) {
             throw new ValidationException(String.format(Constants.ERROR_MSG_SKU_PRICE_INVALID, skuCode));
         }
 
-        this.currency = Constants.CURRENCY_VND;
+        if (Constants.CURRENCY_VND.equals(currencyCode) && this.price.stripTrailingZeros().scale() > 0) {
+            throw new ValidationException(String.format(Constants.ERROR_MSG_SKU_PRICE_NOT_WHOLE_VND, skuCode));
+        }
+
+        this.currency = currencyCode;
     }
 }

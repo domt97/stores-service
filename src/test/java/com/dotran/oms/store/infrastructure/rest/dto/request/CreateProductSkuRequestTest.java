@@ -43,11 +43,12 @@ class CreateProductSkuRequestTest {
     }
 
     @Test
-    @DisplayName("accepts prices 0 and 10.00, and missing dimensions")
+    @DisplayName("accepts prices 0 and 10.00, a lower-case currency with 2 decimals, and missing dimensions")
     void acceptsValidValues() {
         assertThat(invalidFields(valid().price(BigDecimal.ZERO).build())).isEmpty();
         assertThat(invalidFields(valid().price(new BigDecimal("10.00")).build())).isEmpty();
         assertThat(invalidFields(valid().weight(new BigDecimal("250.5")).build())).isEmpty();
+        assertThat(invalidFields(valid().currency("usd").price(new BigDecimal("9.99")).build())).isEmpty();
     }
 
     @Test

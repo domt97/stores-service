@@ -162,12 +162,12 @@ class StoreProductImportHandlerTest {
     class Execute {
 
         @Test
-        @DisplayName("rejects a non-VND or fractional SKU row before anything is saved")
+        @DisplayName("rejects an invalid currency code or a fractional VND price before anything is saved")
         void rejectsInvalidSkuRow_beforeSaving() {
             when(merchantRepository.existsById(merchantId)).thenReturn(true);
             when(storeRepository.existsByMerchantIdAndStoreId(merchantId, storeId)).thenReturn(true);
 
-            assertThatThrownBy(() -> handler.execute(context(), dataWithSku("USD", new BigDecimal("10.00"))))
+            assertThatThrownBy(() -> handler.execute(context(), dataWithSku("US", new BigDecimal("10.00"))))
                     .isInstanceOf(ValidationException.class);
             assertThatThrownBy(() -> handler.execute(context(), dataWithSku("VND", new BigDecimal("10.50"))))
                     .isInstanceOf(ValidationException.class);

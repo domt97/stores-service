@@ -61,4 +61,4 @@ Infra from the `development` repo (Postgres with `wal_level=logical`, Kafka, Kaf
 - Only `ProductCreated` is published. Updating SKUs, deactivating a product or closing a store does **not** notify inventory yet.
 - `InventoryServiceClient` and `PromotionServiceClient` are ports without adapters.
 - Debezium delivers at least once; anything consuming our events must be idempotent.
-- SKU sale rule (BR-MER-01: VND, whole đồng, ≥ 0) lives in `ProductSku.normaliseForSale()` and runs from `StoreProduct.initState()` and `addSku()`. Any new path that creates or changes SKUs (e.g. update product) must call it. Products read from the DB are not re-validated.
+- SKU price rule (3-letter currency stored upper-case; price ≥ 0 with ≤ 2 decimals; VND whole đồng, BR-MER-01) lives in `ProductSku.normaliseForSale()` and runs from `StoreProduct.initState()` and `addSku()`. Any new path that creates or changes SKUs (e.g. update product) must call it. Products read from the DB are not re-validated.

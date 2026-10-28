@@ -152,11 +152,11 @@ class CreateStoreProductUseCaseServiceTest {
     }
 
     @Test
-    @DisplayName("throws ValidationException and writes nothing when a SKU is not priced in VND")
-    void throwsValidation_whenSkuNotVnd() {
+    @DisplayName("throws ValidationException and writes nothing when a SKU currency is not a 3-letter code")
+    void throwsValidation_whenSkuCurrencyInvalid() {
         when(merchantRepository.existsById(merchantId)).thenReturn(true);
         when(storeRepository.existsByMerchantIdAndStoreId(merchantId, storeId)).thenReturn(true);
-        when(storeProductMapper.fromCreateStoreProductCmd(cmd)).thenReturn(productWithSku("USD"));
+        when(storeProductMapper.fromCreateStoreProductCmd(cmd)).thenReturn(productWithSku("US"));
 
         assertThatThrownBy(() -> createStoreProductUseCaseService.createProduct(cmd))
                 .isInstanceOf(ValidationException.class);
