@@ -1,5 +1,10 @@
 package com.dotran.oms.store.infrastructure.rest.api;
 
+import org.springframework.web.bind.annotation.PutMapping;
+import com.dotran.oms.store.infrastructure.rest.dto.request.UpdateStoreProductRequest;
+import com.dotran.oms.store.application.usecase.storeproduct.UpdateStoreProductUseCase;
+import com.dotran.oms.store.application.command.storeproduct.UpdateStoreProductCmd;
+import com.dotran.oms.core.domain.id.ProductId;
 import com.dotran.oms.core.annotation.WebAdapter;
 import com.dotran.oms.core.domain.id.StoreId;
 import com.dotran.oms.core.domain.id.MerchantId;
@@ -53,6 +58,7 @@ import java.util.UUID;
 public class StoreProductController {
 
     private final CreateStoreProductUseCase createStoreProductUseCase;
+    private final UpdateStoreProductUseCase updateStoreProductUseCase;
     private final GetStoreProductDetailUseCase getStoreProductDetailUseCase;
     private final SearchProductUseCase searchProductUseCase;
     private final ImportStoreProductUseCase importStoreProductUseCase;
@@ -62,6 +68,7 @@ public class StoreProductController {
     @ApiResponses(value = {
             @ApiResponse(responseCode = "201", description = "Product created successfully",
                     content = @Content(mediaType = "application/json", schema = @Schema(implementation = StoreProductResponse.class))),
+            @ApiResponse(responseCode = "409", description = "A SKU code is already used by another product of the store", content = @Content),
             @ApiResponse(responseCode = "400", description = "Invalid request body, a currency that is not a 3-letter code, a negative price, more than 2 decimals, or a VND price that is not whole", content = @Content),
             @ApiResponse(responseCode = "404", description = "Merchant not found, or store not found for this merchant", content = @Content)
     })
@@ -78,6 +85,38 @@ public class StoreProductController {
         StoreProductDetailDto storeProductDetailDto = createStoreProductUseCase.createProduct(createStoreProductCmd);
 
         return storeProductRestMapper.toStoreProductResponse(storeProductDetailDto);
+    }
+
+    @Operation(summary = "Update a product",
+            description = "Full replace of a product: details, status, images and SKUs. Send the version from the last GET. "
+                    + "SKUs are matched by code; codes left out are removed (their codes stay reserved in the store) and "
+                    + "codes sent again are restored. Omitted optional fields are cleared. A body equal to the current state "
+                    + "returns 200 without writing; every SKU in it must pass the SKU price rule, so a stored SKU that "
+                    + "breaks the rule must be corrected (400). Publishes ProductUpdated.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Product updated (or already in the requested state)",
+                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = StoreProductResponse.class))),
+            @ApiResponse(responseCode = "400", description = "Invalid body: limits (100 SKUs, 20 images, 5000-character description), "
+                    + "duplicate or blank SKU codes, a SKU id that does not match its code, or the SKU price rule", content = @Content),
+            @ApiResponse(responseCode = "404", description = "Merchant, store or product not found", content = @Content),
+            @ApiResponse(responseCode = "409", description = "The product changed since the given version, or a SKU code is used by "
+                    + "another product of the store", content = @Content),
+            @ApiResponse(responseCode = "422", description = "Status change not allowed (never back to DRAFT; ACTIVE needs an ACTIVE SKU)",
+                    content = @Content)
+    })
+    @PutMapping("/merchants/{merchantId}/stores/{storeId}/products/{productId}")
+    @ResponseStatus(HttpStatus.OK)
+    public StoreProductResponse update(
+            @Parameter(description = "Merchant ID", required = true) @PathVariable UUID merchantId,
+            @Parameter(description = "Store ID", required = true) @PathVariable UUID storeId,
+            @Parameter(description = "Product ID", required = true) @PathVariable UUID productId,
+            @RequestBody @Valid UpdateStoreProductRequest request) {
+        UpdateStoreProductCmd cmd = storeProductRestMapper.fromUpdateRequestToCmd(request);
+        cmd.setMerchantId(MerchantId.of(merchantId));
+        cmd.setStoreId(StoreId.of(storeId));
+        cmd.setProductId(ProductId.of(productId));
+
+        return storeProductRestMapper.toStoreProductResponse(updateStoreProductUseCase.updateProduct(cmd));
     }
 
     @Operation(summary = "Get product details", description = "Retrieves detailed information about a specific product including SKUs and images")

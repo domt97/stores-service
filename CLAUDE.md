@@ -7,7 +7,7 @@ that publishes/consumes events or calls another service.
 ## Owns
 
 Stores (config, address, business hours, availability windows), the store's **own product catalog**
-(products, SKUs, images), collections, Excel product import. Publishes `ProductCreated`.
+(products, SKUs, images), collections, Excel product import. Publishes `ProductCreated` and `ProductUpdated`.
 Postgres DB `store`, schema `store` (owns `merchants`); files in S3. Port **8048**.
 
 ## Layout (`com.dotran.oms.store`)
@@ -15,7 +15,7 @@ Postgres DB `store`, schema `store` (owns `merchants`); files in S3. Port **8048
 | Layer | Package | Contains |
 |-------|---------|----------|
 | Domain (no Spring) | `domain/model` | Aggregates `Merchant`, `Store`, `StoreProduct` (+ `ProductSku`, `ProductImage`), `StoreCollection`, `StoreAvailability`, `BusinessHour` |
-| | `domain/valueobject`, `enums`, `event`, `exception` | `StoreConfig`; statuses; `OutboxEvent`, `ProductCreatedEvent`; domain exceptions |
+| | `domain/valueobject`, `enums`, `event`, `exception` | `StoreConfig`; statuses; `OutboxEvent`, `ProductCreatedEvent`, `ProductUpdatedEvent`; domain exceptions |
 | Application | `application/usecase/<area>` | Inbound port interfaces `XxxUseCase` |
 | | `application/service/<area>` | `@UseCase` implementations `XxxService`, `@Transactional` here |
 | | `application/command`, `dto`, `mapper` | `XxxCmd` in, `XxxDto` out, MapStruct mappers |
@@ -36,7 +36,7 @@ Areas used across packages: `merchant`, `store`, `storeconfig`, `storeproduct`, 
 4. **Event?** If other contexts must know: build with `OutboxEventHelper`, save with `OutboxEventRepository` **in the same transaction**. Never use a Kafka client. Topic = `eventType` (PascalCase, unique across OMS). Add the JSON Schema + row to `oms-workspace/architecture/`.
 5. **REST**: controller under `/v1/store/merchants/{merchantId}/stores/...`, request DTO with Jakarta validation, map Request → Cmd and Dto → Response in `infrastructure/rest/mapper`.
 6. **Errors**: domain exception → handler in `StoreExceptionHandler` (extends `oms-core` `GlobalExceptionHandler`); messages in `common/constants/Constants`.
-7. **Persistence**: Flyway migration `src/main/resources/db/migration/V<next>__<what>.sql` (latest is `V8`); never edit an applied migration. Top-level tables carry `merchant_id`; child tables are scoped through `store_id`.
+7. **Persistence**: Flyway migration `src/main/resources/db/migration/V<next>__<what>.sql` (latest is `V8`); never edit an applied migration. (Exception, decided 2026-10-29 while only local databases existed: `V3` was edited in place for update-product — `product_skus.store_id`/`removed_at`, `UNIQUE (store_id, sku)`, `store_products.version` — and local DBs were recreated. Don't repeat this once any shared environment exists.) Top-level tables carry `merchant_id`; child tables are scoped through `store_id`.
 8. **Tests** (mirror the package): domain model test, service test, controller test, adapter test.
 
 ## Tests
@@ -58,7 +58,10 @@ Infra from the `development` repo (Postgres with `wal_level=logical`, Kafka, Kaf
 ## Pitfalls
 
 - `ProductCreatedEvent` is also defined in inventory-service (`infrastructure/message/dto`). Changing fields here breaks the consumer — change both, keep backward compatible.
-- Only `ProductCreated` is published. Updating SKUs, deactivating a product or closing a store does **not** notify inventory yet.
+- `ProductCreated` (version 0) and `ProductUpdated` (version ≥ 1, full catalog snapshot) are published; closing a store does **not** notify anyone yet.
+- **Product version** (`store_products.version`): only `StoreProductPersistenceAdapter.bumpVersion` (guarded native UPDATE) writes it; the JPA column is `insertable/updatable = false`. No other path may update existing product, SKU or image rows (create/import insert, collections touch `product_collections` only) — otherwise the version stops protecting updates.
+- **Update order** (`UpdateStoreProductService`): `replace()` on the domain object → version check → bump (row lock) → SKU code check (JPQL, before any entity is changed) → `applyChanges` (in place on the managed entity, then flush) → outbox. Never `setSkus`/`setImages` on a managed entity (orphan removal breaks); the event version is `cmd.version + 1`.
+- **Removed SKUs** stay in `product_skus` (`removed_at`) and keep their code reserved in the store (`uk_product_skus_store_sku`). `StoreProduct.getSkus()` (and every read built on it) leaves them out; only `StoreProduct.replace()` uses `getAllSkusIncludingRemoved()`. Each PUT loads all rows, removed ones included.
 - `InventoryServiceClient` and `PromotionServiceClient` are ports without adapters.
 - Debezium delivers at least once; anything consuming our events must be idempotent.
-- SKU price rule (3-letter currency stored upper-case; price ≥ 0 with ≤ 2 decimals; VND whole đồng, BR-MER-01) lives in `ProductSku.normaliseForSale()` and runs from `StoreProduct.initState()` and `addSku()`. Any new path that creates or changes SKUs (e.g. update product) must call it. Products read from the DB are not re-validated.
+- SKU price rule (3-letter currency stored upper-case; price ≥ 0 with ≤ 2 decimals; VND whole đồng, BR-MER-01) lives in `ProductSku.normaliseForSale()` and runs from `StoreProduct.initState()` and `addSku()`. Any new path that creates or changes SKUs must call it; `StoreProduct.replace()` (update-product) applies it to every SKU in the body, so a legacy SKU that breaks the rule must be corrected when the product is edited. Products read from the DB are not re-validated.

@@ -26,5 +26,9 @@ public class ProductCreatedEvent {
     private UUID storeId;
     private UUID productId;
 
+    /** Always 0: lets consumers order ProductCreated against ProductUpdated (version ≥ 1). */
+    @Builder.Default
+    private Long version = 0L;
+
     private List<SKU> skus;
 }

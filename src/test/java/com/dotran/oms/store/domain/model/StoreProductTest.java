@@ -6,6 +6,8 @@ import com.dotran.oms.core.domain.id.StoreId;
 import com.dotran.oms.core.exception.ValidationException;
 import com.dotran.oms.store.common.id.ProductSkuId;
 import com.dotran.oms.store.domain.enums.ProductStatus;
+import com.dotran.oms.store.domain.exception.ProductRuleViolationException;
+import com.dotran.oms.store.domain.enums.ProductSkuStatus;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -20,22 +22,33 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 @DisplayName("StoreProduct")
 class StoreProductTest {
 
+    private int skuSequence;
+
+    /** A product with one ACTIVE SKU, ready for initState (an ACTIVE product needs an ACTIVE SKU, BR-CAT-10). */
     private StoreProduct buildProduct() {
+        ProductId productId = ProductId.newProductId();
         return StoreProduct.builder()
-                .id(ProductId.newProductId())
+                .id(productId)
                 .storeId(StoreId.newStoreId())
                 .name("Test Product")
+                .skus(new ArrayList<>(List.of(buildSku(productId, BigDecimal.TEN, "VND"))))
                 .build();
     }
 
+    private StoreProduct productWithoutSkus() {
+        return StoreProduct.builder().id(ProductId.newProductId()).storeId(StoreId.newStoreId()).name("No SKUs").build();
+    }
+
+    /** ACTIVE SKU with a new code per call: SKU-001, SKU-002, … */
     private ProductSku buildSku(ProductId productId, BigDecimal price, String currency) {
         return ProductSku.builder()
                 .id(ProductSkuId.newProductSkuId())
                 .productId(productId)
-                .sku(SKU.of("SKU-001"))
+                .sku(SKU.of(String.format("SKU-%03d", ++skuSequence)))
                 .name("Variant")
                 .price(price)
                 .currency(currency)
+                .status(ProductSkuStatus.ACTIVE)
                 .build();
     }
 
@@ -52,11 +65,15 @@ class StoreProductTest {
         }
 
         @Test
-        @DisplayName("initializes null skus to empty list")
-        void initializesNullSkus() {
-            StoreProduct product = buildProduct();
-            product.initState();
-            assertThat(product.getSkus()).isNotNull().isEmpty();
+        @DisplayName("rejects a product without SKUs: an ACTIVE product needs an ACTIVE SKU")
+        void rejectsProductWithoutSkus() {
+            StoreProduct product = StoreProduct.builder()
+                    .id(ProductId.newProductId())
+                    .storeId(StoreId.newStoreId())
+                    .name("No SKUs")
+                    .build();
+
+            assertThatThrownBy(product::initState).isInstanceOf(ProductRuleViolationException.class);
         }
 
         @Test
@@ -196,7 +213,7 @@ class StoreProductTest {
         @Test
         @DisplayName("getMinPrice returns ZERO when skus list is null")
         void getMinPrice_returnsZero_whenNoSkus() {
-            assertThat(buildProduct().getMinPrice()).isEqualByComparingTo(BigDecimal.ZERO);
+            assertThat(productWithoutSkus().getMinPrice()).isEqualByComparingTo(BigDecimal.ZERO);
         }
 
         @Test
@@ -208,7 +225,7 @@ class StoreProductTest {
         @Test
         @DisplayName("getCurrency returns null when skus is null")
         void getCurrency_returnsNull_whenNoSkus() {
-            assertThat(buildProduct().getCurrency()).isNull();
+            assertThat(productWithoutSkus().getCurrency()).isNull();
         }
 
         @Test
@@ -286,7 +303,7 @@ class StoreProductTest {
                 assertThatThrownBy(product::initState)
                         .as("currency %s", currency)
                         .isInstanceOf(ValidationException.class)
-                        .hasMessageContaining("SKU-001");
+                        .hasMessageContaining("SKU-");
             }
         }
 

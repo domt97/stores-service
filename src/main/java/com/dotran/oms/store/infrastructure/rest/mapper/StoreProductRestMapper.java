@@ -1,5 +1,9 @@
 package com.dotran.oms.store.infrastructure.rest.mapper;
 
+import com.dotran.oms.store.infrastructure.rest.dto.request.UpdateProductSkuRequest;
+import com.dotran.oms.store.infrastructure.rest.dto.request.UpdateStoreProductRequest;
+import com.dotran.oms.store.application.command.storeproduct.UpdateProductSkuCmd;
+import com.dotran.oms.store.application.command.storeproduct.UpdateStoreProductCmd;
 import com.dotran.oms.core.util.CollectionUtils;
 import com.dotran.oms.store.application.command.storeproduct.CreateStoreProductCmd;
 import com.dotran.oms.store.application.command.storeproduct.ProductSkuCmd;
@@ -37,6 +41,24 @@ public abstract class StoreProductRestMapper {
             return new ArrayList<>();
         }
         return request.stream().map(this::fromCreateProductSkuRequest).toList();
+    }
+
+    @Mapping(target = "categoryId", expression = "java(idMapper.toCategoryId(request.getCategoryId()))")
+    @Mapping(target = "skus", source = "skus", qualifiedByName = "fromUpdateProductSkuRequestList")
+    @Mapping(target = "merchantId", ignore = true)
+    @Mapping(target = "storeId", ignore = true)
+    @Mapping(target = "productId", ignore = true)
+    public abstract UpdateStoreProductCmd fromUpdateRequestToCmd(UpdateStoreProductRequest request);
+
+    @Mapping(target = "sku", expression = "java(idMapper.toSKU(request.getSku()))")
+    public abstract UpdateProductSkuCmd fromUpdateProductSkuRequest(UpdateProductSkuRequest request);
+
+    @Named("fromUpdateProductSkuRequestList")
+    public List<UpdateProductSkuCmd> fromUpdateProductSkuRequestList(List<UpdateProductSkuRequest> request) {
+        if (request == null) {
+            return null;
+        }
+        return request.stream().map(this::fromUpdateProductSkuRequest).toList();
     }
 
     public abstract StoreProductResponse toStoreProductResponse(StoreProductDetailDto dto);

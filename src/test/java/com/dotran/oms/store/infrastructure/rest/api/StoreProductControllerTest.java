@@ -1,5 +1,11 @@
 package com.dotran.oms.store.infrastructure.rest.api;
 
+import com.dotran.oms.core.domain.id.StoreId;
+import com.dotran.oms.core.domain.id.MerchantId;
+import com.dotran.oms.core.domain.id.ProductId;
+import com.dotran.oms.store.infrastructure.rest.dto.request.UpdateStoreProductRequest;
+import com.dotran.oms.store.application.command.storeproduct.UpdateStoreProductCmd;
+import com.dotran.oms.store.application.usecase.storeproduct.UpdateStoreProductUseCase;
 import com.dotran.oms.core.domain.page.DomainPageRequest;
 import com.dotran.oms.core.domain.page.PagedResult;
 import com.dotran.oms.core.exception.ValidationException;
@@ -41,6 +47,7 @@ import static org.mockito.Mockito.when;
 class StoreProductControllerTest {
 
     @Mock private CreateStoreProductUseCase createStoreProductUseCase;
+    @Mock private UpdateStoreProductUseCase updateStoreProductUseCase;
     @Mock private GetStoreProductDetailUseCase getStoreProductDetailUseCase;
     @Mock private SearchProductUseCase searchProductUseCase;
     @Mock private ImportStoreProductUseCase importStoreProductUseCase;
@@ -153,5 +160,27 @@ class StoreProductControllerTest {
         ImportResult result = controller.importProducts(merchantId, storeId, request);
 
         assertThat(result).isEqualTo(importResult);
+    }
+
+    @Test
+    @DisplayName("update puts the path merchant, store and product into the command and returns the mapped response")
+    void update_usesPathIds() {
+        UUID merchantId = UUID.randomUUID();
+        UUID storeId = UUID.randomUUID();
+        UUID productId = UUID.randomUUID();
+        UpdateStoreProductRequest request = UpdateStoreProductRequest.builder().version(3L).name("P").build();
+        UpdateStoreProductCmd cmd = UpdateStoreProductCmd.builder().version(3L).name("P").build();
+        StoreProductDetailDto dto = StoreProductDetailDto.builder().version(4).build();
+        StoreProductResponse response = StoreProductResponse.builder().version(4).build();
+        when(storeProductRestMapper.fromUpdateRequestToCmd(request)).thenReturn(cmd);
+        when(updateStoreProductUseCase.updateProduct(cmd)).thenReturn(dto);
+        when(storeProductRestMapper.toStoreProductResponse(dto)).thenReturn(response);
+
+        StoreProductResponse result = controller.update(merchantId, storeId, productId, request);
+
+        assertThat(result.getVersion()).isEqualTo(4);
+        assertThat(cmd.getMerchantId()).isEqualTo(MerchantId.of(merchantId));
+        assertThat(cmd.getStoreId()).isEqualTo(StoreId.of(storeId));
+        assertThat(cmd.getProductId()).isEqualTo(ProductId.of(productId));
     }
 }

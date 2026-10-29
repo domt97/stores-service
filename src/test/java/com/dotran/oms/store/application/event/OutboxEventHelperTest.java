@@ -27,7 +27,6 @@ class OutboxEventHelperTest {
                 .name("Product")
                 .skus(new ArrayList<>())
                 .build();
-        product.initState();
         return product;
     }
 

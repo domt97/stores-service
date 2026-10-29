@@ -17,8 +17,10 @@ import com.dotran.oms.store.application.repository.StoreProductRepository;
 import com.dotran.oms.store.application.repository.StoreRepository;
 import com.dotran.oms.store.common.id.ProductSkuId;
 import com.dotran.oms.store.domain.enums.OutboxStatus;
+import com.dotran.oms.store.domain.enums.ProductSkuStatus;
 import com.dotran.oms.store.domain.event.OutboxEvent;
 import com.dotran.oms.store.domain.model.ProductSku;
+import com.dotran.oms.store.domain.exception.SkuCodeInUseException;
 import com.dotran.oms.store.domain.model.StoreProduct;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -30,6 +32,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -72,6 +75,7 @@ class CreateStoreProductUseCaseServiceTest {
                 .sku(SKU.of("SKU-001"))
                 .price(new BigDecimal("25000"))
                 .currency(currency)
+                .status(ProductSkuStatus.ACTIVE)
                 .build();
 
         return StoreProduct.builder()
@@ -160,6 +164,22 @@ class CreateStoreProductUseCaseServiceTest {
 
         assertThatThrownBy(() -> createStoreProductUseCaseService.createProduct(cmd))
                 .isInstanceOf(ValidationException.class);
+
+        verifyNothingWritten();
+    }
+
+    @Test
+    @DisplayName("throws SkuCodeInUseException and writes nothing when a SKU code is already used in the store (removed SKUs included)")
+    void throwsConflict_whenSkuCodeInUse() {
+        when(merchantRepository.existsById(merchantId)).thenReturn(true);
+        when(storeRepository.existsByMerchantIdAndStoreId(merchantId, storeId)).thenReturn(true);
+        when(storeProductMapper.fromCreateStoreProductCmd(cmd)).thenReturn(productWithSku("VND"));
+        when(storeProductRepository.findSkuCodesInStore(storeId, List.of(SKU.of("SKU-001"))))
+                .thenReturn(Set.of(SKU.of("SKU-001")));
+
+        assertThatThrownBy(() -> createStoreProductUseCaseService.createProduct(cmd))
+                .isInstanceOf(SkuCodeInUseException.class)
+                .hasMessageContaining("SKU-001");
 
         verifyNothingWritten();
     }
