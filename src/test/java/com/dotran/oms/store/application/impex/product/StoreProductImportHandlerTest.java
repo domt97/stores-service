@@ -13,6 +13,7 @@ import com.dotran.oms.store.application.repository.StoreRepository;
 import com.dotran.oms.store.application.repository.MerchantRepository;
 import com.dotran.oms.store.domain.event.OutboxEvent;
 import com.dotran.oms.store.domain.model.StoreProduct;
+import com.dotran.oms.store.domain.exception.SkuCodeInUseException;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -24,12 +25,15 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -161,6 +165,45 @@ class StoreProductImportHandlerTest {
     @DisplayName("execute (full pipeline)")
     class Execute {
 
+        private ProductImportData dataWithSkuCodes(String... codes) {
+            ProductImportData base = validData();
+            List<ProductSKUImportRow> skus = Arrays.stream(codes)
+                    .map(code -> ProductSKUImportRow.builder().productRef("REF-001").sku(code == null ? null : SKU.of(code))
+                            .price(new BigDecimal("10000")).currency("VND").build())
+                    .toList();
+            return ProductImportData.builder().products(base.getProducts()).skus(skus).images(base.getImages()).build();
+        }
+
+        @Test
+        @DisplayName("rejects a blank, missing or too long SKU code, and a code repeated in the file, before anything is saved")
+        void rejectsBadSkuCodes() {
+            when(merchantRepository.existsById(merchantId)).thenReturn(true);
+            when(storeRepository.existsByMerchantIdAndStoreId(merchantId, storeId)).thenReturn(true);
+
+            assertThatThrownBy(() -> handler.execute(context(), dataWithSkuCodes(" "))).isInstanceOf(ValidationException.class);
+            assertThatThrownBy(() -> handler.execute(context(), dataWithSkuCodes((String) null))).isInstanceOf(ValidationException.class);
+            assertThatThrownBy(() -> handler.execute(context(), dataWithSkuCodes("X".repeat(101)))).isInstanceOf(ValidationException.class);
+            assertThatThrownBy(() -> handler.execute(context(), dataWithSkuCodes("A", "A"))).isInstanceOf(ValidationException.class);
+
+            verify(storeProductRepository, never()).saveAll(any());
+            verify(storeProductRepository, never()).findSkuCodesInStore(any(), any());
+        }
+
+        @Test
+        @DisplayName("rejects a SKU code already used in the store (removed SKUs included) before anything is saved")
+        void rejectsCodeInUse() {
+            when(merchantRepository.existsById(merchantId)).thenReturn(true);
+            when(storeRepository.existsByMerchantIdAndStoreId(merchantId, storeId)).thenReturn(true);
+            when(storeProductRepository.findSkuCodesInStore(eq(storeId), any())).thenReturn(Set.of(SKU.of("B")));
+
+            assertThatThrownBy(() -> handler.execute(context(), dataWithSkuCodes("A", "B")))
+                    .isInstanceOf(SkuCodeInUseException.class)
+                    .hasMessageContaining("B");
+
+            verify(storeProductRepository, never()).saveAll(any());
+            verify(outboxEventRepository, never()).saveAll(any());
+        }
+
         @Test
         @DisplayName("rejects an invalid currency code or a fractional VND price before anything is saved")
         void rejectsInvalidSkuRow_beforeSaving() {
@@ -217,7 +260,6 @@ class StoreProductImportHandlerTest {
                     .skus(new ArrayList<>())
                     .images(new ArrayList<>())
                     .build();
-            sp.initState();
             savedProducts.add(sp);
 
             when(merchantRepository.existsById(merchantId)).thenReturn(true);

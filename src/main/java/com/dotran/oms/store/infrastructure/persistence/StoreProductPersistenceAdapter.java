@@ -1,6 +1,15 @@
 package com.dotran.oms.store.infrastructure.persistence;
 
 import com.dotran.oms.core.annotation.PersistenceAdapter;
+import com.dotran.oms.core.domain.id.SKU;
+import com.dotran.oms.core.exception.NotFoundException;
+import com.dotran.oms.store.domain.exception.ProductVersionConflictException;
+import com.dotran.oms.store.domain.exception.SkuCodeInUseException;
+import com.dotran.oms.store.domain.model.ProductChangeSet;
+import com.dotran.oms.store.domain.model.ProductSku;
+import com.dotran.oms.store.infrastructure.persistence.entity.ProductSkuEntity;
+import org.springframework.dao.CannotAcquireLockException;
+import org.springframework.dao.DataIntegrityViolationException;
 import com.dotran.oms.core.domain.id.ProductId;
 import com.dotran.oms.core.domain.id.StoreId;
 import com.dotran.oms.core.domain.page.DomainPageRequest;
@@ -27,7 +36,12 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 
+import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.Map;
+import java.util.UUID;
+import java.util.function.Function;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
@@ -40,6 +54,7 @@ import java.util.stream.Collectors;
 @Slf4j
 public class StoreProductPersistenceAdapter implements StoreProductRepository {
 
+    static final String SKU_CODE_CONSTRAINT = "uk_product_skus_store_sku";
     private static final String ID_FIELD = "id";
     private static final Set<String> SORTABLE_FIELDS = Set.of("createdAt", "updatedAt", "name", ID_FIELD);
 
@@ -48,13 +63,16 @@ public class StoreProductPersistenceAdapter implements StoreProductRepository {
 
     @Override
     public StoreProduct create(StoreProduct storeProduct) {
-        StoreProductEntity storeProductEntity = mapper.fromStoreProduct(storeProduct);
-        storeProductEntity.setSkus(mapper.fromProductSkus(storeProduct.getSkus(), storeProductEntity));
-        storeProductEntity.setImages(mapper.fromProductImages(storeProduct.getImages(), storeProductEntity));
+        StoreProductEntity storeProductEntity = toNewEntity(storeProduct);
 
-        StoreProductEntity savedEntity = repository.saveAndFlush(storeProductEntity);
-
-        return mapper.fromEntity(savedEntity);
+        try {
+            StoreProductEntity savedEntity = repository.saveAndFlush(storeProductEntity);
+            return mapper.fromEntity(savedEntity);
+        } catch (DataIntegrityViolationException ex) {
+            throw translateSkuCodeConflict(ex);
+        } catch (CannotAcquireLockException ex) {
+            throw new SkuCodeInUseException(Constants.ERROR_MSG_SKU_CODE_CONCURRENT);
+        }
     }
 
     @Override
@@ -136,16 +154,149 @@ public class StoreProductPersistenceAdapter implements StoreProductRepository {
 
         List<StoreProductEntity> storeProductEntityList = new ArrayList<>();
         for (StoreProduct storeProduct : storeProductList) {
-            StoreProductEntity storeProductEntity = mapper.fromStoreProduct(storeProduct);
-            storeProductEntity.setSkus(mapper.fromProductSkus(storeProduct.getSkus(), storeProductEntity));
-            storeProductEntity.setImages(mapper.fromProductImages(storeProduct.getImages(), storeProductEntity));
-
-            storeProductEntityList.add(storeProductEntity);
+            storeProductEntityList.add(toNewEntity(storeProduct));
         }
-        return repository.saveAllAndFlush(storeProductEntityList)
-                .stream()
-                .map(mapper::fromEntity)
-                .toList();
+        try {
+            return repository.saveAllAndFlush(storeProductEntityList)
+                    .stream()
+                    .map(mapper::fromEntity)
+                    .toList();
+        } catch (DataIntegrityViolationException ex) {
+            throw translateSkuCodeConflict(ex);
+        } catch (CannotAcquireLockException ex) {
+            throw new SkuCodeInUseException(Constants.ERROR_MSG_SKU_CODE_CONCURRENT);
+        }
+    }
+
+    /** New product with its SKUs in code order: concurrent inserts of overlapping codes take index locks in the same order. */
+    private StoreProductEntity toNewEntity(StoreProduct storeProduct) {
+        StoreProductEntity entity = mapper.fromStoreProduct(storeProduct);
+        List<ProductSkuEntity> skus = new ArrayList<>(mapper.fromProductSkus(storeProduct.getSkus(), entity));
+        skus.sort(Comparator.comparing(ProductSkuEntity::getSku));
+        entity.setSkus(skus);
+        entity.setImages(mapper.fromProductImages(storeProduct.getImages(), entity));
+        return entity;
+    }
+
+    @Override
+    public boolean bumpVersion(StoreId storeId, ProductId productId, long expectedVersion, Instant updatedAt) {
+        return repository.bumpVersion(productId.getValue(), storeId.getValue(), expectedVersion, updatedAt) > 0;
+    }
+
+    @Override
+    public long currentVersion(StoreId storeId, ProductId productId) {
+        return repository.findVersion(productId.getValue(), storeId.getValue())
+                .orElseThrow(() -> new NotFoundException(Constants.ERROR_MSG_PRODUCT_NOT_FOUND));
+    }
+
+    @Override
+    public Set<SKU> findSkuCodesInStore(StoreId storeId, Collection<SKU> codes) {
+        if (CollectionUtils.isEmpty(codes)) {
+            return new HashSet<>();
+        }
+        return repository.findSkuCodesInStore(storeId.getValue(), codes.stream().map(SKU::getValue).toList())
+                .stream().map(SKU::of).collect(Collectors.toSet());
+    }
+
+    @Override
+    public Set<SKU> findSkuCodesOfOtherProducts(StoreId storeId, ProductId productId, Collection<SKU> codes) {
+        if (CollectionUtils.isEmpty(codes)) {
+            return new HashSet<>();
+        }
+        return repository.findSkuCodesOfOtherProducts(storeId.getValue(), productId.getValue(),
+                        codes.stream().map(SKU::getValue).toList())
+                .stream().map(SKU::of).collect(Collectors.toSet());
+    }
+
+    /**
+     * Applies the change set to the managed product entity in place (Hibernate owns the child collections; replacing
+     * them would break orphan removal), then flushes so new SKU ids exist and a code collision surfaces here as a 409.
+     */
+    @Override
+    public StoreProduct applyChanges(StoreProduct product, ProductChangeSet changes, long newVersion) {
+        StoreProductEntity entity = repository.findById(product.getId().getValue())
+                .filter(found -> found.getStoreId().equals(product.getStoreId().getValue()))
+                .orElseThrow(() -> new NotFoundException(Constants.ERROR_MSG_PRODUCT_NOT_FOUND));
+
+        if (changes.productFieldsChanged()) {
+            entity.setName(product.getName());
+            entity.setDescription(product.getDescription());
+            entity.setThumbnailUrl(product.getThumbnailUrl());
+            entity.setCategoryId(product.getCategoryId() != null ? product.getCategoryId().getValue() : null);
+            entity.setStatus(product.getStatus());
+        }
+        if (changes.imagesChanged()) {
+            entity.getImages().clear();
+            entity.getImages().addAll(mapper.fromProductImages(product.getImages(), entity));
+        }
+
+        Map<UUID, ProductSkuEntity> skuById = entity.getSkus().stream()
+                .collect(Collectors.toMap(ProductSkuEntity::getId, Function.identity()));
+        for (ProductSku sku : changes.updated()) {
+            copySkuValues(sku, skuById.get(sku.getId().getValue()));
+        }
+        for (ProductSku sku : changes.removed()) {
+            skuById.get(sku.getId().getValue()).setRemovedAt(sku.getRemovedAt());
+        }
+        // Sorted by code: concurrent inserts of overlapping codes take index locks in the same order.
+        changes.added().stream()
+                .sorted(Comparator.comparing(sku -> sku.getSku().getValue()))
+                .forEach(sku -> entity.getSkus().add(mapper.fromProductSku(sku, entity)));
+
+        // The column is updatable=false: this only keeps the in-memory value equal to what bumpVersion wrote.
+        entity.setVersion(newVersion);
+        entity.setUpdatedAt(product.getUpdatedAt());
+
+        try {
+            repository.flush();
+        } catch (DataIntegrityViolationException ex) {
+            throw translateSkuCodeConflict(ex);
+        } catch (CannotAcquireLockException ex) {
+            throw new ProductVersionConflictException(Constants.ERROR_MSG_PRODUCT_CONCURRENT_UPDATE);
+        }
+        return mapper.fromEntity(entity);
+    }
+
+    private static void copySkuValues(ProductSku sku, ProductSkuEntity target) {
+        target.setName(sku.getName());
+        target.setPrice(sku.getPrice());
+        target.setCurrency(sku.getCurrency());
+        target.setWeight(sku.getWeight());
+        target.setLength(sku.getLength());
+        target.setWidth(sku.getWidth());
+        target.setHeight(sku.getHeight());
+        target.setStatus(sku.getStatus());
+        target.setRemovedAt(sku.getRemovedAt());
+    }
+
+    /** uk_product_skus_store_sku → 409; any other integrity error is rethrown unchanged. */
+    static RuntimeException translateSkuCodeConflict(DataIntegrityViolationException ex) {
+        if (violates(ex, SKU_CODE_CONSTRAINT)) {
+            return new SkuCodeInUseException(String.format(Constants.ERROR_MSG_SKU_CODE_IN_USE, "(database)"));
+        }
+        return ex;
+    }
+
+    /**
+     * Hibernate reports the constraint name ({@code ConstraintViolationException}); with JDBC batching the driver
+     * message sits further down the chain (BatchUpdateException → PSQLException), so every cause is checked.
+     */
+    private static boolean violates(Throwable ex, String constraint) {
+        for (Throwable cause = ex; cause != null; cause = cause.getCause()) {
+            if (cause instanceof org.hibernate.exception.ConstraintViolationException violation
+                    && constraint.equalsIgnoreCase(violation.getConstraintName())) {
+                return true;
+            }
+            if (cause.getMessage() != null && cause.getMessage().contains(constraint)) {
+                return true;
+            }
+            if (cause instanceof java.sql.SQLException sql && sql.getNextException() != null
+                    && sql.getNextException().getMessage() != null
+                    && sql.getNextException().getMessage().contains(constraint)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /**
@@ -167,6 +318,7 @@ public class StoreProductPersistenceAdapter implements StoreProductRepository {
             // Filter by price range if provided (using SKU prices)
             if (priceRange != null) {
                 var skuJoin = root.join("skus");
+                predicates.add(criteriaBuilder.isNull(skuJoin.get("removedAt")));
 
                 if (priceRange.getFrom() != null) {
                     predicates.add(criteriaBuilder.greaterThanOrEqualTo(

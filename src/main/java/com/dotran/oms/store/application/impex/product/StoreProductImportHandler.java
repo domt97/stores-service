@@ -2,6 +2,7 @@ package com.dotran.oms.store.application.impex.product;
 
 import com.dotran.oms.store.application.repository.MerchantRepository;
 import com.dotran.oms.core.domain.id.ProductId;
+import com.dotran.oms.core.domain.id.SKU;
 import com.dotran.oms.core.exception.NotFoundException;
 import com.dotran.oms.core.exception.ValidationException;
 import com.dotran.oms.core.io.template.imp.AbstractImportTemplate;
@@ -11,7 +12,9 @@ import com.dotran.oms.store.application.event.OutboxEventHelper;
 import com.dotran.oms.store.application.repository.OutboxEventRepository;
 import com.dotran.oms.store.application.repository.StoreProductRepository;
 import com.dotran.oms.store.application.repository.StoreRepository;
+import com.dotran.oms.store.common.constants.Constants;
 import com.dotran.oms.store.common.id.ProductSkuId;
+import com.dotran.oms.store.domain.exception.SkuCodeInUseException;
 import com.dotran.oms.store.domain.event.OutboxEvent;
 import com.dotran.oms.store.domain.model.ProductImage;
 import com.dotran.oms.store.domain.model.ProductSku;
@@ -22,8 +25,10 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
@@ -32,6 +37,9 @@ import java.util.stream.Collectors;
 @Slf4j
 public class StoreProductImportHandler extends
         AbstractImportTemplate<ProductImportContext, ProductImportData, ProductImportRequest> {
+
+    private static final int MAX_SKU_CODE_LENGTH = 100;
+    private static final int SKU_CODE_CHECK_CHUNK = 500;
 
     private final MerchantRepository merchantRepository;
     private final StoreRepository storeRepository;
@@ -73,7 +81,36 @@ public class StoreProductImportHandler extends
             }
         });
 
+        validateSkuCodes(context, data.getSkus());
+
         log.info("Validation Product Import - END, {} products validated.", productRefRowMap.size());
+    }
+
+    /**
+     * SKU codes must be present, at most 100 characters, unique in the file and not used in the store yet (removed SKUs
+     * included, BR-CAT-02 / BR-CAT-09). Blank codes would also break the inventory sync of the product.
+     */
+    private void validateSkuCodes(ProductImportContext context, List<ProductSKUImportRow> skuRows) {
+        Set<String> codes = new HashSet<>();
+        for (ProductSKUImportRow row : skuRows) {
+            String code = row.getSku() != null ? row.getSku().getValue() : null;
+            if (code == null || code.isBlank() || code.length() > MAX_SKU_CODE_LENGTH) {
+                throw new ValidationException("Invalid SKU code for product reference: " + row.getProductRef());
+            }
+            if (!codes.add(code)) {
+                throw new ValidationException("SKU code " + code + " appears more than once in the file");
+            }
+        }
+
+        List<SKU> all = codes.stream().map(SKU::of).toList();
+        for (int from = 0; from < all.size(); from += SKU_CODE_CHECK_CHUNK) {
+            Set<SKU> inUse = storeProductRepository.findSkuCodesInStore(context.getStoreId(),
+                    all.subList(from, Math.min(from + SKU_CODE_CHECK_CHUNK, all.size())));
+            if (!inUse.isEmpty()) {
+                throw new SkuCodeInUseException(String.format(Constants.ERROR_MSG_SKU_CODE_IN_USE,
+                        inUse.stream().map(SKU::getValue).sorted().collect(Collectors.joining(", "))));
+            }
+        }
     }
 
     @Override

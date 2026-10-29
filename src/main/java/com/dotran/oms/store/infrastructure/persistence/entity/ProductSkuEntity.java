@@ -37,6 +37,10 @@ public class ProductSkuEntity {
     @EqualsAndHashCode.Include
     private UUID id;
 
+    /** Same as the product's store (FK fk_product_skus_product_store); scopes uk_product_skus_store_sku. */
+    @Column(name = "store_id", nullable = false)
+    private UUID storeId;
+
     @Column(nullable = false, length = 100)
     private String sku;
 
@@ -64,6 +68,9 @@ public class ProductSkuEntity {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 30)
     private ProductSkuStatus status;
+
+    @Column(name = "removed_at")
+    private Instant removedAt;
 
     @ManyToOne
     @JoinColumn(

@@ -2,6 +2,8 @@ package com.dotran.oms.store.infrastructure.rest.exception;
 
 import com.dotran.oms.core.rest.ErrorResponse;
 import com.dotran.oms.store.domain.exception.StoreAlreadyClosedException;
+import com.dotran.oms.store.domain.exception.ProductVersionConflictException;
+import com.dotran.oms.store.domain.exception.SkuCodeInUseException;
 import com.dotran.oms.store.domain.exception.StoreNotFoundException;
 import jakarta.servlet.http.HttpServletRequest;
 import org.junit.jupiter.api.DisplayName;
@@ -49,5 +51,19 @@ class StoreExceptionHandlerTest {
         assertThat(response.getStatus()).isEqualTo(HttpStatus.CONFLICT.value());
         assertThat(response.getPath()).isEqualTo("/api/stores/123/close");
         assertThat(response.getTimestamp()).isNotNull();
+    }
+
+    @Test
+    @DisplayName("productConflict returns 409 with the message for a version conflict and a SKU code in use")
+    void productConflict_returns409() {
+        when(request.getRequestURI()).thenReturn("/v1/store/merchants/m/stores/s/products/p");
+
+        ErrorResponse version = handler.productConflict(new ProductVersionConflictException("changed"), request);
+        ErrorResponse code = handler.productConflict(new SkuCodeInUseException("in use"), request);
+
+        assertThat(version.getStatus()).isEqualTo(HttpStatus.CONFLICT.value());
+        assertThat(version.getError()).isEqualTo("changed");
+        assertThat(code.getStatus()).isEqualTo(HttpStatus.CONFLICT.value());
+        assertThat(code.getError()).isEqualTo("in use");
     }
 }

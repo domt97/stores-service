@@ -71,7 +71,6 @@ class StoreProductPersistenceAdapterTest {
                 .skus(new ArrayList<>())
                 .images(new ArrayList<>())
                 .build();
-        p.initState();
         return p;
     }
 
