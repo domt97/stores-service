@@ -14,12 +14,15 @@ import com.dotran.oms.store.application.repository.MerchantRepository;
 import com.dotran.oms.store.domain.event.OutboxEvent;
 import com.dotran.oms.store.domain.model.StoreProduct;
 import com.dotran.oms.store.domain.exception.SkuCodeInUseException;
+import org.mockito.InOrder;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -30,6 +33,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 
+import static org.mockito.Mockito.inOrder;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
@@ -48,9 +52,15 @@ class StoreProductImportHandlerTest {
     @Mock private StoreProductRepository storeProductRepository;
     @Mock private OutboxEventRepository outboxEventRepository;
     @Mock private OutboxEventHelper outboxEventHelper;
+    @Mock private PlatformTransactionManager transactionManager;
 
-    @InjectMocks
     private StoreProductImportHandler handler;
+
+    @BeforeEach
+    void setUp() {
+        handler = new StoreProductImportHandler(merchantRepository, storeRepository, storeProductRepository,
+                outboxEventRepository, outboxEventHelper, new TransactionTemplate(transactionManager));
+    }
 
     private final MerchantId merchantId = MerchantId.newMerchantId();
     private final StoreId storeId = StoreId.newStoreId();
@@ -175,6 +185,34 @@ class StoreProductImportHandlerTest {
             doThrow(new IllegalStateException("outbox down")).when(outboxEventRepository).saveAll(any());
 
             assertThatThrownBy(() -> handler.execute(context(), validData())).hasMessage("outbox down");
+
+            // products and outbox rows were in the same transaction, and it is rolled back
+            verify(transactionManager).getTransaction(any());
+            verify(transactionManager).rollback(any());
+            verify(transactionManager, never()).commit(any());
+        }
+
+        @Test
+        @DisplayName("a failing product save rolls back and writes no outbox rows")
+        void productSaveFailure_rollsBack_noOutbox() {
+            merchantAndStoreExist();
+            when(storeProductRepository.saveAll(any())).thenThrow(new IllegalStateException("db down"));
+
+            assertThatThrownBy(() -> handler.execute(context(), validData())).hasMessage("db down");
+
+            verify(transactionManager).rollback(any());
+            verify(transactionManager, never()).commit(any());
+            verify(outboxEventRepository, never()).saveAll(any());
+        }
+
+        @Test
+        @DisplayName("a validation failure never opens a transaction")
+        void validationFailure_noTransaction() {
+            when(merchantRepository.existsById(merchantId)).thenReturn(false);
+
+            assertThatThrownBy(() -> handler.execute(context(), validData())).isInstanceOf(NotFoundException.class);
+
+            verify(transactionManager, never()).getTransaction(any());
         }
 
         @Test
@@ -333,11 +371,15 @@ class StoreProductImportHandlerTest {
             assertThat(result.getStatus()).isEqualTo(ImportResult.ImportStatus.SUCCESS);
             assertThat(result.getTotalRecords()).isEqualTo(1);
             verify(storeProductRepository).saveAll(any());
+            // one transaction for products + outbox, committed once
+            verify(transactionManager).getTransaction(any());
+            verify(transactionManager).commit(any());
+            verify(transactionManager, never()).rollback(any());
         }
 
         @Test
-        @DisplayName("creates outbox events for imported products in postImport")
-        void createsOutboxEvents_inPostImport() {
+        @DisplayName("writes ProductCreated outbox events for the saved products, after saving them")
+        void createsOutboxEvents_afterSavingProducts() {
             List<StoreProduct> savedProducts = new ArrayList<>();
             StoreProduct sp = StoreProduct.builder()
                     .id(com.dotran.oms.core.domain.id.ProductId.newProductId())
@@ -355,8 +397,12 @@ class StoreProductImportHandlerTest {
 
             handler.execute(context(), validData());
 
-            verify(outboxEventHelper).createProductCreatedOutboxEvents(any(), any());
-            verify(outboxEventRepository).saveAll(any());
+            InOrder order = inOrder(transactionManager, storeProductRepository, outboxEventRepository);
+            order.verify(transactionManager).getTransaction(any());
+            order.verify(storeProductRepository).saveAll(any());
+            order.verify(outboxEventRepository).saveAll(any());
+            order.verify(transactionManager).commit(any());
+            verify(outboxEventHelper).createProductCreatedOutboxEvents(merchantId, savedProducts);
         }
 
         @Test

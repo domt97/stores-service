@@ -22,7 +22,7 @@ import com.dotran.oms.store.domain.model.StoreProduct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
-import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -46,19 +46,7 @@ public class StoreProductImportHandler extends
     private final StoreProductRepository storeProductRepository;
     private final OutboxEventRepository outboxEventRepository;
     private final OutboxEventHelper outboxEventHelper;
-
-    /**
-     * The whole import — validate, transform, save products, write ProductCreated to the outbox — is ONE transaction:
-     * any failure rolls everything back, so products are never stored without their events (workspace rule 2).
-     * The boundary sits on this entry point because the template calls {@code process}/{@code postImport} on
-     * {@code this}, which bypasses the Spring proxy. Callers must not wrap it in another transaction that catches
-     * exceptions (see ImportProductService).
-     */
-    @Override
-    @Transactional
-    public ImportResult execute(ProductImportContext context, ProductImportData data) {
-        return super.execute(context, data);
-    }
+    private final TransactionTemplate transactionTemplate;
 
     @Override
     protected void validate(ProductImportContext context, ProductImportData data) {
@@ -213,12 +201,28 @@ public class StoreProductImportHandler extends
                 .build();
     }
 
+    /**
+     * Saves the products and their ProductCreated outbox rows in ONE transaction: any failure rolls both back, so
+     * products are never stored without their events (workspace rule 2). The template calls this method on
+     * {@code this}, which bypasses the Spring proxy, so {@code @Transactional} would be ignored here — the transaction
+     * is opened with {@link TransactionTemplate}. Validation and transform run before it, outside.
+     */
     @Override
     protected ImportResult process(ProductImportContext context, ProductImportRequest request) {
         log.info("Processing Product Import - START");
         List<StoreProduct> storeProductList = request.getProducts();
 
-        List<StoreProduct> savedProductList = storeProductRepository.saveAll(storeProductList);
+        List<StoreProduct> savedProductList = transactionTemplate.execute(status -> {
+            List<StoreProduct> saved = storeProductRepository.saveAll(storeProductList);
+            if (CollectionUtils.isEmpty(saved)) {
+                log.warn("No products were imported, no outbox events written.");
+                return saved;
+            }
+            List<OutboxEvent> outboxEvents = outboxEventHelper.createProductCreatedOutboxEvents(context.getMerchantId(), saved);
+            outboxEventRepository.saveAll(outboxEvents);
+            log.info("{} ProductCreated outbox events written.", outboxEvents.size());
+            return saved;
+        });
         context.setProducts(savedProductList);
 
         log.info("Processing Product Import - END, {} products imported.", savedProductList.size());
@@ -227,20 +231,6 @@ public class StoreProductImportHandler extends
                 .totalRecords(storeProductList.size())
                 .status(ImportResult.ImportStatus.SUCCESS)
                 .build();
-    }
-
-    @Override
-    protected void postImport(ProductImportContext context, ProductImportRequest request, ImportResult importResult) {
-        log.info("Post Import Product - START");
-        if (CollectionUtils.isEmpty(context.getProducts())) {
-            log.warn("No products were imported, skipping post-import processing.");
-            return;
-        }
-
-        List<OutboxEvent> outboxEvents = outboxEventHelper
-                .createProductCreatedOutboxEvents(context.getMerchantId(), context.getProducts());
-        outboxEventRepository.saveAll(outboxEvents);
-        log.info("Post Import Product - END, {} outbox events created.", outboxEvents.size());
     }
 
     private List<ProductSku> transformSkuRows(ProductId productId, List<ProductSKUImportRow> skuRows) {
