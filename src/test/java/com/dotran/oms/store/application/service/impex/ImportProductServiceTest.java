@@ -117,26 +117,13 @@ class ImportProductServiceTest {
     }
 
     @Test
-    @DisplayName("transaction boundary: the handler's execute is the public @Transactional entry point; this service is not transactional")
+    @DisplayName("transaction boundary: no @Transactional on the import path (it would be ignored in the handler and unsafe around the catch here)")
     void transactionBoundary() throws NoSuchMethodException {
-        java.lang.reflect.Method handlerExecute = StoreProductImportHandler.class.getMethod("execute", ProductImportContext.class, ProductImportData.class);
-        assertThat(handlerExecute.getDeclaringClass()).isEqualTo(StoreProductImportHandler.class);
-        assertThat(handlerExecute.isAnnotationPresent(org.springframework.transaction.annotation.Transactional.class)).isTrue();
-        assertThat(java.lang.reflect.Modifier.isFinal(handlerExecute.getModifiers())).isFalse();
-        assertThat(java.lang.reflect.Modifier.isFinal(StoreProductImportHandler.class.getModifiers())).isFalse();
-        org.springframework.transaction.annotation.Transactional tx =
-                handlerExecute.getAnnotation(org.springframework.transaction.annotation.Transactional.class);
-        assertThat(tx.propagation()).isEqualTo(org.springframework.transaction.annotation.Propagation.REQUIRED);
-        assertThat(tx.readOnly()).isFalse();
-        assertThat(tx.noRollbackFor()).isEmpty();
-        assertThat(tx.noRollbackForClassName()).isEmpty();
-        // process/postImport run on `this` (template), so an annotation there would do nothing and mislead.
-        for (String name : java.util.List.of("process", "postImport", "validate", "transform")) {
-            assertThat(java.util.Arrays.stream(StoreProductImportHandler.class.getDeclaredMethods())
-                    .filter(m -> m.getName().equals(name))
-                    .noneMatch(m -> m.isAnnotationPresent(org.springframework.transaction.annotation.Transactional.class)))
-                    .as(name).isTrue();
-        }
+        // The handler's write transaction is a TransactionTemplate in process (StoreProductImportHandlerTest proves
+        // commit/rollback). @Transactional on a template step would be ignored (called on `this`) and mislead.
+        assertThat(StoreProductImportHandler.class.isAnnotationPresent(org.springframework.transaction.annotation.Transactional.class)).isFalse();
+        assertThat(java.util.Arrays.stream(StoreProductImportHandler.class.getDeclaredMethods())
+                .noneMatch(m -> m.isAnnotationPresent(org.springframework.transaction.annotation.Transactional.class))).isTrue();
 
         // A transaction around the service's catch would commit products without their events.
         assertThat(ImportProductService.class.isAnnotationPresent(org.springframework.transaction.annotation.Transactional.class)).isFalse();

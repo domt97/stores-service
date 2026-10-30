@@ -14,8 +14,8 @@ import lombok.extern.slf4j.Slf4j;
 import java.time.Instant;
 
 /**
- * Excel product import. The file is read (S3 + parsing) outside any transaction; the import itself runs in ONE
- * transaction on {@link StoreProductImportHandler#execute} (products and their ProductCreated outbox rows together).
+ * Excel product import. The file is read (S3 + parsing) outside any transaction; the handler validates, then writes
+ * the products and their ProductCreated outbox rows in ONE transaction (TransactionTemplate in its {@code process}).
  * <p>
  * Do NOT make this class or {@link #execute} {@code @Transactional}: the catch below would then run inside the
  * transaction — an exception thrown outside a repository proxy would leave the transaction committable and the products
