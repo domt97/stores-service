@@ -38,6 +38,8 @@ public class Constants {
     public static final String ERROR_MSG_SKU_CODE_IN_USE = "SKU code(s) already used by another product of the store: %s";
     public static final String ERROR_MSG_PRODUCT_VERSION_CONFLICT = "The product was changed by someone else (current version %d); reload it and try again";
     public static final String ERROR_MSG_PRODUCT_CONCURRENT_UPDATE = "The product was changed by someone else at the same time; reload it and try again";
+    public static final String ERROR_MSG_IMPORT_REFERENCE_REQUIRED = "Every row of the %s sheet needs a product reference";
+    public static final String ERROR_MSG_IMPORT_REFERENCE_DUPLICATE = "Product reference %s appears more than once in the Product sheet";
     public static final String ERROR_MSG_COLLECTION_NOT_FOUND = "Collection not found";
     public static final String ERROR_MSG_INVALID_SORT_FIELD = "sortBy must be one of createdAt, updatedAt, name, id";
     public static final String ERROR_MSG_INVALID_SORT_DIRECTION = "direction must be ASC or DESC";

@@ -13,6 +13,23 @@ import lombok.extern.slf4j.Slf4j;
 
 import java.time.Instant;
 
+/**
+ * Excel product import. The file is read (S3 + parsing) outside any transaction; the import itself runs in ONE
+ * transaction on {@link StoreProductImportHandler#execute} (products and their ProductCreated outbox rows together).
+ * <p>
+ * Do NOT make this class or {@link #execute} {@code @Transactional}: the catch below would then run inside the
+ * transaction — an exception thrown outside a repository proxy would leave the transaction committable and the products
+ * would commit without their events (the bug this layout fixes); one marked rollback-only would end in
+ * UnexpectedRollbackException (500).
+ * <p>
+ * What the client sees:
+ * <ul>
+ *   <li>reader: IOException → 422, invalid sheet content (ImportValidationException) → 400, missing bucket/key and other
+ *       parse errors → 500;</li>
+ *   <li>import (validation, merchant/store not found, SKU code in use, database errors): 200 with status FAILED and the
+ *       message — nothing was written.</li>
+ * </ul>
+ */
 @UseCase
 @RequiredArgsConstructor
 @Slf4j

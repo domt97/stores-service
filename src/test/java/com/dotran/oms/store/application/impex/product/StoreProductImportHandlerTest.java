@@ -34,6 +34,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -90,6 +91,91 @@ class StoreProductImportHandlerTest {
     @Nested
     @DisplayName("validate")
     class Validate {
+
+        private ProductImportData data(List<ProductImportRow> products, List<ProductSKUImportRow> skus, List<ProductImageImportRow> images) {
+            return ProductImportData.builder().products(products).skus(skus).images(images).build();
+        }
+
+        private ProductSKUImportRow skuRow(String ref, String code) {
+            return ProductSKUImportRow.builder().productRef(ref).sku(SKU.of(code)).price(new BigDecimal("10000")).currency("VND").build();
+        }
+
+        private ProductImageImportRow imageRow(String ref) {
+            return ProductImageImportRow.builder().productRef(ref).imageUrl("https://example.com/img.jpg").build();
+        }
+
+        private void merchantAndStoreExist() {
+            when(merchantRepository.existsById(merchantId)).thenReturn(true);
+            when(storeRepository.existsByMerchantIdAndStoreId(merchantId, storeId)).thenReturn(true);
+        }
+
+        @Test
+        @DisplayName("rejects a product reference used twice in the Product sheet, before anything is saved")
+        void rejectsDuplicateProductReference() {
+            merchantAndStoreExist();
+            ProductImportRow p = ProductImportRow.builder().reference("REF-001").name("P1").build();
+
+            assertThatThrownBy(() -> handler.execute(context(), data(List.of(p, p), List.of(skuRow("REF-001", "A")), List.of(imageRow("REF-001")))))
+                    .isInstanceOf(ValidationException.class)
+                    .hasMessageContaining("REF-001");
+
+            verify(storeProductRepository, never()).findSkuCodesInStore(any(), any());
+            verify(storeProductRepository, never()).saveAll(any());
+            verify(outboxEventRepository, never()).saveAll(any());
+        }
+
+        @Test
+        @DisplayName("rejects a blank product reference in any of the three sheets, before anything is saved")
+        void rejectsBlankReferences() {
+            merchantAndStoreExist();
+            ProductImportRow p = ProductImportRow.builder().reference("REF-001").name("P1").build();
+            ProductImportRow blank = ProductImportRow.builder().reference(" ").name("P2").build();
+
+            assertThatThrownBy(() -> handler.execute(context(), data(List.of(p, blank), List.of(skuRow("REF-001", "A")), List.of(imageRow("REF-001")))))
+                    .isInstanceOf(ValidationException.class).hasMessageContaining("Product sheet");
+            ProductImportRow nullRef = ProductImportRow.builder().reference(null).name("P3").build();
+            assertThatThrownBy(() -> handler.execute(context(), data(List.of(p, nullRef), List.of(skuRow("REF-001", "A")), List.of(imageRow("REF-001")))))
+                    .isInstanceOf(ValidationException.class).hasMessageContaining("Product sheet");
+            assertThatThrownBy(() -> handler.execute(context(), data(List.of(p), List.of(skuRow("REF-001", "A"), skuRow(null, "B")), List.of(imageRow("REF-001")))))
+                    .isInstanceOf(ValidationException.class).hasMessageContaining("Product SKU");
+            assertThatThrownBy(() -> handler.execute(context(), data(List.of(p), List.of(skuRow("REF-001", "A")), List.of(imageRow("REF-001"), imageRow("")))))
+                    .isInstanceOf(ValidationException.class).hasMessageContaining("Product Image");
+
+            verify(storeProductRepository, never()).saveAll(any());
+            verify(outboxEventRepository, never()).saveAll(any());
+        }
+
+        @Test
+        @DisplayName("SKU and image rows without a product row are skipped (logged), the import still succeeds")
+        void orphanRows_skipped() {
+            merchantAndStoreExist();
+            when(storeProductRepository.saveAll(any())).thenAnswer(inv -> inv.getArgument(0));
+            when(outboxEventHelper.createProductCreatedOutboxEvents(any(), any())).thenReturn(List.of());
+            ProductImportRow p = ProductImportRow.builder().reference("REF-001").name("P1").build();
+
+            ImportResult result = handler.execute(context(), data(List.of(p),
+                    List.of(skuRow("REF-001", "A"), skuRow("REF-ORPHAN", "B")), List.of(imageRow("REF-001"), imageRow("REF-ORPHAN"))));
+
+            assertThat(result.getStatus()).isEqualTo(ImportResult.ImportStatus.SUCCESS);
+            assertThat(result.getTotalRecords()).isEqualTo(1);
+            ArgumentCaptor<List<StoreProduct>> saved = ArgumentCaptor.forClass(List.class);
+            verify(storeProductRepository).saveAll(saved.capture());
+            assertThat(saved.getValue()).hasSize(1);
+            StoreProduct product = saved.getValue().get(0);
+            assertThat(product.getSkus()).extracting(s -> s.getSku().getValue()).containsExactly("A");
+            assertThat(product.getImages()).hasSize(1);
+        }
+
+        @Test
+        @DisplayName("a failing outbox write propagates out of execute (nothing swallows it, so the transaction rolls back)")
+        void outboxFailure_propagates() {
+            merchantAndStoreExist();
+            when(storeProductRepository.saveAll(any())).thenAnswer(inv -> inv.getArgument(0));
+            when(outboxEventHelper.createProductCreatedOutboxEvents(any(), any())).thenReturn(List.of());
+            doThrow(new IllegalStateException("outbox down")).when(outboxEventRepository).saveAll(any());
+
+            assertThatThrownBy(() -> handler.execute(context(), validData())).hasMessage("outbox down");
+        }
 
         @Test
         @DisplayName("throws NotFoundException when merchant not found")
