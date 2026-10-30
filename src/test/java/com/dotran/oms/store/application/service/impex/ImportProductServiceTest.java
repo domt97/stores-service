@@ -1,5 +1,7 @@
 package com.dotran.oms.store.application.service.impex;
 
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.never;
 import com.dotran.oms.core.domain.id.StoreId;
 import com.dotran.oms.core.domain.id.MerchantId;
 import com.dotran.oms.core.io.template.imp.ImportResult;
@@ -101,5 +103,44 @@ class ImportProductServiceTest {
 
     private static <T> T argThat(org.mockito.ArgumentMatcher<T> matcher) {
         return org.mockito.Mockito.argThat(matcher);
+    }
+
+    @Test
+    @DisplayName("a reader error propagates (keeps its HTTP status) and the import is never started")
+    void readerError_propagates_handlerNeverCalled() {
+        ImportStoreProductCmd cmd = buildCmd();
+        when(storeProductImportReader.read(cmd.getPath(), cmd.getFileName())).thenThrow(new IllegalStateException("bucket missing"));
+
+        assertThatThrownBy(() -> importProductService.execute(cmd)).hasMessage("bucket missing");
+
+        verify(productImportHandler, never()).execute(any(), any());
+    }
+
+    @Test
+    @DisplayName("transaction boundary: the handler's execute is the public @Transactional entry point; this service is not transactional")
+    void transactionBoundary() throws NoSuchMethodException {
+        java.lang.reflect.Method handlerExecute = StoreProductImportHandler.class.getMethod("execute", ProductImportContext.class, ProductImportData.class);
+        assertThat(handlerExecute.getDeclaringClass()).isEqualTo(StoreProductImportHandler.class);
+        assertThat(handlerExecute.isAnnotationPresent(org.springframework.transaction.annotation.Transactional.class)).isTrue();
+        assertThat(java.lang.reflect.Modifier.isFinal(handlerExecute.getModifiers())).isFalse();
+        assertThat(java.lang.reflect.Modifier.isFinal(StoreProductImportHandler.class.getModifiers())).isFalse();
+        org.springframework.transaction.annotation.Transactional tx =
+                handlerExecute.getAnnotation(org.springframework.transaction.annotation.Transactional.class);
+        assertThat(tx.propagation()).isEqualTo(org.springframework.transaction.annotation.Propagation.REQUIRED);
+        assertThat(tx.readOnly()).isFalse();
+        assertThat(tx.noRollbackFor()).isEmpty();
+        assertThat(tx.noRollbackForClassName()).isEmpty();
+        // process/postImport run on `this` (template), so an annotation there would do nothing and mislead.
+        for (String name : java.util.List.of("process", "postImport", "validate", "transform")) {
+            assertThat(java.util.Arrays.stream(StoreProductImportHandler.class.getDeclaredMethods())
+                    .filter(m -> m.getName().equals(name))
+                    .noneMatch(m -> m.isAnnotationPresent(org.springframework.transaction.annotation.Transactional.class)))
+                    .as(name).isTrue();
+        }
+
+        // A transaction around the service's catch would commit products without their events.
+        assertThat(ImportProductService.class.isAnnotationPresent(org.springframework.transaction.annotation.Transactional.class)).isFalse();
+        assertThat(ImportProductService.class.getMethod("execute", ImportStoreProductCmd.class)
+                .isAnnotationPresent(org.springframework.transaction.annotation.Transactional.class)).isFalse();
     }
 }

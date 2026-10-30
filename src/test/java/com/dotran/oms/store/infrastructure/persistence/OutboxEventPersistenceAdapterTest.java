@@ -21,6 +21,7 @@ import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -78,7 +79,8 @@ class OutboxEventPersistenceAdapterTest {
         adapter.saveAll(List.of(event1, event2));
 
         ArgumentCaptor<List<OutboxEventEntity>> captor = ArgumentCaptor.forClass(List.class);
-        verify(repository).saveAll(captor.capture());
+        verify(repository).saveAllAndFlush(captor.capture());
+        verify(repository, never()).saveAll(any());
         assertThat(captor.getValue()).hasSize(2);
     }
 }

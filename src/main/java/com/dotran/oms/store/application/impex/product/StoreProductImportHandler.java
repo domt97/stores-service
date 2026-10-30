@@ -47,6 +47,19 @@ public class StoreProductImportHandler extends
     private final OutboxEventRepository outboxEventRepository;
     private final OutboxEventHelper outboxEventHelper;
 
+    /**
+     * The whole import — validate, transform, save products, write ProductCreated to the outbox — is ONE transaction:
+     * any failure rolls everything back, so products are never stored without their events (workspace rule 2).
+     * The boundary sits on this entry point because the template calls {@code process}/{@code postImport} on
+     * {@code this}, which bypasses the Spring proxy. Callers must not wrap it in another transaction that catches
+     * exceptions (see ImportProductService).
+     */
+    @Override
+    @Transactional
+    public ImportResult execute(ProductImportContext context, ProductImportData data) {
+        return super.execute(context, data);
+    }
+
     @Override
     protected void validate(ProductImportContext context, ProductImportData data) {
         log.info("Validation Product Import - START");
@@ -62,6 +75,8 @@ public class StoreProductImportHandler extends
         if (CollectionUtils.isEmpty(data.getProducts())) {
             throw new ValidationException("Product list is empty");
         }
+
+        validateReferences(data);
 
         Map<String, ProductImportRow> productRefRowMap = data.getProducts().stream()
                 .collect(Collectors.toMap(ProductImportRow::getReference, row -> row));
@@ -81,9 +96,51 @@ public class StoreProductImportHandler extends
             }
         });
 
+        warnAboutOrphanRows(context, productRefRowMap.keySet(), productSKUImportRowMap.keySet(), "SKU");
+        warnAboutOrphanRows(context, productRefRowMap.keySet(), productImageImportRowMap.keySet(), "image");
+
         validateSkuCodes(context, data.getSkus());
 
         log.info("Validation Product Import - END, {} products validated.", productRefRowMap.size());
+    }
+
+    /**
+     * Every row needs a product reference (compared exactly as written, not trimmed), and a product reference appears
+     * once in the Product sheet. Checked before the rows are grouped by reference.
+     */
+    private void validateReferences(ProductImportData data) {
+        Set<String> productRefs = new HashSet<>();
+        for (ProductImportRow row : data.getProducts()) {
+            if (isBlank(row.getReference())) {
+                throw new ValidationException(String.format(Constants.ERROR_MSG_IMPORT_REFERENCE_REQUIRED, "Product"));
+            }
+            if (!productRefs.add(row.getReference())) {
+                throw new ValidationException(String.format(Constants.ERROR_MSG_IMPORT_REFERENCE_DUPLICATE, row.getReference()));
+            }
+        }
+        if (data.getSkus().stream().anyMatch(row -> isBlank(row.getProductRef()))) {
+            throw new ValidationException(String.format(Constants.ERROR_MSG_IMPORT_REFERENCE_REQUIRED, "Product SKU"));
+        }
+        if (data.getImages().stream().anyMatch(row -> isBlank(row.getProductRef()))) {
+            throw new ValidationException(String.format(Constants.ERROR_MSG_IMPORT_REFERENCE_REQUIRED, "Product Image"));
+        }
+    }
+
+    /**
+     * Rows whose product reference has no product row are not imported (decided 2026-10-30: keep, but say so). Their
+     * SKU codes are still validated with the rest of the file.
+     */
+    private static void warnAboutOrphanRows(ProductImportContext context, Set<String> productRefs, Set<String> rowRefs, String kind) {
+        List<String> orphans = rowRefs.stream().filter(ref -> !productRefs.contains(ref)).sorted().toList();
+        if (!orphans.isEmpty()) {
+            log.warn("Import merchant={} store={}: {} rows of {} product references have no product row and are not imported "
+                            + "(their SKU codes are still validated): {}",
+                    context.getMerchantId(), context.getStoreId(), kind, orphans.size(), orphans.subList(0, Math.min(10, orphans.size())));
+        }
+    }
+
+    private static boolean isBlank(String value) {
+        return value == null || value.isBlank();
     }
 
     /**
@@ -157,7 +214,6 @@ public class StoreProductImportHandler extends
     }
 
     @Override
-    @Transactional
     protected ImportResult process(ProductImportContext context, ProductImportRequest request) {
         log.info("Processing Product Import - START");
         List<StoreProduct> storeProductList = request.getProducts();
