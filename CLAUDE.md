@@ -24,7 +24,7 @@ Postgres DB `store`, schema `store` (owns `merchants`); files in S3. Port **8048
 | | `application/impex` | Excel import pipeline (built on `oms-core` `AbstractImportTemplate`) |
 | Infrastructure | `infrastructure/rest/{api,dto,mapper,exception}` | `@WebAdapter` controllers, `XxxRequest/XxxResponse`, `StoreExceptionHandler` |
 | | `infrastructure/persistence/{entity,jpa}` | `@PersistenceAdapter` adapters, JPA entities, `SpringDataXxxRepository` |
-| | `infrastructure/mapper`, `cloud` | Entity ↔ domain mappers; S3 |
+| | `infrastructure/mapper`, `cloud`, `excel`, `client`, `swagger` | Entity ↔ domain mappers; S3; Excel import reader (`ProductExcelReader`); stub clients for other services; OpenAPI groups |
 
 Areas used across packages: `merchant`, `store`, `storeconfig`, `storeproduct`, `collection`, `impex`.
 
@@ -57,12 +57,12 @@ Infra from the `development` repo (Postgres with `wal_level=logical`, Kafka, Kaf
 
 ## Pitfalls
 
-- `ProductCreatedEvent` is also defined in inventory-service (`infrastructure/message/dto`). Changing fields here breaks the consumer — change both, keep backward compatible.
+- `ProductCreatedEvent` and `ProductUpdatedEvent` are also defined in inventory-service (`infrastructure/message/dto`); the contract is `oms-workspace/architecture/contracts/events/*.schema.json`. Changing fields here breaks the consumer — change the schema and both sides, keep backward compatible.
 - `ProductCreated` (version 0) and `ProductUpdated` (version ≥ 1, full catalog snapshot) are published; closing a store does **not** notify anyone yet.
 - **Product version** (`store_products.version`): only `StoreProductPersistenceAdapter.bumpVersion` (guarded native UPDATE) writes it; the JPA column is `insertable/updatable = false`. No other path may update existing product, SKU or image rows (create/import insert, collections touch `product_collections` only) — otherwise the version stops protecting updates.
 - **Update order** (`UpdateStoreProductService`): `replace()` on the domain object → version check → bump (row lock) → SKU code check (JPQL, before any entity is changed) → `applyChanges` (in place on the managed entity, then flush) → outbox. Never `setSkus`/`setImages` on a managed entity (orphan removal breaks); the event version is `cmd.version + 1`.
 - **Removed SKUs** stay in `product_skus` (`removed_at`) and keep their code reserved in the store (`uk_product_skus_store_sku`). `StoreProduct.getSkus()` (and every read built on it) leaves them out; only `StoreProduct.replace()` uses `getAllSkusIncludingRemoved()`. Each PUT loads all rows, removed ones included.
 - **Excel import writes in one transaction**: `StoreProductImportHandler.process` saves the products and their `ProductCreated` outbox rows inside `TransactionTemplate.execute`, so they commit or roll back together; validation and transform run before it. The oms-core template calls `process` on `this`, so `@Transactional` on it would be ignored — keep the `TransactionTemplate`, and never move the outbox write back to `postImport`. Never make `ImportProductService` transactional: its catch-all (→ 200 FAILED) would then commit products without their events. The S3 read stays outside the transaction. What the client sees: reader errors keep their status (IOException → 422, invalid sheet → 400, missing bucket/key and other parse errors → 500); import errors → 200 FAILED with nothing written.
-- `InventoryServiceClient` and `PromotionServiceClient` are ports without adapters.
+- `InventoryServiceClient` and `PromotionServiceClient` have only stub adapters (`infrastructure/client`: `checkItemDetail` returns `null`, the promotion client is empty) and no caller — don't rely on them.
 - Debezium delivers at least once; anything consuming our events must be idempotent.
 - SKU price rule (3-letter currency stored upper-case; price ≥ 0 with ≤ 2 decimals; VND whole đồng, BR-MER-01) lives in `ProductSku.normaliseForSale()` and runs from `StoreProduct.initState()` and `addSku()`. Any new path that creates or changes SKUs must call it; `StoreProduct.replace()` (update-product) applies it to every SKU in the body, so a legacy SKU that breaks the rule must be corrected when the product is edited. Products read from the DB are not re-validated.
