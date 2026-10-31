@@ -26,6 +26,7 @@ public class StoreProductDetailDto {
     private ProductStatus status;
     private List<ProductSkuDto> skus = new ArrayList<>();
     private List<ProductImageDto> images = new ArrayList<>();
+    private long version;
 
     private Instant createdAt;
     private Instant updatedAt;

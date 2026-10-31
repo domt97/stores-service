@@ -2,7 +2,7 @@ package com.dotran.oms.store.infrastructure.rest.api;
 
 import com.dotran.oms.core.annotation.WebAdapter;
 import com.dotran.oms.core.domain.id.StoreId;
-import com.dotran.oms.core.domain.id.TenantId;
+import com.dotran.oms.core.domain.id.MerchantId;
 import com.dotran.oms.store.application.command.store.AddStoreAvailabilityCmd;
 import com.dotran.oms.store.application.command.store.CreateStoreCmd;
 import com.dotran.oms.store.application.command.store.GetStoreCmd;
@@ -58,19 +58,21 @@ public class StoreController {
     private final AddStoreAvailabilityUseCase addStoreAvailabilityUseCase;
     private final CancelStoreAvailabilityUseCase cancelStoreAvailabilityUseCase;
 
-    @Operation(summary = "Create a new store", description = "Creates a new store for the specified tenant with the provided details")
+    @Operation(summary = "Create a new store", description = "Creates a new store for the specified merchant with the provided details")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "201", description = "Store created successfully",
                     content = @Content(mediaType = "application/json", schema = @Schema(implementation = StoreDetailResponse.class))),
             @ApiResponse(responseCode = "400", description = "Invalid request body", content = @Content),
+            @ApiResponse(responseCode = "404", description = "Merchant not found", content = @Content),
             @ApiResponse(responseCode = "409", description = "Store already exists", content = @Content)
     })
-    @PostMapping("/tenants/{tenantId}/stores")
+    @PostMapping("/merchants/{merchantId}/stores")
     @ResponseStatus(HttpStatus.CREATED)
     public StoreDetailResponse createStore(
-            @Parameter(description = "Tenant ID", required = true) @PathVariable UUID tenantId,
+            @Parameter(description = "Merchant ID", required = true) @PathVariable UUID merchantId,
             @RequestBody @Valid CreateStoreRequest createStoreRequest) {
         CreateStoreCmd createStoreCmd = storeRestMapper.fromRequestToCmd(createStoreRequest);
+        createStoreCmd.setMerchantId(MerchantId.of(merchantId));
         StoreDetailDto storeDetailDto = createStoreUseCase.create(createStoreCmd);
         return storeRestMapper.toStoreDetailResponse(storeDetailDto);
     }
@@ -81,15 +83,15 @@ public class StoreController {
                     content = @Content(mediaType = "application/json", schema = @Schema(implementation = StoreDetailResponse.class))),
             @ApiResponse(responseCode = "404", description = "Store not found", content = @Content)
     })
-    @GetMapping("/tenants/{tenantId}/stores/{id}")
+    @GetMapping("/merchants/{merchantId}/stores/{id}")
     @ResponseStatus(HttpStatus.OK)
     public StoreDetailResponse getStore(
-            @Parameter(description = "Tenant ID", required = true) @PathVariable UUID tenantId,
+            @Parameter(description = "Merchant ID", required = true) @PathVariable UUID merchantId,
             @Parameter(description = "Store ID", required = true) @PathVariable UUID id) {
         log.info("StoreController - getStore: START");
-        StoreDetailDto storeDetailDto = getStoreUseCase.getStoreByTenantIdAndStoreId(
+        StoreDetailDto storeDetailDto = getStoreUseCase.getStoreByMerchantIdAndStoreId(
                 GetStoreCmd.builder()
-                        .tenantId(TenantId.of(tenantId))
+                        .merchantId(MerchantId.of(merchantId))
                         .storeId(StoreId.of(id))
                         .build());
         log.info("StoreController - getStore: END");
@@ -103,12 +105,12 @@ public class StoreController {
             @ApiResponse(responseCode = "404", description = "Store not found", content = @Content),
             @ApiResponse(responseCode = "409", description = "Store is already closed", content = @Content)
     })
-    @PutMapping("/tenants/{tenantId}/stores/{id}/close")
+    @PutMapping("/merchants/{merchantId}/stores/{id}/close")
     @ResponseStatus(HttpStatus.OK)
     public StoreDetailResponse closeStore(
-            @Parameter(description = "Tenant ID", required = true) @PathVariable UUID tenantId,
+            @Parameter(description = "Merchant ID", required = true) @PathVariable UUID merchantId,
             @Parameter(description = "Store ID", required = true) @PathVariable UUID id) {
-        StoreDetailDto storeDetailDto = closeStoreUseCase.close(storeRestMapper.fromRequestToCloseStoreCmd(tenantId, id));
+        StoreDetailDto storeDetailDto = closeStoreUseCase.close(storeRestMapper.fromRequestToCloseStoreCmd(merchantId, id));
         return storeRestMapper.toStoreDetailResponse(storeDetailDto);
     }
 
@@ -119,14 +121,14 @@ public class StoreController {
             @ApiResponse(responseCode = "404", description = "Store not found", content = @Content),
             @ApiResponse(responseCode = "409", description = "Store is already open", content = @Content)
     })
-    @PutMapping("/tenants/{tenantId}/stores/{id}/reopen")
+    @PutMapping("/merchants/{merchantId}/stores/{id}/reopen")
     @ResponseStatus(HttpStatus.OK)
     public StoreDetailResponse reopenStore(
-            @Parameter(description = "Tenant ID", required = true) @PathVariable UUID tenantId,
+            @Parameter(description = "Merchant ID", required = true) @PathVariable UUID merchantId,
             @Parameter(description = "Store ID", required = true) @PathVariable UUID id) {
         StoreDetailDto storeDetailDto = reopenStoreUseCase.reopen(
                 ReopenStoreCmd.builder()
-                        .tenantId(TenantId.of(tenantId))
+                        .merchantId(MerchantId.of(merchantId))
                         .storeId(StoreId.of(id))
                         .build()
         );
@@ -140,16 +142,16 @@ public class StoreController {
             @ApiResponse(responseCode = "400", description = "Invalid request body", content = @Content),
             @ApiResponse(responseCode = "404", description = "Store not found", content = @Content)
     })
-    @PostMapping("/tenants/{tenantId}/stores/{id}/availability")
+    @PostMapping("/merchants/{merchantId}/stores/{id}/availability")
     @ResponseStatus(HttpStatus.CREATED)
     public StoreAvailabilityResponse addStoreAvailability(
-            @Parameter(description = "Tenant ID", required = true) @PathVariable UUID tenantId,
+            @Parameter(description = "Merchant ID", required = true) @PathVariable UUID merchantId,
             @Parameter(description = "Store ID", required = true) @PathVariable UUID id,
             @RequestBody @Valid AddStoreAvailabilityRequest request) {
         log.info("StoreController - addStoreAvailability: START for storeId={}", id);
 
         AddStoreAvailabilityCmd cmd = storeRestMapper.fromRequestToAddStoreAvailabilityCmd(request);
-        cmd.setTenantId(TenantId.of(tenantId));
+        cmd.setMerchantId(MerchantId.of(merchantId));
         cmd.setStoreId(StoreId.of(id));
 
         StoreAvailabilityDto storeAvailabilityDto = addStoreAvailabilityUseCase.add(cmd);
@@ -163,10 +165,10 @@ public class StoreController {
             @ApiResponse(responseCode = "204", description = "Availability cancelled successfully", content = @Content),
             @ApiResponse(responseCode = "404", description = "Store or availability not found", content = @Content)
     })
-    @PostMapping("/tenants/{tenantId}/stores/{id}/availability/{storeAvailabilityId}/cancel")
+    @PostMapping("/merchants/{merchantId}/stores/{id}/availability/{storeAvailabilityId}/cancel")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void cancelStoreAvailability(
-            @Parameter(description = "Tenant ID", required = true) @PathVariable UUID tenantId,
+            @Parameter(description = "Merchant ID", required = true) @PathVariable UUID merchantId,
             @Parameter(description = "Store ID", required = true) @PathVariable UUID id,
             @Parameter(description = "Store Availability ID", required = true) @PathVariable UUID storeAvailabilityId) {
         log.info("StoreController - cancelStoreAvailability: START for storeId={}", id);

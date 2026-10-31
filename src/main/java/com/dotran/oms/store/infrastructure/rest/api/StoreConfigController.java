@@ -48,14 +48,14 @@ public class StoreConfigController {
             @ApiResponse(responseCode = "400", description = "Invalid request body", content = @Content),
             @ApiResponse(responseCode = "404", description = "Store not found", content = @Content)
     })
-    @PutMapping("/tenants/{tenantId}/stores/{storeId}/business-hours")
+    @PutMapping("/merchants/{merchantId}/stores/{storeId}/business-hours")
     public StoreDetailResponse updateBusinessHour(
-            @Parameter(description = "Tenant ID", required = true) @PathVariable UUID tenantId,
+            @Parameter(description = "Merchant ID", required = true) @PathVariable UUID merchantId,
             @Parameter(description = "Store ID", required = true) @PathVariable UUID storeId,
             @Valid @RequestBody List<BusinessHourRequest> updateBusinessHourRequests) {
         List<UpdateBusinessHourCmd> updateBusinessHourCmds = storeRestMapper
                 .fromListRequestToUpdateBusinessHourCmd(updateBusinessHourRequests);
-        StoreDetailDto storeDetailDto = settingStoreBusinessHourUseCase.setupBusinessHour(tenantId, storeId, updateBusinessHourCmds);
+        StoreDetailDto storeDetailDto = settingStoreBusinessHourUseCase.setupBusinessHour(merchantId, storeId, updateBusinessHourCmds);
         return storeRestMapper.toStoreDetailResponse(storeDetailDto);
     }
 
@@ -66,13 +66,13 @@ public class StoreConfigController {
             @ApiResponse(responseCode = "400", description = "Invalid request body", content = @Content),
             @ApiResponse(responseCode = "404", description = "Store not found", content = @Content)
     })
-    @PutMapping("/tenants/{tenantId}/stores/{storeId}/configs")
+    @PutMapping("/merchants/{merchantId}/stores/{storeId}/configs")
     public StoreDetailResponse updateBaseConfig(
-            @Parameter(description = "Tenant ID", required = true) @PathVariable UUID tenantId,
+            @Parameter(description = "Merchant ID", required = true) @PathVariable UUID merchantId,
             @Parameter(description = "Store ID", required = true) @PathVariable UUID storeId,
             @Valid @RequestBody UpdateStoreConfigRequest updateStoreConfigRequest) {
         UpdateStoreConfigCmd cmd = storeRestMapper.fromUpdateStoreConfigToCmd(updateStoreConfigRequest);
-        StoreDetailDto storeDetailDto = settingStoreConfigUseCase.setupStoreConfig(tenantId, storeId, cmd);
+        StoreDetailDto storeDetailDto = settingStoreConfigUseCase.setupStoreConfig(merchantId, storeId, cmd);
         return storeRestMapper.toStoreDetailResponse(storeDetailDto);
     }
 }

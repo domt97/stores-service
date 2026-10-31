@@ -1,5 +1,8 @@
 package com.dotran.oms.store.infrastructure.rest.exception;
 
+import com.dotran.oms.store.domain.exception.ProductVersionConflictException;
+import com.dotran.oms.store.domain.exception.SkuCodeInUseException;
+import com.dotran.oms.store.domain.exception.MerchantCodeAlreadyExistsException;
 import com.dotran.oms.store.domain.exception.StoreAlreadyClosedException;
 import com.dotran.oms.store.domain.exception.StoreNotFoundException;
 import com.dotran.oms.core.rest.ErrorResponse;
@@ -33,6 +36,32 @@ public class StoreExceptionHandler extends GlobalExceptionHandler {
     @ExceptionHandler(value = {StoreAlreadyClosedException.class})
     @ResponseStatus(HttpStatus.CONFLICT)
     public ErrorResponse storeAlreadyClosedException(StoreAlreadyClosedException ex, HttpServletRequest request) {
+        this.logError(ex);
+
+        return ErrorResponse.builder()
+                .error(ex.getMessage())
+                .timestamp(Instant.now())
+                .status(HttpStatus.CONFLICT.value())
+                .path(request.getRequestURI())
+                .build();
+    }
+
+    @ExceptionHandler(value = {MerchantCodeAlreadyExistsException.class})
+    @ResponseStatus(HttpStatus.CONFLICT)
+    public ErrorResponse merchantCodeAlreadyExistsException(MerchantCodeAlreadyExistsException ex, HttpServletRequest request) {
+        this.logError(ex);
+
+        return ErrorResponse.builder()
+                .error(ex.getMessage())
+                .timestamp(Instant.now())
+                .status(HttpStatus.CONFLICT.value())
+                .path(request.getRequestURI())
+                .build();
+    }
+
+    @ExceptionHandler(value = {ProductVersionConflictException.class, SkuCodeInUseException.class})
+    @ResponseStatus(HttpStatus.CONFLICT)
+    public ErrorResponse productConflict(RuntimeException ex, HttpServletRequest request) {
         this.logError(ex);
 
         return ErrorResponse.builder()

@@ -28,7 +28,8 @@ public class OutboxEventPersistenceAdapter implements OutboxEventRepository {
     public void saveAll(List<OutboxEvent> outboxEvents) {
         List<OutboxEventEntity> entities = outboxEvents.stream().map(this::createOutboxEventEntity).toList();
 
-        repository.saveAll(entities);
+        // Flush now: inside the import transaction a failing insert surfaces here, not later at commit.
+        repository.saveAllAndFlush(entities);
     }
 
     private OutboxEventEntity createOutboxEventEntity(OutboxEvent outboxEvent) {

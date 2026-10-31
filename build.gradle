@@ -35,8 +35,6 @@ dependencies {
 	// AWS
 	implementation platform("software.amazon.awssdk:bom:2.31.76")
 	implementation 'software.amazon.awssdk:s3'
-	implementation "software.amazon.awssdk:dynamodb"
-	implementation "software.amazon.awssdk:dynamodb-enhanced"
 
 	// Swagger
 	implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:2.3.0") {

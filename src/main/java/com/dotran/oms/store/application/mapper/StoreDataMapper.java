@@ -42,7 +42,7 @@ public abstract class StoreDataMapper {
     public abstract StoreAvailability fromCmdToStoreAvailability(AddStoreAvailabilityCmd cmd, StoreId storeId);
 
     @Mapping(target = "id", source = "id.value")
-    @Mapping(target = "tenantId", source = "tenantId.value")
+    @Mapping(target = "merchantId", source = "merchantId.value")
     @Mapping(target = "ownerId", source = "ownerId.value")
     @Mapping(target = "address", source = "address", qualifiedByName = "toAddressDto")
     @Mapping(target = "config", source = "config", qualifiedByName = "toConfigDto")

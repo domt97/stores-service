@@ -1,7 +1,9 @@
 package com.dotran.oms.store.application.service.impex;
 
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.never;
 import com.dotran.oms.core.domain.id.StoreId;
-import com.dotran.oms.core.domain.id.TenantId;
+import com.dotran.oms.core.domain.id.MerchantId;
 import com.dotran.oms.core.io.template.imp.ImportResult;
 import com.dotran.oms.store.application.command.impex.ImportStoreProductCmd;
 import com.dotran.oms.store.application.impex.parser.StoreProductImportReader;
@@ -36,7 +38,7 @@ class ImportProductServiceTest {
         return ImportStoreProductCmd.builder()
                 .path("/tmp")
                 .fileName("products.xlsx")
-                .tenantId(TenantId.newTenantId())
+                .merchantId(MerchantId.newMerchantId())
                 .storeId(StoreId.newStoreId())
                 .build();
     }
@@ -64,7 +66,7 @@ class ImportProductServiceTest {
     }
 
     @Test
-    @DisplayName("passes tenantId and storeId from cmd to the handler context")
+    @DisplayName("passes merchantId and storeId from cmd to the handler context")
     void passesContextFields_toHandler() {
         ImportStoreProductCmd cmd = buildCmd();
         ProductImportData data = mock(ProductImportData.class);
@@ -76,7 +78,7 @@ class ImportProductServiceTest {
         importProductService.execute(cmd);
 
         verify(productImportHandler).execute(
-                argThat(ctx -> ctx.getTenantId().equals(cmd.getTenantId())
+                argThat(ctx -> ctx.getMerchantId().equals(cmd.getMerchantId())
                         && ctx.getStoreId().equals(cmd.getStoreId())),
                 eq(data)
         );
@@ -101,5 +103,31 @@ class ImportProductServiceTest {
 
     private static <T> T argThat(org.mockito.ArgumentMatcher<T> matcher) {
         return org.mockito.Mockito.argThat(matcher);
+    }
+
+    @Test
+    @DisplayName("a reader error propagates (keeps its HTTP status) and the import is never started")
+    void readerError_propagates_handlerNeverCalled() {
+        ImportStoreProductCmd cmd = buildCmd();
+        when(storeProductImportReader.read(cmd.getPath(), cmd.getFileName())).thenThrow(new IllegalStateException("bucket missing"));
+
+        assertThatThrownBy(() -> importProductService.execute(cmd)).hasMessage("bucket missing");
+
+        verify(productImportHandler, never()).execute(any(), any());
+    }
+
+    @Test
+    @DisplayName("transaction boundary: no @Transactional on the import path (it would be ignored in the handler and unsafe around the catch here)")
+    void transactionBoundary() throws NoSuchMethodException {
+        // The handler's write transaction is a TransactionTemplate in process (StoreProductImportHandlerTest proves
+        // commit/rollback). @Transactional on a template step would be ignored (called on `this`) and mislead.
+        assertThat(StoreProductImportHandler.class.isAnnotationPresent(org.springframework.transaction.annotation.Transactional.class)).isFalse();
+        assertThat(java.util.Arrays.stream(StoreProductImportHandler.class.getDeclaredMethods())
+                .noneMatch(m -> m.isAnnotationPresent(org.springframework.transaction.annotation.Transactional.class))).isTrue();
+
+        // A transaction around the service's catch would commit products without their events.
+        assertThat(ImportProductService.class.isAnnotationPresent(org.springframework.transaction.annotation.Transactional.class)).isFalse();
+        assertThat(ImportProductService.class.getMethod("execute", ImportStoreProductCmd.class)
+                .isAnnotationPresent(org.springframework.transaction.annotation.Transactional.class)).isFalse();
     }
 }

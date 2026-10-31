@@ -16,7 +16,7 @@ import java.util.UUID;
 public class StoreDetailResponse {
 
     private UUID id;
-    private String tenantId;
+    private String merchantId;
     private String name;
     private String code;
     private String ownerId;

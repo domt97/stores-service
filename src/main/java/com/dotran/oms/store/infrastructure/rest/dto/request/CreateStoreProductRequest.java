@@ -3,6 +3,7 @@ package com.dotran.oms.store.infrastructure.rest.dto.request;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
+import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -22,6 +23,7 @@ public class CreateStoreProductRequest {
     @Size(max = 255)
     private String name;
 
+    @Size(max = 5000)
     private String description;
 
     private UUID categoryId;
@@ -29,9 +31,9 @@ public class CreateStoreProductRequest {
     private UUID brandId;
 
     @NotEmpty
-    @Valid
-    private List<CreateProductSkuRequest> skus;
+    @Size(max = 100)
+    private List<@NotNull @Valid CreateProductSkuRequest> skus;
 
-    @Valid
-    private List<CreateProductImageRequest> images;
+    @Size(max = 20)
+    private List<@NotNull @Valid CreateProductImageRequest> images;
 }
