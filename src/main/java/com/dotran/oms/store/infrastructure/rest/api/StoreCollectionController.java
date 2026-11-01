@@ -166,13 +166,15 @@ public class StoreCollectionController {
                 .map(storeProductRestMapper::toStoreProductPreviewResponse);
     }
 
-    @Operation(summary = "Add products to collection", description = "Adds one or more products to an existing collection")
+    @Operation(summary = "Add products to collection", description = "Adds one or more products to an existing collection. "
+            + "Idempotent (BR-CAT-15): products already in the collection are skipped; the response is the collection as stored.")
     @ApiResponses(value = {
-            @ApiResponse(responseCode = "200", description = "Products added successfully",
+            @ApiResponse(responseCode = "200", description = "Products are in the collection (added now or already there)",
                     content = @Content(mediaType = "application/json", schema = @Schema(implementation = StoreCollectionResponse.class))),
             @ApiResponse(responseCode = "400", description = "A product id is missing", content = @Content),
             @ApiResponse(responseCode = "404", description = "Store or collection not found, or a product is not in this store", content = @Content),
-            @ApiResponse(responseCode = "422", description = "Empty list, or a product is already in the collection", content = @Content)
+            @ApiResponse(responseCode = "409", description = "Changed by another request at the same time; try again", content = @Content),
+            @ApiResponse(responseCode = "422", description = "Empty list", content = @Content)
     })
     @PostMapping("/merchants/{merchantId}/stores/{storeId}/collections/{collectionId}/add-products")
     @ResponseStatus(HttpStatus.OK)
@@ -194,13 +196,16 @@ public class StoreCollectionController {
         return restMapper.fromDtoToResponse(storeCollectionDto);
     }
 
-    @Operation(summary = "Remove products from collection", description = "Removes one or more products from an existing collection")
+    @Operation(summary = "Remove products from collection", description = "Removes one or more products from an existing collection. "
+            + "Idempotent (BR-CAT-15): products not in the collection (including ids of other stores' products) are skipped; "
+            + "the response is the collection as stored.")
     @ApiResponses(value = {
-            @ApiResponse(responseCode = "200", description = "Products removed successfully",
+            @ApiResponse(responseCode = "200", description = "Products are not in the collection (removed now or never there)",
                     content = @Content(mediaType = "application/json", schema = @Schema(implementation = StoreCollectionResponse.class))),
             @ApiResponse(responseCode = "400", description = "A product id is missing", content = @Content),
             @ApiResponse(responseCode = "404", description = "Store or collection not found", content = @Content),
-            @ApiResponse(responseCode = "422", description = "Empty list, or a product is not in the collection", content = @Content)
+            @ApiResponse(responseCode = "409", description = "Changed by another request at the same time; try again", content = @Content),
+            @ApiResponse(responseCode = "422", description = "Empty list", content = @Content)
     })
     @PostMapping("/merchants/{merchantId}/stores/{storeId}/collections/{collectionId}/remove-products")
     @ResponseStatus(HttpStatus.OK)

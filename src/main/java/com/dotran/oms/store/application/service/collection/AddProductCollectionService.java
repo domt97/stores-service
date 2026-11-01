@@ -15,6 +15,7 @@ import com.dotran.oms.store.domain.model.StoreCollection;
 import lombok.RequiredArgsConstructor;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Instant;
 import java.util.List;
 
 @UseCase
@@ -33,21 +34,22 @@ public class AddProductCollectionService implements AddProductCollectionUseCase 
             throw new NotFoundException(Constants.ERROR_MSG_STORE_NOT_FOUND);
         }
 
-        StoreCollection storeCollection = repository.getByStoreIdAndId(cmd.getStoreId(), cmd.getStoreCollectionId())
-                .orElseThrow(() -> new NotFoundException(Constants.ERROR_MSG_COLLECTION_NOT_FOUND));
+        // Existence only: the write is a single statement and the answer is re-read after it.
+        if (!repository.existsByStoreIdAndId(cmd.getStoreId(), cmd.getStoreCollectionId())) {
+            throw new NotFoundException(Constants.ERROR_MSG_COLLECTION_NOT_FOUND);
+        }
 
         List<ProductId> productIds = CollectionProductIds.distinct(cmd.getProductIds());
-
-        if (storeCollection.canAddProductsToCollection(productIds)) {
-            storeCollection.update();
-        }
+        StoreCollection.checkProductListChange(productIds);
 
         // A collection contains only products of its own store; another store's product is "not found".
         if (storeProductRepository.findExistingProductIds(cmd.getStoreId(), productIds).size() < productIds.size()) {
             throw new NotFoundException(Constants.ERROR_MSG_PRODUCT_NOT_FOUND);
         }
 
-        StoreCollection updatedCollection = repository.addProducts(storeCollection, productIds);
+        // Idempotent (BR-CAT-15): every requested id goes to the insert, which skips products already in the collection
+        // (also those added by a concurrent request). Never filter against the loaded snapshot: it may be stale.
+        StoreCollection updatedCollection = repository.addProducts(cmd.getStoreId(), cmd.getStoreCollectionId(), productIds, Instant.now());
 
         return mapper.toCollectionDto(updatedCollection);
     }

@@ -1,5 +1,9 @@
 package com.dotran.oms.store.infrastructure.persistence;
 
+import java.util.UUID;
+import com.dotran.oms.store.domain.exception.CollectionChangedConcurrentlyException;
+import org.springframework.dao.CannotAcquireLockException;
+import org.mockito.InOrder;
 import com.dotran.oms.core.domain.id.ProductId;
 import com.dotran.oms.core.domain.id.StoreId;
 import com.dotran.oms.core.exception.NotFoundException;
@@ -22,6 +26,9 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.Mockito.inOrder;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
@@ -49,13 +56,6 @@ class StoreCollectionPersistenceAdapterTest {
                 .productIds(new ArrayList<>())
                 .updatedAt(Instant.parse("2026-10-27T10:00:00Z"))
                 .build();
-    }
-
-    private ProductCollectionEntity link(StoreCollectionEntity collection, ProductId productId) {
-        ProductCollectionEntity link = new ProductCollectionEntity();
-        link.setCollection(collection);
-        link.setProductId(productId.getValue());
-        return link;
     }
 
     @Test
@@ -174,100 +174,117 @@ class StoreCollectionPersistenceAdapterTest {
         assertThat(baseEntity.getProducts()).allMatch(link -> link.getCollection() == baseEntity);
     }
 
+    private static final Instant NOW = Instant.parse("2026-11-01T10:00:00Z");
+
     @Test
-    @DisplayName("addProducts: reloads scoped by store, appends one link per id, copies updatedAt and saves")
-    void addProducts_appendsAndSaves() {
+    @DisplayName("addProducts: one native insert with all ids (scoped by store), touches updated_at when rows were added, re-reads")
+    void addProducts_insertsTouchesAndReReads() {
         StoreId storeId = StoreId.newStoreId();
         StoreCollection collection = buildCollection(storeId);
-        ProductId productId = ProductId.newProductId();
-        StoreCollectionEntity entity = new StoreCollectionEntity();
-        StoreCollectionEntity savedEntity = mock(StoreCollectionEntity.class);
+        UUID id = collection.getId().getValue();
+        ProductId p1 = ProductId.newProductId();
+        ProductId p2 = ProductId.newProductId();
+        StoreCollectionEntity reRead = new StoreCollectionEntity();
         StoreCollection expected = buildCollection(storeId);
+        when(storeCollectionRepository.insertProductsSkippingExisting(id, storeId.getValue(), List.of(p1.getValue(), p2.getValue()), NOW)).thenReturn(1);
+        when(storeCollectionRepository.findByIdAndStoreId(id, storeId.getValue())).thenReturn(Optional.of(reRead));
+        when(storeCollectionPersistenceMapper.toStoreCollection(reRead)).thenReturn(expected);
 
-        when(storeCollectionRepository.findByIdAndStoreId(collection.getId().getValue(), storeId.getValue()))
-                .thenReturn(Optional.of(entity));
-        when(storeCollectionRepository.saveAndFlush(entity)).thenReturn(savedEntity);
-        when(storeCollectionPersistenceMapper.toStoreCollection(savedEntity)).thenReturn(expected);
+        assertThat(adapter.addProducts(collection.getStoreId(), collection.getId(), List.of(p1, p2), NOW)).isEqualTo(expected);
 
-        StoreCollection result = adapter.addProducts(collection, List.of(productId));
-
-        assertThat(result).isEqualTo(expected);
-        assertThat(entity.getProducts())
-                .extracting(ProductCollectionEntity::getProductId)
-                .containsExactly(productId.getValue());
-        assertThat(entity.getUpdatedAt()).isEqualTo(collection.getUpdatedAt());
+        InOrder order = inOrder(storeCollectionRepository);
+        order.verify(storeCollectionRepository).insertProductsSkippingExisting(id, storeId.getValue(), List.of(p1.getValue(), p2.getValue()), NOW);
+        order.verify(storeCollectionRepository).touchUpdatedAt(id, storeId.getValue(), NOW);
+        order.verify(storeCollectionRepository).findByIdAndStoreId(id, storeId.getValue()); // only the re-read
+        verify(storeCollectionRepository, never()).saveAndFlush(any());
     }
 
     @Test
-    @DisplayName("addProducts: throws NotFoundException and saves nothing when collection is not in the store")
-    void addProducts_throwsNotFoundException_whenCollectionNotFound() {
+    @DisplayName("addProducts: nothing inserted (all already there, or added by a concurrent request) → updated_at untouched, re-read")
+    void addProducts_nothingInserted_noTouch() {
+        StoreId storeId = StoreId.newStoreId();
+        StoreCollection collection = buildCollection(storeId);
+        UUID id = collection.getId().getValue();
+        when(storeCollectionRepository.insertProductsSkippingExisting(eq(id), eq(storeId.getValue()), anyList(), eq(NOW))).thenReturn(0);
+        when(storeCollectionRepository.findByIdAndStoreId(id, storeId.getValue())).thenReturn(Optional.of(new StoreCollectionEntity()));
+        when(storeCollectionPersistenceMapper.toStoreCollection(any())).thenReturn(collection);
+
+        adapter.addProducts(collection.getStoreId(), collection.getId(), List.of(ProductId.newProductId()), NOW);
+
+        verify(storeCollectionRepository, never()).touchUpdatedAt(any(), any(), any());
+    }
+
+    @Test
+    @DisplayName("add/remove with an empty list never run the native statement (IN () is invalid SQL)")
+    void emptyList_noNativeStatement() {
+        StoreId storeId = StoreId.newStoreId();
+        StoreCollection collection = buildCollection(storeId);
+        when(storeCollectionRepository.findByIdAndStoreId(collection.getId().getValue(), storeId.getValue()))
+                .thenReturn(Optional.of(new StoreCollectionEntity()));
+        when(storeCollectionPersistenceMapper.toStoreCollection(any())).thenReturn(collection);
+
+        adapter.addProducts(collection.getStoreId(), collection.getId(), List.of(), NOW);
+        adapter.removeProducts(collection.getStoreId(), collection.getId(), List.of(), NOW);
+
+        verify(storeCollectionRepository, never()).insertProductsSkippingExisting(any(), any(), anyList(), any());
+        verify(storeCollectionRepository, never()).deleteProducts(any(), any(), anyList());
+        verify(storeCollectionRepository, never()).touchUpdatedAt(any(), any(), any());
+    }
+
+    @Test
+    @DisplayName("removeProducts: one native delete (scoped by store), touches updated_at only when rows were removed, re-reads")
+    void removeProducts_deletesTouchesAndReReads() {
+        StoreId storeId = StoreId.newStoreId();
+        StoreCollection collection = buildCollection(storeId);
+        UUID id = collection.getId().getValue();
+        ProductId p1 = ProductId.newProductId();
+        when(storeCollectionRepository.deleteProducts(id, storeId.getValue(), List.of(p1.getValue()))).thenReturn(1, 0);
+        when(storeCollectionRepository.findByIdAndStoreId(id, storeId.getValue())).thenReturn(Optional.of(new StoreCollectionEntity()));
+        when(storeCollectionPersistenceMapper.toStoreCollection(any())).thenReturn(collection);
+
+        adapter.removeProducts(collection.getStoreId(), collection.getId(), List.of(p1), NOW);
+        verify(storeCollectionRepository).touchUpdatedAt(id, storeId.getValue(), NOW);
+
+        adapter.removeProducts(collection.getStoreId(), collection.getId(), List.of(p1), NOW); // already gone: nothing deleted, no touch
+        verify(storeCollectionRepository, org.mockito.Mockito.times(1)).touchUpdatedAt(id, storeId.getValue(), NOW);
+        verify(storeCollectionRepository, never()).saveAndFlush(any());
+    }
+
+    @Test
+    @DisplayName("a deadlock or lock failure in the statement → CollectionChangedConcurrentlyException (409), no re-read")
+    void lockFailure_409() {
         StoreCollection collection = buildCollection(StoreId.newStoreId());
+        when(storeCollectionRepository.insertProductsSkippingExisting(any(), any(), anyList(), any()))
+                .thenThrow(new CannotAcquireLockException("deadlock detected"));
+        when(storeCollectionRepository.deleteProducts(any(), any(), anyList()))
+                .thenThrow(new CannotAcquireLockException("deadlock detected"));
 
-        when(storeCollectionRepository.findByIdAndStoreId(collection.getId().getValue(), collection.getStoreId().getValue()))
-                .thenReturn(Optional.empty());
-
-        assertThatThrownBy(() -> adapter.addProducts(collection, List.of(ProductId.newProductId())))
-                .isInstanceOf(NotFoundException.class);
-
-        verify(storeCollectionRepository, never()).saveAndFlush(any());
+        assertThatThrownBy(() -> adapter.addProducts(collection.getStoreId(), collection.getId(), List.of(ProductId.newProductId()), NOW))
+                .isInstanceOf(CollectionChangedConcurrentlyException.class);
+        assertThatThrownBy(() -> adapter.removeProducts(collection.getStoreId(), collection.getId(), List.of(ProductId.newProductId()), NOW))
+                .isInstanceOf(CollectionChangedConcurrentlyException.class);
+        verify(storeCollectionRepository, never()).findByIdAndStoreId(any(), any());
     }
 
     @Test
-    @DisplayName("removeProducts: removes specified products, copies updatedAt and saves")
-    void removeProducts_removesProductsAndSaves() {
-        StoreId storeId = StoreId.newStoreId();
-        StoreCollection collection = buildCollection(storeId);
-        StoreCollectionEntity entity = new StoreCollectionEntity();
-        StoreCollectionEntity savedEntity = mock(StoreCollectionEntity.class);
-        StoreCollection expected = buildCollection(storeId);
-        ProductId toRemove = ProductId.newProductId();
-        ProductId toKeep = ProductId.newProductId();
-        entity.getProducts().add(link(entity, toRemove));
-        entity.getProducts().add(link(entity, toKeep));
-
-        when(storeCollectionRepository.findByIdAndStoreId(collection.getId().getValue(), storeId.getValue()))
-                .thenReturn(Optional.of(entity));
-        when(storeCollectionRepository.saveAndFlush(entity)).thenReturn(savedEntity);
-        when(storeCollectionPersistenceMapper.toStoreCollection(savedEntity)).thenReturn(expected);
-
-        StoreCollection result = adapter.removeProducts(collection, List.of(toRemove));
-
-        assertThat(result).isEqualTo(expected);
-        assertThat(entity.getProducts())
-                .extracting(ProductCollectionEntity::getProductId)
-                .containsExactly(toKeep.getValue());
-        assertThat(entity.getUpdatedAt()).isEqualTo(collection.getUpdatedAt());
-    }
-
-    @Test
-    @DisplayName("removeProducts: returns early without saving when entity has no products")
-    void removeProducts_returnsEarly_whenEntityHasNoProducts() {
-        StoreId storeId = StoreId.newStoreId();
-        StoreCollection collection = buildCollection(storeId);
-        StoreCollectionEntity entity = new StoreCollectionEntity();
-        StoreCollection expected = buildCollection(storeId);
-
-        when(storeCollectionRepository.findByIdAndStoreId(collection.getId().getValue(), storeId.getValue()))
-                .thenReturn(Optional.of(entity));
-        when(storeCollectionPersistenceMapper.toStoreCollection(entity)).thenReturn(expected);
-
-        StoreCollection result = adapter.removeProducts(collection, List.of(ProductId.newProductId()));
-
-        assertThat(result).isEqualTo(expected);
-        verify(storeCollectionRepository, never()).saveAndFlush(any());
-    }
-
-    @Test
-    @DisplayName("removeProducts: throws NotFoundException and saves nothing when collection is not in the store")
-    void removeProducts_throwsNotFoundException_whenCollectionNotFound() {
+    @DisplayName("a lock failure while touching updated_at → CollectionChangedConcurrentlyException (409) as well")
+    void lockFailureOnTouch_409() {
         StoreCollection collection = buildCollection(StoreId.newStoreId());
+        when(storeCollectionRepository.insertProductsSkippingExisting(any(), any(), anyList(), any())).thenReturn(1);
+        when(storeCollectionRepository.touchUpdatedAt(any(), any(), any())).thenThrow(new CannotAcquireLockException("lock timeout"));
 
-        when(storeCollectionRepository.findByIdAndStoreId(collection.getId().getValue(), collection.getStoreId().getValue()))
-                .thenReturn(Optional.empty());
+        assertThatThrownBy(() -> adapter.addProducts(collection.getStoreId(), collection.getId(), List.of(ProductId.newProductId()), NOW))
+                .isInstanceOf(CollectionChangedConcurrentlyException.class);
+    }
 
-        assertThatThrownBy(() -> adapter.removeProducts(collection, List.of(ProductId.newProductId())))
+    @Test
+    @DisplayName("the collection disappearing before the re-read → NotFoundException")
+    void reReadMissing_404() {
+        StoreCollection collection = buildCollection(StoreId.newStoreId());
+        when(storeCollectionRepository.insertProductsSkippingExisting(any(), any(), anyList(), any())).thenReturn(0);
+        when(storeCollectionRepository.findByIdAndStoreId(any(), any())).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> adapter.addProducts(collection.getStoreId(), collection.getId(), List.of(ProductId.newProductId()), NOW))
                 .isInstanceOf(NotFoundException.class);
-
-        verify(storeCollectionRepository, never()).saveAndFlush(any());
     }
 }

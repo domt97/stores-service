@@ -9,19 +9,20 @@ import com.dotran.oms.core.util.CollectionUtils;
 import com.dotran.oms.store.application.repository.StoreCollectionRepository;
 import com.dotran.oms.store.common.constants.Constants;
 import com.dotran.oms.store.common.id.StoreCollectionId;
+import com.dotran.oms.store.domain.exception.CollectionChangedConcurrentlyException;
 import com.dotran.oms.store.domain.model.StoreCollection;
 import com.dotran.oms.store.infrastructure.mapper.StoreCollectionPersistenceMapper;
 import com.dotran.oms.store.infrastructure.persistence.entity.ProductCollectionEntity;
 import com.dotran.oms.store.infrastructure.persistence.entity.StoreCollectionEntity;
 import com.dotran.oms.store.infrastructure.persistence.jpa.SpringDataStoreCollectionRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.dao.PessimisticLockingFailureException;
 
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
-import java.util.Set;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
 @PersistenceAdapter
 @RequiredArgsConstructor
@@ -45,42 +46,52 @@ public class StoreCollectionPersistenceAdapter implements StoreCollectionReposit
         return storeCollectionPersistenceMapper.toStoreCollection(savedStoreCollection);
     }
 
+    /**
+     * Membership changes are single native statements (no load-modify-save of the entity graph): concurrent requests are
+     * resolved by the unique index (add) and row locks (remove) instead of failing. See BR-CAT-15.
+     */
     @Override
-    public StoreCollection addProducts(StoreCollection storeCollection, List<ProductId> productIds) {
-        StoreCollectionEntity storeCollectionEntity = this.getEntity(storeCollection);
-
-        List<ProductCollectionEntity> newProductCollections =
-                this.createProductCollectionList(storeCollectionEntity, productIds);
-
-        storeCollectionEntity.getProducts().addAll(newProductCollections);
-        storeCollectionEntity.setUpdatedAt(storeCollection.getUpdatedAt());
-
-        StoreCollectionEntity updatedCollection = storeCollectionRepository.saveAndFlush(storeCollectionEntity);
-
-        return storeCollectionPersistenceMapper.toStoreCollection(updatedCollection);
+    public StoreCollection addProducts(StoreId store, StoreCollectionId collection, List<ProductId> productIds, Instant now) {
+        UUID collectionId = collection.getValue();
+        UUID storeId = store.getValue();
+        if (!CollectionUtils.isEmpty(productIds)) {
+            try {
+                int inserted = storeCollectionRepository.insertProductsSkippingExisting(collectionId, storeId, uuids(productIds), now);
+                if (inserted > 0) {
+                    storeCollectionRepository.touchUpdatedAt(collectionId, storeId, now);
+                }
+            } catch (PessimisticLockingFailureException ex) {
+                throw new CollectionChangedConcurrentlyException();
+            }
+        }
+        return reRead(collectionId, storeId);
     }
 
     @Override
-    public StoreCollection removeProducts(StoreCollection storeCollection, List<ProductId> toRemoveProductIds) {
-        StoreCollectionEntity storeCollectionEntity = this.getEntity(storeCollection);
-
-        if (CollectionUtils.isEmpty(storeCollectionEntity.getProducts())
-                || CollectionUtils.isEmpty(toRemoveProductIds)) {
-            return storeCollectionPersistenceMapper.toStoreCollection(storeCollectionEntity);
+    public StoreCollection removeProducts(StoreId store, StoreCollectionId collection, List<ProductId> productIds, Instant now) {
+        UUID collectionId = collection.getValue();
+        UUID storeId = store.getValue();
+        if (!CollectionUtils.isEmpty(productIds)) {
+            try {
+                int deleted = storeCollectionRepository.deleteProducts(collectionId, storeId, uuids(productIds));
+                if (deleted > 0) {
+                    storeCollectionRepository.touchUpdatedAt(collectionId, storeId, now);
+                }
+            } catch (PessimisticLockingFailureException ex) {
+                throw new CollectionChangedConcurrentlyException();
+            }
         }
+        return reRead(collectionId, storeId);
+    }
 
-        Set<UUID> toRemoveProductIdsSet = toRemoveProductIds.stream()
-                .map(BaseId::getValue)
-                .collect(Collectors.toSet());
+    private StoreCollection reRead(UUID collectionId, UUID storeId) {
+        return storeCollectionRepository.findByIdAndStoreId(collectionId, storeId)
+                .map(storeCollectionPersistenceMapper::toStoreCollection)
+                .orElseThrow(() -> new NotFoundException(Constants.ERROR_MSG_COLLECTION_NOT_FOUND));
+    }
 
-        storeCollectionEntity.getProducts().removeIf(productCollectionEntity ->
-                toRemoveProductIdsSet.contains(productCollectionEntity.getProductId())
-        );
-        storeCollectionEntity.setUpdatedAt(storeCollection.getUpdatedAt());
-
-        StoreCollectionEntity updatedStoreCollectionEntity = storeCollectionRepository.saveAndFlush(storeCollectionEntity);
-
-        return storeCollectionPersistenceMapper.toStoreCollection(updatedStoreCollectionEntity);
+    private static List<UUID> uuids(List<ProductId> productIds) {
+        return productIds.stream().map(BaseId::getValue).toList();
     }
 
     @Override
@@ -103,13 +114,6 @@ public class StoreCollectionPersistenceAdapter implements StoreCollectionReposit
     @Override
     public boolean existsByStoreIdAndId(StoreId storeId, StoreCollectionId storeCollectionId) {
         return storeCollectionRepository.existsByIdAndStoreId(storeCollectionId.getValue(), storeId.getValue());
-    }
-
-    // Defence in depth: the service has already loaded the collection scoped by store.
-    private StoreCollectionEntity getEntity(StoreCollection storeCollection) {
-        return storeCollectionRepository
-                .findByIdAndStoreId(storeCollection.getId().getValue(), storeCollection.getStoreId().getValue())
-                .orElseThrow(() -> new NotFoundException(Constants.ERROR_MSG_COLLECTION_NOT_FOUND));
     }
 
     // Product ids are validated against the collection's store by the use case; the FK backs it.

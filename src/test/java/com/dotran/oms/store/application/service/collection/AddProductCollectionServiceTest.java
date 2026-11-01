@@ -23,6 +23,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.ArrayList;
+import java.time.Instant;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
@@ -96,13 +97,13 @@ class AddProductCollectionServiceTest {
     @DisplayName("throws NotFoundException when the collection is not in this store")
     void throwsException_whenCollectionNotInStore() {
         storeOwnedByMerchant();
-        when(repository.getByStoreIdAndId(eq(storeId), eq(collectionId))).thenReturn(Optional.empty());
+        when(repository.existsByStoreIdAndId(storeId, collectionId)).thenReturn(false);
 
         assertThatThrownBy(() -> addProductCollectionService.addProductsToCollection(cmd(List.of(newProduct))))
                 .isInstanceOf(NotFoundException.class)
                 .hasMessage("Collection not found");
 
-        verify(repository, never()).addProducts(any(), anyList());
+        verify(repository, never()).addProducts(any(), any(), anyList(), any());
         verifyNoInteractions(storeProductRepository);
     }
 
@@ -111,7 +112,7 @@ class AddProductCollectionServiceTest {
     void throwsException_whenProductNotInStore() {
         ProductId otherStoreProduct = ProductId.newProductId();
         storeOwnedByMerchant();
-        when(repository.getByStoreIdAndId(storeId, collectionId)).thenReturn(Optional.of(collectionWith(existingProduct)));
+        when(repository.existsByStoreIdAndId(storeId, collectionId)).thenReturn(true);
         when(storeProductRepository.findExistingProductIds(eq(storeId), eq(List.of(newProduct, otherStoreProduct))))
                 .thenReturn(Set.of(newProduct));
 
@@ -119,44 +120,49 @@ class AddProductCollectionServiceTest {
                 .isInstanceOf(NotFoundException.class)
                 .hasMessage("Product not found");
 
-        verify(repository, never()).addProducts(any(), anyList());
+        verify(repository, never()).addProducts(any(), any(), anyList(), any());
     }
 
     @Test
-    @DisplayName("throws BusinessException when a product already exists in the collection")
-    void throwsException_whenProductAlreadyInCollection() {
+    @DisplayName("idempotent: every requested id goes to the insert, also those already in the loaded collection (the snapshot may be stale)")
+    void productAlreadyInCollection_isSentToTheInsert_andSucceeds() {
+        StoreCollection collection = collectionWith(existingProduct);
+        StoreCollectionDto dto = StoreCollectionDto.builder().id(UUID.randomUUID()).productCount(2).build();
         storeOwnedByMerchant();
-        when(repository.getByStoreIdAndId(storeId, collectionId)).thenReturn(Optional.of(collectionWith(existingProduct)));
+        when(repository.existsByStoreIdAndId(storeId, collectionId)).thenReturn(true);
+        when(storeProductRepository.findExistingProductIds(storeId, List.of(existingProduct, newProduct)))
+                .thenReturn(Set.of(existingProduct, newProduct));
+        when(repository.addProducts(eq(storeId), eq(collectionId), eq(List.of(existingProduct, newProduct)), any(Instant.class))).thenReturn(collection);
+        when(mapper.toCollectionDto(collection)).thenReturn(dto);
 
-        assertThatThrownBy(() -> addProductCollectionService.addProductsToCollection(cmd(List.of(existingProduct))))
-                .isInstanceOf(BusinessException.class)
-                .hasMessageContaining("already exists");
+        assertThat(addProductCollectionService.addProductsToCollection(cmd(List.of(existingProduct, newProduct)))).isEqualTo(dto);
 
-        verify(repository, never()).addProducts(any(), anyList());
+        verify(repository).addProducts(eq(storeId), eq(collectionId), eq(List.of(existingProduct, newProduct)), any(Instant.class));
     }
 
     @Test
     @DisplayName("throws BusinessException when the product list is empty")
     void throwsException_whenProductListEmpty() {
         storeOwnedByMerchant();
-        when(repository.getByStoreIdAndId(storeId, collectionId)).thenReturn(Optional.of(collectionWith(existingProduct)));
+        when(repository.existsByStoreIdAndId(storeId, collectionId)).thenReturn(true);
 
         assertThatThrownBy(() -> addProductCollectionService.addProductsToCollection(cmd(List.of())))
                 .isInstanceOf(BusinessException.class);
 
-        verify(repository, never()).addProducts(any(), anyList());
+        verify(repository, never()).addProducts(any(), any(), anyList(), any());
+        verifyNoInteractions(storeProductRepository);
     }
 
     @Test
     @DisplayName("throws ValidationException when a product id is null")
     void throwsException_whenProductIdNull() {
         storeOwnedByMerchant();
-        when(repository.getByStoreIdAndId(storeId, collectionId)).thenReturn(Optional.of(collectionWith(existingProduct)));
+        when(repository.existsByStoreIdAndId(storeId, collectionId)).thenReturn(true);
 
         assertThatThrownBy(() -> addProductCollectionService.addProductsToCollection(cmd(Arrays.asList(newProduct, ProductId.of(null)))))
                 .isInstanceOf(ValidationException.class);
 
-        verify(repository, never()).addProducts(any(), anyList());
+        verify(repository, never()).addProducts(any(), any(), anyList(), any());
     }
 
     @Test
@@ -173,15 +179,15 @@ class AddProductCollectionServiceTest {
                 .build();
 
         storeOwnedByMerchant();
-        when(repository.getByStoreIdAndId(storeId, collectionId)).thenReturn(Optional.of(collection));
+        when(repository.existsByStoreIdAndId(storeId, collectionId)).thenReturn(true);
         when(storeProductRepository.findExistingProductIds(eq(storeId), eq(List.of(newProduct))))
                 .thenReturn(Set.of(newProduct));
-        when(repository.addProducts(collection, List.of(newProduct))).thenReturn(updatedCollection);
+        when(repository.addProducts(eq(storeId), eq(collectionId), eq(List.of(newProduct)), any(Instant.class))).thenReturn(updatedCollection);
         when(mapper.toCollectionDto(updatedCollection)).thenReturn(expectedDto);
 
         StoreCollectionDto result = addProductCollectionService.addProductsToCollection(cmd(List.of(newProduct, newProduct)));
 
         assertThat(result.getProductCount()).isEqualTo(2);
-        verify(repository).addProducts(collection, List.of(newProduct));
+        verify(repository).addProducts(eq(storeId), eq(collectionId), eq(List.of(newProduct)), any(Instant.class));
     }
 }

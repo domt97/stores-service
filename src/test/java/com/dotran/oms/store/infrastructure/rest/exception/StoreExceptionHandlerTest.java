@@ -1,5 +1,7 @@
 package com.dotran.oms.store.infrastructure.rest.exception;
 
+import com.dotran.oms.store.common.constants.Constants;
+import com.dotran.oms.store.domain.exception.CollectionChangedConcurrentlyException;
 import com.dotran.oms.core.rest.ErrorResponse;
 import com.dotran.oms.store.application.impex.product.ImportBusyException;
 import com.dotran.oms.store.application.impex.product.StoreImportRunningException;
@@ -93,5 +95,16 @@ class StoreExceptionHandlerTest {
 
         assertThat(response.getStatus()).isEqualTo(409);
         assertThat(response.getError()).isEqualTo("An import for this store is already running; wait for it to finish");
+    }
+
+    @Test
+    @DisplayName("productConflict returns 409 for a collection changed by a concurrent request")
+    void collectionChangedConcurrently_returns409() {
+        when(request.getRequestURI()).thenReturn("/v1/store/merchants/m/stores/s/collections/c/add-products");
+
+        ErrorResponse response = handler.productConflict(new CollectionChangedConcurrentlyException(), request);
+
+        assertThat(response.getStatus()).isEqualTo(409);
+        assertThat(response.getError()).isEqualTo(Constants.ERROR_MSG_COLLECTION_CONCURRENT_CHANGE);
     }
 }
