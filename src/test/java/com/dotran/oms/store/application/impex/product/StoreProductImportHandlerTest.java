@@ -3,14 +3,11 @@ package com.dotran.oms.store.application.impex.product;
 import com.dotran.oms.core.domain.id.SKU;
 import com.dotran.oms.core.domain.id.StoreId;
 import com.dotran.oms.core.domain.id.MerchantId;
-import com.dotran.oms.core.exception.NotFoundException;
 import com.dotran.oms.core.exception.ValidationException;
 import com.dotran.oms.core.io.template.imp.ImportResult;
 import com.dotran.oms.store.application.event.OutboxEventHelper;
 import com.dotran.oms.store.application.repository.OutboxEventRepository;
 import com.dotran.oms.store.application.repository.StoreProductRepository;
-import com.dotran.oms.store.application.repository.StoreRepository;
-import com.dotran.oms.store.application.repository.MerchantRepository;
 import com.dotran.oms.store.domain.event.OutboxEvent;
 import com.dotran.oms.store.domain.model.StoreProduct;
 import com.dotran.oms.store.domain.exception.SkuCodeInUseException;
@@ -47,8 +44,6 @@ import static org.mockito.Mockito.when;
 @DisplayName("StoreProductImportHandler")
 class StoreProductImportHandlerTest {
 
-    @Mock private MerchantRepository merchantRepository;
-    @Mock private StoreRepository storeRepository;
     @Mock private StoreProductRepository storeProductRepository;
     @Mock private OutboxEventRepository outboxEventRepository;
     @Mock private OutboxEventHelper outboxEventHelper;
@@ -58,7 +53,7 @@ class StoreProductImportHandlerTest {
 
     @BeforeEach
     void setUp() {
-        handler = new StoreProductImportHandler(merchantRepository, storeRepository, storeProductRepository,
+        handler = new StoreProductImportHandler(storeProductRepository,
                 outboxEventRepository, outboxEventHelper, new TransactionTemplate(transactionManager));
     }
 
@@ -115,8 +110,6 @@ class StoreProductImportHandlerTest {
         }
 
         private void merchantAndStoreExist() {
-            when(merchantRepository.existsById(merchantId)).thenReturn(true);
-            when(storeRepository.existsByMerchantIdAndStoreId(merchantId, storeId)).thenReturn(true);
         }
 
         @Test
@@ -206,41 +199,61 @@ class StoreProductImportHandlerTest {
         }
 
         @Test
+        @DisplayName("rejects values the database would refuse with a clear message, before any transaction (thumbnail/SKU name > 255, blank image URL, bad weight or dimensions)")
+        void rejectsColumnSizes_beforeTransaction() {
+            String longText = "x".repeat(256);
+            ProductImportRow p = ProductImportRow.builder().reference("REF-001").name("P1").build();
+            ProductImportRow longThumb = ProductImportRow.builder().reference("REF-001").name("P1").thumbnailUrl(longText).build();
+            ProductSKUImportRow longSkuName = ProductSKUImportRow.builder().productRef("REF-001").sku(SKU.of("A")).name(longText)
+                    .price(new BigDecimal("10000")).currency("VND").build();
+            ProductImageImportRow blankUrl = ProductImageImportRow.builder().productRef("REF-001").imageUrl(" ").build();
+
+            assertThatThrownBy(() -> handler.execute(context(), data(List.of(longThumb), List.of(skuRow("REF-001", "A")), List.of(imageRow("REF-001")))))
+                    .isInstanceOf(ValidationException.class).hasMessageContaining("Thumbnail URL");
+            assertThatThrownBy(() -> handler.execute(context(), data(List.of(p), List.of(longSkuName), List.of(imageRow("REF-001")))))
+                    .isInstanceOf(ValidationException.class).hasMessageContaining("SKU name");
+            assertThatThrownBy(() -> handler.execute(context(), data(List.of(p), List.of(skuRow("REF-001", "A")), List.of(blankUrl))))
+                    .isInstanceOf(ValidationException.class).hasMessageContaining("URL");
+            for (String[] bad : new String[][]{{"weight", "-1"}, {"weight", "1.005"}, {"length", "100000000"}}) {
+                ProductSKUImportRow.ProductSKUImportRowBuilder sku = ProductSKUImportRow.builder().productRef("REF-001").sku(SKU.of("A"))
+                        .price(new BigDecimal("10000")).currency("VND");
+                if (bad[0].equals("weight")) sku.weight(new BigDecimal(bad[1])); else sku.length(new BigDecimal(bad[1]));
+                assertThatThrownBy(() -> handler.execute(context(), data(List.of(p), List.of(sku.build()), List.of(imageRow("REF-001")))))
+                        .as(bad[0] + "=" + bad[1]).isInstanceOf(ValidationException.class).hasMessageContaining("10^8");
+            }
+
+            verify(transactionManager, never()).getTransaction(any());
+            verify(storeProductRepository, never()).saveAll(any());
+        }
+
+        @Test
+        @DisplayName("accepts the largest values the columns hold (255 characters, 99999999.99)")
+        void acceptsColumnMaximums() {
+            when(storeProductRepository.saveAll(any())).thenAnswer(inv -> inv.getArgument(0));
+            when(outboxEventHelper.createProductCreatedOutboxEvents(any(), any())).thenReturn(List.of());
+            String max = "x".repeat(255);
+            ProductImportRow p = ProductImportRow.builder().reference("REF-001").name(max).thumbnailUrl(max).build();
+            ProductSKUImportRow sku = ProductSKUImportRow.builder().productRef("REF-001").sku(SKU.of("A")).name(max)
+                    .price(new BigDecimal("10000")).currency("VND").weight(new BigDecimal("99999999.99")).height(BigDecimal.ZERO).build();
+
+            ImportResult result = handler.execute(context(), data(List.of(p), List.of(sku), List.of(imageRow("REF-001"))));
+
+            assertThat(result.getStatus()).isEqualTo(ImportResult.ImportStatus.SUCCESS);
+        }
+
+        @Test
         @DisplayName("a validation failure never opens a transaction")
         void validationFailure_noTransaction() {
-            when(merchantRepository.existsById(merchantId)).thenReturn(false);
+            ProductImportData empty = ProductImportData.builder().products(List.of()).skus(List.of()).images(List.of()).build();
 
-            assertThatThrownBy(() -> handler.execute(context(), validData())).isInstanceOf(NotFoundException.class);
+            assertThatThrownBy(() -> handler.execute(context(), empty)).isInstanceOf(ValidationException.class);
 
             verify(transactionManager, never()).getTransaction(any());
         }
 
         @Test
-        @DisplayName("throws NotFoundException when merchant not found")
-        void throwsException_whenMerchantNotFound() {
-            when(merchantRepository.existsById(merchantId)).thenReturn(false);
-
-            assertThatThrownBy(() -> handler.execute(context(), validData()))
-                    .isInstanceOf(NotFoundException.class);
-            verify(storeRepository, never()).existsByMerchantIdAndStoreId(any(), any());
-            verify(storeProductRepository, never()).saveAll(any());
-        }
-
-        @Test
-        @DisplayName("throws NotFoundException when store not found")
-        void throwsException_whenStoreNotFound() {
-            when(merchantRepository.existsById(merchantId)).thenReturn(true);
-            when(storeRepository.existsByMerchantIdAndStoreId(merchantId, storeId)).thenReturn(false);
-
-            assertThatThrownBy(() -> handler.execute(context(), validData()))
-                    .isInstanceOf(NotFoundException.class);
-        }
-
-        @Test
         @DisplayName("throws ValidationException when product list is empty")
         void throwsException_whenProductsEmpty() {
-            when(merchantRepository.existsById(merchantId)).thenReturn(true);
-            when(storeRepository.existsByMerchantIdAndStoreId(merchantId, storeId)).thenReturn(true);
             ProductImportData emptyData = ProductImportData.builder()
                     .products(List.of())
                     .skus(List.of())
@@ -254,8 +267,6 @@ class StoreProductImportHandlerTest {
         @Test
         @DisplayName("throws ValidationException when a product has no matching SKU")
         void throwsException_whenMissingSku() {
-            when(merchantRepository.existsById(merchantId)).thenReturn(true);
-            when(storeRepository.existsByMerchantIdAndStoreId(merchantId, storeId)).thenReturn(true);
             ProductImportData dataWithNoSku = ProductImportData.builder()
                     .products(List.of(ProductImportRow.builder().reference("REF-001").name("P1").build()))
                     .skus(List.of())
@@ -270,8 +281,6 @@ class StoreProductImportHandlerTest {
         @Test
         @DisplayName("throws ValidationException when a product has no matching image")
         void throwsException_whenMissingImage() {
-            when(merchantRepository.existsById(merchantId)).thenReturn(true);
-            when(storeRepository.existsByMerchantIdAndStoreId(merchantId, storeId)).thenReturn(true);
             ProductImportData dataWithNoImage = ProductImportData.builder()
                     .products(List.of(ProductImportRow.builder().reference("REF-001").name("P1").build()))
                     .skus(List.of(ProductSKUImportRow.builder().productRef("REF-001")
@@ -301,8 +310,6 @@ class StoreProductImportHandlerTest {
         @Test
         @DisplayName("rejects a blank, missing or too long SKU code, and a code repeated in the file, before anything is saved")
         void rejectsBadSkuCodes() {
-            when(merchantRepository.existsById(merchantId)).thenReturn(true);
-            when(storeRepository.existsByMerchantIdAndStoreId(merchantId, storeId)).thenReturn(true);
 
             assertThatThrownBy(() -> handler.execute(context(), dataWithSkuCodes(" "))).isInstanceOf(ValidationException.class);
             assertThatThrownBy(() -> handler.execute(context(), dataWithSkuCodes((String) null))).isInstanceOf(ValidationException.class);
@@ -316,8 +323,6 @@ class StoreProductImportHandlerTest {
         @Test
         @DisplayName("rejects a SKU code already used in the store (removed SKUs included) before anything is saved")
         void rejectsCodeInUse() {
-            when(merchantRepository.existsById(merchantId)).thenReturn(true);
-            when(storeRepository.existsByMerchantIdAndStoreId(merchantId, storeId)).thenReturn(true);
             when(storeProductRepository.findSkuCodesInStore(eq(storeId), any())).thenReturn(Set.of(SKU.of("B")));
 
             assertThatThrownBy(() -> handler.execute(context(), dataWithSkuCodes("A", "B")))
@@ -331,8 +336,6 @@ class StoreProductImportHandlerTest {
         @Test
         @DisplayName("rejects an invalid currency code or a fractional VND price before anything is saved")
         void rejectsInvalidSkuRow_beforeSaving() {
-            when(merchantRepository.existsById(merchantId)).thenReturn(true);
-            when(storeRepository.existsByMerchantIdAndStoreId(merchantId, storeId)).thenReturn(true);
 
             assertThatThrownBy(() -> handler.execute(context(), dataWithSku("US", new BigDecimal("10.00"))))
                     .isInstanceOf(ValidationException.class);
@@ -346,8 +349,6 @@ class StoreProductImportHandlerTest {
         @Test
         @DisplayName("normalises a lower-case currency from the file to VND")
         void normalisesCurrency_fromFile() {
-            when(merchantRepository.existsById(merchantId)).thenReturn(true);
-            when(storeRepository.existsByMerchantIdAndStoreId(merchantId, storeId)).thenReturn(true);
             when(storeProductRepository.saveAll(any())).thenAnswer(inv -> inv.getArgument(0));
             when(outboxEventHelper.createProductCreatedOutboxEvents(any(), any())).thenReturn(List.of());
 
@@ -361,8 +362,6 @@ class StoreProductImportHandlerTest {
         @Test
         @DisplayName("processes valid data and returns SUCCESS result")
         void returnsSuccess_forValidData() {
-            when(merchantRepository.existsById(merchantId)).thenReturn(true);
-            when(storeRepository.existsByMerchantIdAndStoreId(merchantId, storeId)).thenReturn(true);
             when(storeProductRepository.saveAll(any())).thenAnswer(inv -> inv.getArgument(0));
             when(outboxEventHelper.createProductCreatedOutboxEvents(any(), any())).thenReturn(List.of());
 
@@ -390,8 +389,6 @@ class StoreProductImportHandlerTest {
                     .build();
             savedProducts.add(sp);
 
-            when(merchantRepository.existsById(merchantId)).thenReturn(true);
-            when(storeRepository.existsByMerchantIdAndStoreId(merchantId, storeId)).thenReturn(true);
             when(storeProductRepository.saveAll(any())).thenReturn(savedProducts);
             when(outboxEventHelper.createProductCreatedOutboxEvents(any(), any())).thenReturn(List.of());
 
@@ -408,8 +405,6 @@ class StoreProductImportHandlerTest {
         @Test
         @DisplayName("skips outbox creation when no products were saved")
         void skipsOutboxCreation_whenNoProductsSaved() {
-            when(merchantRepository.existsById(merchantId)).thenReturn(true);
-            when(storeRepository.existsByMerchantIdAndStoreId(merchantId, storeId)).thenReturn(true);
             when(storeProductRepository.saveAll(any())).thenReturn(List.of());
 
             handler.execute(context(), validData());

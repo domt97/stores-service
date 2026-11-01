@@ -50,6 +50,25 @@ aws:
     store-product-bucket: ${AWS_S3_STORE_PRODUCT_BUCKET:store-products}
 
 app:
+  # Excel product import limits (BR-CAT-13); see ProductImportLimits for the meaning of each value.
+  import:
+    max-bytes: ${IMPORT_MAX_BYTES:5242880}
+    max-products: ${IMPORT_MAX_PRODUCTS:1000}
+    max-skus: ${IMPORT_MAX_SKUS:10000}
+    max-images: ${IMPORT_MAX_IMAGES:20000}
+    row-element-factor: 10
+    max-shared-strings: 200000
+    max-text-chars: 20000000
+    max-cell-chars: 10000
+    max-styles-bytes: 5242880
+    max-zip-entry-bytes: 16777216
+    min-inflate-ratio: 0.01
+    permits: ${IMPORT_PERMITS:0}            # 0 = from the heap: one slot per heap-per-import-bytes, one kept free
+    max-permits: ${IMPORT_MAX_PERMITS:4}
+    max-waiting: 20
+    heap-per-import-bytes: 134217728
+    slot-wait-seconds: 40
+    retry-after-seconds: 10
   swagger:
     title: Store Service API
     version: v1

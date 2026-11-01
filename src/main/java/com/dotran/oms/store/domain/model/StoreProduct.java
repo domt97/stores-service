@@ -37,6 +37,7 @@ public class StoreProduct extends AggregateRoot<ProductId> {
     public static final int MAX_SKUS = 100;
     public static final int MAX_IMAGES = 20;
     public static final int MAX_DESCRIPTION_LENGTH = 5000;
+    public static final int MAX_NAME_LENGTH = 255;
 
     private static final Comparator<ProductReplacement.ImageSpec> IMAGE_ORDER = Comparator
             .comparing(ProductReplacement.ImageSpec::displayOrder, Comparator.nullsLast(Comparator.naturalOrder()))
@@ -59,6 +60,7 @@ public class StoreProduct extends AggregateRoot<ProductId> {
         // Own mutable copies: callers may pass immutable lists (e.g. Stream.toList() in the mapper).
         this.skus = this.skus != null ? new ArrayList<>(this.skus) : new ArrayList<>();
         this.images = this.images != null ? new ArrayList<>(this.images) : new ArrayList<>();
+        checkName(this.name);
         checkLimits(this.description, this.skus.size(), this.images.size());
         checkNoDuplicateCodes(this.skus.stream().map(ProductSku::getSku).toList());
         this.skus.forEach(ProductSku::normaliseForSale);
@@ -88,9 +90,7 @@ public class StoreProduct extends AggregateRoot<ProductId> {
         List<ProductSkuSpec> specs = replacement.skus() == null ? List.of() : replacement.skus();
         List<ProductReplacement.ImageSpec> imageSpecs = replacement.images() == null ? List.of() : replacement.images();
 
-        if (replacement.name() == null || replacement.name().isBlank()) {
-            throw new ValidationException(Constants.ERROR_MSG_PRODUCT_NAME_REQUIRED);
-        }
+        checkName(replacement.name());
         checkLimits(replacement.description(), specs.size(), imageSpecs.size());
         if (specs.stream().anyMatch(spec -> spec.status() == null)) {
             throw new ValidationException(Constants.ERROR_MSG_SKU_STATUS_REQUIRED);
@@ -172,6 +172,15 @@ public class StoreProduct extends AggregateRoot<ProductId> {
                 .map(image -> new ProductReplacement.ImageSpec(image.getImageUrl(), image.getDisplayOrder()))
                 .sorted(IMAGE_ORDER)
                 .toList();
+    }
+
+    private static void checkName(String name) {
+        if (name == null || name.isBlank()) {
+            throw new ValidationException(Constants.ERROR_MSG_PRODUCT_NAME_REQUIRED);
+        }
+        if (name.length() > MAX_NAME_LENGTH) {
+            throw new ValidationException(String.format(Constants.ERROR_MSG_PRODUCT_NAME_TOO_LONG, MAX_NAME_LENGTH));
+        }
     }
 
     private static void checkLimits(String description, int skuCount, int imageCount) {

@@ -83,6 +83,20 @@ class StoreProductReplaceTest {
         return new ProductReplacement(base.name(), base.description(), null, null, status, skus, base.images());
     }
 
+    @Test
+    @DisplayName("name: required and at most 255 characters, as on create (one domain rule)")
+    void nameRule() {
+        List<ProductSkuSpec> skus = List.of(spec("A", "100", ProductSkuStatus.ACTIVE), spec("B", "200", ProductSkuStatus.ACTIVE));
+        ProductReplacement base = same(skus);
+
+        assertThatThrownBy(() -> stored().replace(new ProductReplacement(" ", base.description(), null, null,
+                ProductStatus.ACTIVE, skus, base.images()), NOW))
+                .isInstanceOf(ValidationException.class).hasMessage("Product name is required");
+        assertThatThrownBy(() -> stored().replace(new ProductReplacement("x".repeat(256), base.description(), null, null,
+                ProductStatus.ACTIVE, skus, base.images()), NOW))
+                .isInstanceOf(ValidationException.class).hasMessageContaining("at most 255");
+    }
+
     @Nested
     @DisplayName("no change")
     class NoChange {

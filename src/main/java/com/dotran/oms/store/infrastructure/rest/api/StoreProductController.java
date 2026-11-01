@@ -174,17 +174,31 @@ public class StoreProductController {
         return storeProductReviewDtos.map(storeProductRestMapper::toStoreProductPreviewResponse);
     }
 
-    @Operation(summary = "Import store products", description = "Imports a list of products for a specific store")
+    @Operation(summary = "Import store products",
+            description = "Imports products from an Excel (.xlsx) file in S3: sheets Product, Product SKU and Product Image. "
+                    + "Limits (BR-CAT-13): 5 MB, 1,000 product rows, 10,000 SKU rows, 20,000 image rows; one import per store "
+                    + "at a time. All or nothing: FAILED means nothing was written.")
     @ApiResponses(value = {
-            @ApiResponse(responseCode = "200", description = "Products imported successfully",
+            @ApiResponse(responseCode = "200", description = "SUCCESS, or FAILED with nothing written: a rule broken by the "
+                    + "file's content (message says which) or an internal error (generic message)",
                     content = @Content(mediaType = "application/json", schema = @Schema(implementation = ImportResult.class))),
-            @ApiResponse(responseCode = "404", description = "Store not found", content = @Content)
+            @ApiResponse(responseCode = "400", description = "The file can't be read as an import file: too large, too many "
+                    + "rows, too much text or formatting, missing sheet, bad header, a cell that is not a valid number or id; "
+                    + "or blank path/fileName", content = @Content),
+            @ApiResponse(responseCode = "404", description = "Merchant not found, or store not found for this merchant",
+                    content = @Content),
+            @ApiResponse(responseCode = "422", description = "Not an Excel (.xlsx) file, or a corrupt file", content = @Content),
+            @ApiResponse(responseCode = "409", description = "An import for this store is already running", content = @Content),
+            @ApiResponse(responseCode = "500", description = "Bucket or file not found in S3, or a temporary storage error",
+                    content = @Content),
+            @ApiResponse(responseCode = "503", description = "The server stayed busy with other imports; retry after the "
+                    + "Retry-After seconds", content = @Content)
     })
     @PostMapping("/merchants/{merchantId}/stores/{storeId}/products/import")
     @ResponseStatus(HttpStatus.OK)
-    public ImportResult importProducts(@PathVariable UUID merchantId,
-                                       @PathVariable UUID storeId,
-                                       @RequestBody ImportStoreProductsRequest request) {
+    public ImportResult importProducts(@Parameter(description = "Merchant id") @PathVariable UUID merchantId,
+                                       @Parameter(description = "Store id (must belong to the merchant)") @PathVariable UUID storeId,
+                                       @Valid @RequestBody ImportStoreProductsRequest request) {
 
         ImportStoreProductCmd importStoreProductCmd = ImportStoreProductCmd.builder()
                 .merchantId(MerchantId.of(merchantId))
