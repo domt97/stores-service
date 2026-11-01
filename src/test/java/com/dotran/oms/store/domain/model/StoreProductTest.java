@@ -57,6 +57,27 @@ class StoreProductTest {
     class InitState {
 
         @Test
+        @DisplayName("name: required and at most 255 characters (shared with update)")
+        void nameRule() {
+            assertThatThrownBy(() -> named("  ").initState())
+                    .isInstanceOf(ValidationException.class).hasMessage("Product name is required");
+            assertThatThrownBy(() -> named(null).initState())
+                    .isInstanceOf(ValidationException.class).hasMessage("Product name is required");
+            assertThatThrownBy(() -> named("x".repeat(256)).initState())
+                    .isInstanceOf(ValidationException.class).hasMessageContaining("at most 255");
+
+            StoreProduct max = named("x".repeat(255));
+            max.initState();
+            assertThat(max.getName()).hasSize(255);
+        }
+
+        private StoreProduct named(String name) {
+            ProductId productId = ProductId.newProductId();
+            return StoreProduct.builder().id(productId).storeId(StoreId.newStoreId()).name(name)
+                    .skus(new ArrayList<>(List.of(buildSku(productId, BigDecimal.TEN, "VND")))).build();
+        }
+
+        @Test
         @DisplayName("sets status to ACTIVE")
         void setsStatusActive() {
             StoreProduct product = buildProduct();

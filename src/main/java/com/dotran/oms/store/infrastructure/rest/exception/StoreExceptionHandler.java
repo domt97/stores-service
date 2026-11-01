@@ -1,5 +1,7 @@
 package com.dotran.oms.store.infrastructure.rest.exception;
 
+import com.dotran.oms.store.application.impex.product.ImportBusyException;
+import com.dotran.oms.store.application.impex.product.StoreImportRunningException;
 import com.dotran.oms.store.domain.exception.ProductVersionConflictException;
 import com.dotran.oms.store.domain.exception.SkuCodeInUseException;
 import com.dotran.oms.store.domain.exception.MerchantCodeAlreadyExistsException;
@@ -9,7 +11,9 @@ import com.dotran.oms.core.rest.ErrorResponse;
 import com.dotran.oms.core.rest.GlobalExceptionHandler;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -64,6 +68,31 @@ public class StoreExceptionHandler extends GlobalExceptionHandler {
     public ErrorResponse productConflict(RuntimeException ex, HttpServletRequest request) {
         this.logError(ex);
 
+        return ErrorResponse.builder()
+                .error(ex.getMessage())
+                .timestamp(Instant.now())
+                .status(HttpStatus.CONFLICT.value())
+                .path(request.getRequestURI())
+                .build();
+    }
+
+    /** Server saturated with imports for the whole wait (BR-CAT-13): 503 with Retry-After. Logged at WARN by the service. */
+    @ExceptionHandler(value = {ImportBusyException.class})
+    public ResponseEntity<ErrorResponse> importBusy(ImportBusyException ex, HttpServletRequest request) {
+        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+                .header(HttpHeaders.RETRY_AFTER, String.valueOf(ex.getRetryAfterSeconds()))
+                .body(ErrorResponse.builder()
+                        .error(ex.getMessage())
+                        .timestamp(Instant.now())
+                        .status(HttpStatus.SERVICE_UNAVAILABLE.value())
+                        .path(request.getRequestURI())
+                        .build());
+    }
+
+    /** This store already has an import running (BR-CAT-13): 409. Logged at WARN by the service. */
+    @ExceptionHandler(value = {StoreImportRunningException.class})
+    @ResponseStatus(HttpStatus.CONFLICT)
+    public ErrorResponse storeImportRunning(StoreImportRunningException ex, HttpServletRequest request) {
         return ErrorResponse.builder()
                 .error(ex.getMessage())
                 .timestamp(Instant.now())

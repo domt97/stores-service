@@ -1,6 +1,8 @@
 package com.dotran.oms.store.infrastructure.rest.exception;
 
 import com.dotran.oms.core.rest.ErrorResponse;
+import com.dotran.oms.store.application.impex.product.ImportBusyException;
+import com.dotran.oms.store.application.impex.product.StoreImportRunningException;
 import com.dotran.oms.store.domain.exception.StoreAlreadyClosedException;
 import com.dotran.oms.store.domain.exception.ProductVersionConflictException;
 import com.dotran.oms.store.domain.exception.SkuCodeInUseException;
@@ -12,7 +14,9 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.when;
@@ -65,5 +69,29 @@ class StoreExceptionHandlerTest {
         assertThat(version.getError()).isEqualTo("changed");
         assertThat(code.getStatus()).isEqualTo(HttpStatus.CONFLICT.value());
         assertThat(code.getError()).isEqualTo("in use");
+    }
+
+    @Test
+    @DisplayName("importBusy returns 503 with Retry-After and the message")
+    void importBusy_returns503_withRetryAfter() {
+        when(request.getRequestURI()).thenReturn("/v1/store/merchants/m/stores/s/products/import");
+
+        ResponseEntity<ErrorResponse> response = handler.importBusy(new ImportBusyException(10), request);
+
+        assertThat(response.getStatusCode().value()).isEqualTo(503);
+        assertThat(response.getHeaders().getFirst(HttpHeaders.RETRY_AFTER)).isEqualTo("10");
+        assertThat(response.getBody().getError()).isEqualTo("The server is busy with other imports; try again in 10 seconds");
+        assertThat(response.getBody().getStatus()).isEqualTo(503);
+    }
+
+    @Test
+    @DisplayName("storeImportRunning returns 409 with the message")
+    void storeImportRunning_returns409() {
+        when(request.getRequestURI()).thenReturn("/v1/store/merchants/m/stores/s/products/import");
+
+        ErrorResponse response = handler.storeImportRunning(new StoreImportRunningException(), request);
+
+        assertThat(response.getStatus()).isEqualTo(409);
+        assertThat(response.getError()).isEqualTo("An import for this store is already running; wait for it to finish");
     }
 }

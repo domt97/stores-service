@@ -10,7 +10,7 @@ public class Constants {
     public static final String STORE = "Store";
     public static final String PRODUCT = "Product";
 
-    // Platform currency (BR-MER-01: one market, VND, no decimals). SKUs may still carry other currencies.
+    // VND has no decimals: a VND price must be whole đồng. SKUs may carry other currencies (BR-MER-01, BR-STO-09).
     public static final String CURRENCY_VND = "VND";
 
     // Common error
@@ -27,6 +27,7 @@ public class Constants {
     public static final String ERROR_MSG_PRODUCT_LIMITS = "A product has at most %d SKUs, %d images and a description of %d characters";
     public static final String ERROR_MSG_PRODUCT_NEEDS_SKU = "A product needs at least one SKU";
     public static final String ERROR_MSG_PRODUCT_NAME_REQUIRED = "Product name is required";
+    public static final String ERROR_MSG_PRODUCT_NAME_TOO_LONG = "Product name has at most %d characters";
     public static final String ERROR_MSG_SKU_STATUS_REQUIRED = "A SKU status is required";
     public static final String ERROR_MSG_SKU_CODE_CONCURRENT = "Another product of the store is being saved with the same SKU code at the same time; try again";
     public static final String ERROR_MSG_PRODUCT_STATUS_REQUIRED = "Product status is required";
@@ -40,6 +41,21 @@ public class Constants {
     public static final String ERROR_MSG_PRODUCT_CONCURRENT_UPDATE = "The product was changed by someone else at the same time; reload it and try again";
     public static final String ERROR_MSG_IMPORT_REFERENCE_REQUIRED = "Every row of the %s sheet needs a product reference";
     public static final String ERROR_MSG_IMPORT_REFERENCE_DUPLICATE = "Product reference %s appears more than once in the Product sheet";
+    public static final String ERROR_MSG_IMPORT_FILE_TOO_LARGE = "The import file is larger than %d MB";
+    public static final String ERROR_MSG_IMPORT_TOO_MANY_ROWS = "The %s sheet has more than %d rows";
+    public static final String ERROR_MSG_IMPORT_TOO_MANY_ROW_ELEMENTS = "The %s sheet has more than %d rows including blank formatted rows; delete the unused rows";
+    public static final String ERROR_MSG_IMPORT_TOO_MUCH_TEXT = "The import file has more text than allowed (%s)";
+    public static final String ERROR_MSG_IMPORT_STYLES_TOO_LARGE = "The import file has too much formatting (styles part larger than %d MB)";
+    public static final String ERROR_MSG_IMPORT_MISSING_SHEET = "The import file has no %s sheet";
+    public static final String ERROR_MSG_IMPORT_BAD_HEADER = "Invalid header in sheet %s, column %d: expected '%s' but got '%s'";
+    public static final String ERROR_MSG_IMPORT_BAD_VALUE = "Invalid %s in sheet %s, row %d, column %s";
+    public static final String ERROR_MSG_IMPORT_UNREADABLE = "Unable to read Excel file";
+    public static final String ERROR_MSG_IMPORT_BUSY = "The server is busy with other imports; try again in %d seconds";
+    public static final String ERROR_MSG_IMPORT_STORE_RUNNING = "An import for this store is already running; wait for it to finish";
+    public static final String ERROR_MSG_IMPORT_FAILED = "The import failed because of an internal error; nothing was imported. Contact support if it persists.";
+    public static final String ERROR_MSG_IMPORT_FIELD_TOO_LONG = "%s has at most %d characters (product reference %s)";
+    public static final String ERROR_MSG_IMPORT_IMAGE_URL_REQUIRED = "Every image needs a URL (product reference %s)";
+    public static final String ERROR_MSG_IMPORT_DIMENSION_INVALID = "%s must be zero or more, below 10^8, with at most 2 decimals (SKU %s)";
     public static final String ERROR_MSG_COLLECTION_NOT_FOUND = "Collection not found";
     public static final String ERROR_MSG_INVALID_SORT_FIELD = "sortBy must be one of createdAt, updatedAt, name, id";
     public static final String ERROR_MSG_INVALID_SORT_DIRECTION = "direction must be ASC or DESC";
