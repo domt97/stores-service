@@ -7,11 +7,13 @@ import com.dotran.oms.store.infrastructure.persistence.entity.OutboxEventEntity;
 import com.dotran.oms.store.infrastructure.persistence.jpa.SpringDataOutboxEventRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 import java.util.List;
 
 @PersistenceAdapter
 @RequiredArgsConstructor
+@Slf4j
 public class OutboxEventPersistenceAdapter implements OutboxEventRepository {
 
     private final SpringDataOutboxEventRepository repository;
@@ -22,6 +24,7 @@ public class OutboxEventPersistenceAdapter implements OutboxEventRepository {
         OutboxEventEntity entity = createOutboxEventEntity(outboxEvent);
 
         repository.save(entity);
+        logQueued(outboxEvent);
     }
 
     @Override
@@ -30,6 +33,16 @@ public class OutboxEventPersistenceAdapter implements OutboxEventRepository {
 
         // Flush now: inside the import transaction a failing insert surfaces here, not later at commit.
         repository.saveAllAndFlush(entities);
+        outboxEvents.forEach(this::logQueued);
+    }
+
+    /**
+     * Joins this request's logs (requestId in the MDC) with the consumer's: the consumer logs the same eventId.
+     * "Queued", not "published": the row is only visible after the transaction commits.
+     */
+    private void logQueued(OutboxEvent outboxEvent) {
+        log.debug("Outbox event queued: eventType={} eventId={} aggregateId={}",
+                outboxEvent.getEventType(), outboxEvent.getId().getValue(), outboxEvent.getAggregateId());
     }
 
     private OutboxEventEntity createOutboxEventEntity(OutboxEvent outboxEvent) {

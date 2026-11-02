@@ -75,6 +75,9 @@ app:
     description: Store service REST API
 
 logging:
+  pattern:
+    # MDC (requestId, merchantId, storeId, ...) in front of every line; see oms-core MdcKeys.
+    correlation: "[%X] "
   level:
     root: INFO
     org:

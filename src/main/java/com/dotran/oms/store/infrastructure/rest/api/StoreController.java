@@ -83,11 +83,11 @@ public class StoreController {
                     content = @Content(mediaType = "application/json", schema = @Schema(implementation = StoreDetailResponse.class))),
             @ApiResponse(responseCode = "404", description = "Store not found", content = @Content)
     })
-    @GetMapping("/merchants/{merchantId}/stores/{id}")
+    @GetMapping("/merchants/{merchantId}/stores/{storeId}")
     @ResponseStatus(HttpStatus.OK)
     public StoreDetailResponse getStore(
             @Parameter(description = "Merchant ID", required = true) @PathVariable UUID merchantId,
-            @Parameter(description = "Store ID", required = true) @PathVariable UUID id) {
+            @Parameter(description = "Store ID", required = true) @PathVariable("storeId") UUID id) {
         log.info("StoreController - getStore: START");
         StoreDetailDto storeDetailDto = getStoreUseCase.getStoreByMerchantIdAndStoreId(
                 GetStoreCmd.builder()
@@ -105,11 +105,11 @@ public class StoreController {
             @ApiResponse(responseCode = "404", description = "Store not found", content = @Content),
             @ApiResponse(responseCode = "409", description = "Store is already closed", content = @Content)
     })
-    @PutMapping("/merchants/{merchantId}/stores/{id}/close")
+    @PutMapping("/merchants/{merchantId}/stores/{storeId}/close")
     @ResponseStatus(HttpStatus.OK)
     public StoreDetailResponse closeStore(
             @Parameter(description = "Merchant ID", required = true) @PathVariable UUID merchantId,
-            @Parameter(description = "Store ID", required = true) @PathVariable UUID id) {
+            @Parameter(description = "Store ID", required = true) @PathVariable("storeId") UUID id) {
         StoreDetailDto storeDetailDto = closeStoreUseCase.close(storeRestMapper.fromRequestToCloseStoreCmd(merchantId, id));
         return storeRestMapper.toStoreDetailResponse(storeDetailDto);
     }
@@ -121,11 +121,11 @@ public class StoreController {
             @ApiResponse(responseCode = "404", description = "Store not found", content = @Content),
             @ApiResponse(responseCode = "409", description = "Store is already open", content = @Content)
     })
-    @PutMapping("/merchants/{merchantId}/stores/{id}/reopen")
+    @PutMapping("/merchants/{merchantId}/stores/{storeId}/reopen")
     @ResponseStatus(HttpStatus.OK)
     public StoreDetailResponse reopenStore(
             @Parameter(description = "Merchant ID", required = true) @PathVariable UUID merchantId,
-            @Parameter(description = "Store ID", required = true) @PathVariable UUID id) {
+            @Parameter(description = "Store ID", required = true) @PathVariable("storeId") UUID id) {
         StoreDetailDto storeDetailDto = reopenStoreUseCase.reopen(
                 ReopenStoreCmd.builder()
                         .merchantId(MerchantId.of(merchantId))
@@ -142,11 +142,11 @@ public class StoreController {
             @ApiResponse(responseCode = "400", description = "Invalid request body", content = @Content),
             @ApiResponse(responseCode = "404", description = "Store not found", content = @Content)
     })
-    @PostMapping("/merchants/{merchantId}/stores/{id}/availability")
+    @PostMapping("/merchants/{merchantId}/stores/{storeId}/availability")
     @ResponseStatus(HttpStatus.CREATED)
     public StoreAvailabilityResponse addStoreAvailability(
             @Parameter(description = "Merchant ID", required = true) @PathVariable UUID merchantId,
-            @Parameter(description = "Store ID", required = true) @PathVariable UUID id,
+            @Parameter(description = "Store ID", required = true) @PathVariable("storeId") UUID id,
             @RequestBody @Valid AddStoreAvailabilityRequest request) {
         log.info("StoreController - addStoreAvailability: START for storeId={}", id);
 
@@ -165,11 +165,11 @@ public class StoreController {
             @ApiResponse(responseCode = "204", description = "Availability cancelled successfully", content = @Content),
             @ApiResponse(responseCode = "404", description = "Store or availability not found", content = @Content)
     })
-    @PostMapping("/merchants/{merchantId}/stores/{id}/availability/{storeAvailabilityId}/cancel")
+    @PostMapping("/merchants/{merchantId}/stores/{storeId}/availability/{storeAvailabilityId}/cancel")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void cancelStoreAvailability(
             @Parameter(description = "Merchant ID", required = true) @PathVariable UUID merchantId,
-            @Parameter(description = "Store ID", required = true) @PathVariable UUID id,
+            @Parameter(description = "Store ID", required = true) @PathVariable("storeId") UUID id,
             @Parameter(description = "Store Availability ID", required = true) @PathVariable UUID storeAvailabilityId) {
         log.info("StoreController - cancelStoreAvailability: START for storeId={}", id);
         cancelStoreAvailabilityUseCase.cancel(storeAvailabilityId, id);
