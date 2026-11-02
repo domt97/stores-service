@@ -31,11 +31,14 @@ Areas used across packages: `merchant`, `store`, `storeconfig`, `storeproduct`, 
 ## Logging (MDC)
 
 Every log line carries the MDC (`logging.pattern.correlation: "[%X] "`): `requestId` (from `X-Request-Id` or generated,
-echoed in the response) and every `...Id` path variable whose value is a UUID (`merchantId`, `storeId`, `productId`,
-`collectionId`, ...), set by oms-core (`RequestIdFilter`, `MdcPathVariableInterceptor`). Name new path variables
-`<thing>Id` so they reach the logs (not `{id}`). Outbox rows are logged at DEBUG with their `eventId`
+echoed in the response) and the request values listed in `app.logging.mdc.fields` (oms-core `MdcProperties`; defaults:
+`merchantId`, `storeId`, `productId`, `inventoryId`, `collectionId`, `storeAvailabilityId` as UUID path variables), set by oms-core
+(`RequestIdFilter`, `MdcRequestFieldsInterceptor`). To log another path/query value (e.g. `sku`), add it under
+`app.logging.mdc.fields` in `application.yaml` with a format (`uuid`, `code` or `pattern`; query values are chosen by
+the caller, so never take a tenant id from the query); prefer `<thing>Id` path
+variables over `{id}` so the defaults apply. Outbox rows are logged at DEBUG with their `eventId`
 (`OutboxEventPersistenceAdapter`; enable with `logging.level.com.dotran.oms.store.infrastructure.persistence.OutboxEventPersistenceAdapter: DEBUG`),
-which inventory's consumer logs too. Only `MdcScope` writes the MDC; a new executor
+which inventory's consumer logs too. In application code only `MdcScope` writes the MDC (the oms-core filter and interceptor manage their own keys); a new executor
 or `@Async` needs a `TaskDecorator` that copies it (none today).
 
 ## Adding a use case — checklist
