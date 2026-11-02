@@ -2,6 +2,7 @@ package com.dotran.oms.store.infrastructure.rest.exception;
 
 import com.dotran.oms.store.application.impex.product.ImportBusyException;
 import com.dotran.oms.store.application.impex.product.StoreImportRunningException;
+import com.dotran.oms.store.domain.exception.CollectionChangedConcurrentlyException;
 import com.dotran.oms.store.domain.exception.ProductVersionConflictException;
 import com.dotran.oms.store.domain.exception.SkuCodeInUseException;
 import com.dotran.oms.store.domain.exception.MerchantCodeAlreadyExistsException;
@@ -63,7 +64,8 @@ public class StoreExceptionHandler extends GlobalExceptionHandler {
                 .build();
     }
 
-    @ExceptionHandler(value = {ProductVersionConflictException.class, SkuCodeInUseException.class})
+    @ExceptionHandler(value = {ProductVersionConflictException.class, SkuCodeInUseException.class,
+            CollectionChangedConcurrentlyException.class})
     @ResponseStatus(HttpStatus.CONFLICT)
     public ErrorResponse productConflict(RuntimeException ex, HttpServletRequest request) {
         this.logError(ex);

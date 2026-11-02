@@ -57,6 +57,8 @@ public class Constants {
     public static final String ERROR_MSG_IMPORT_IMAGE_URL_REQUIRED = "Every image needs a URL (product reference %s)";
     public static final String ERROR_MSG_IMPORT_DIMENSION_INVALID = "%s must be zero or more, below 10^8, with at most 2 decimals (SKU %s)";
     public static final String ERROR_MSG_COLLECTION_NOT_FOUND = "Collection not found";
+    public static final String ERROR_MSG_COLLECTION_PRODUCT_LIST_EMPTY = "Product list cannot be null or empty";
+    public static final String ERROR_MSG_COLLECTION_CONCURRENT_CHANGE = "The collection was changed by another request at the same time; try again";
     public static final String ERROR_MSG_INVALID_SORT_FIELD = "sortBy must be one of createdAt, updatedAt, name, id";
     public static final String ERROR_MSG_INVALID_SORT_DIRECTION = "direction must be ASC or DESC";
     public static final String ERROR_MSG_INVALID_PAGE = "pageNumber must be 0 or more and pageSize 1 or more";

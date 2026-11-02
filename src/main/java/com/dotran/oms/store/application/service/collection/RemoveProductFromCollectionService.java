@@ -14,6 +14,7 @@ import com.dotran.oms.store.domain.model.StoreCollection;
 import lombok.RequiredArgsConstructor;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Instant;
 import java.util.List;
 
 @UseCase
@@ -31,16 +32,16 @@ public class RemoveProductFromCollectionService implements RemoveProductFromColl
             throw new NotFoundException(Constants.ERROR_MSG_STORE_NOT_FOUND);
         }
 
-        StoreCollection storeCollection = repository.getByStoreIdAndId(cmd.getStoreId(), cmd.getStoreCollectionId())
-                .orElseThrow(() -> new NotFoundException(Constants.ERROR_MSG_COLLECTION_NOT_FOUND));
-
-        List<ProductId> productIds = CollectionProductIds.distinct(cmd.getProductIds());
-
-        if (storeCollection.canRemoveProductsFromCollection(productIds)) {
-            storeCollection.update();
+        // Existence only: the write is a single statement and the answer is re-read after it.
+        if (!repository.existsByStoreIdAndId(cmd.getStoreId(), cmd.getStoreCollectionId())) {
+            throw new NotFoundException(Constants.ERROR_MSG_COLLECTION_NOT_FOUND);
         }
 
-        StoreCollection updatedStoreCollection = repository.removeProducts(storeCollection, productIds);
+        List<ProductId> productIds = CollectionProductIds.distinct(cmd.getProductIds());
+        StoreCollection.checkProductListChange(productIds);
+
+        // Idempotent (BR-CAT-15): products not in the collection are skipped by the delete itself.
+        StoreCollection updatedStoreCollection = repository.removeProducts(cmd.getStoreId(), cmd.getStoreCollectionId(), productIds, Instant.now());
 
         return mapper.toCollectionDto(updatedStoreCollection);
     }

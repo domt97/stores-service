@@ -22,6 +22,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.ArrayList;
+import java.time.Instant;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
@@ -88,37 +89,51 @@ class RemoveProductFromCollectionServiceTest {
     @DisplayName("throws NotFoundException when the collection is not in this store")
     void throwsException_whenCollectionNotInStore() {
         when(storeRepository.existsByMerchantIdAndStoreId(merchantId, storeId)).thenReturn(true);
-        when(repository.getByStoreIdAndId(eq(storeId), eq(collectionId))).thenReturn(Optional.empty());
+        when(repository.existsByStoreIdAndId(storeId, collectionId)).thenReturn(false);
 
         assertThatThrownBy(() -> removeProductFromCollectionService.removeProducts(cmd(List.of(product))))
                 .isInstanceOf(NotFoundException.class)
                 .hasMessage("Collection not found");
 
-        verify(repository, never()).removeProducts(any(), anyList());
+        verify(repository, never()).removeProducts(any(), any(), anyList(), any());
     }
 
     @Test
-    @DisplayName("throws BusinessException when product is not in collection, and removes nothing")
-    void throwsException_whenProductNotInCollection() {
+    @DisplayName("idempotent: a product not in the collection is sent to the delete (which skips it) and the call succeeds")
+    void productNotInCollection_succeeds() {
+        StoreCollection collection = collectionWith(product);
+        ProductId notInCollection = ProductId.newProductId();
+        StoreCollectionDto dto = StoreCollectionDto.builder().id(UUID.randomUUID()).build();
         when(storeRepository.existsByMerchantIdAndStoreId(merchantId, storeId)).thenReturn(true);
-        when(repository.getByStoreIdAndId(storeId, collectionId)).thenReturn(Optional.of(collectionWith(product)));
+        when(repository.existsByStoreIdAndId(storeId, collectionId)).thenReturn(true);
+        when(repository.removeProducts(eq(storeId), eq(collectionId), eq(List.of(notInCollection)), any(Instant.class))).thenReturn(collection);
+        when(mapper.toCollectionDto(collection)).thenReturn(dto);
 
-        assertThatThrownBy(() -> removeProductFromCollectionService.removeProducts(cmd(List.of(ProductId.newProductId()))))
+        assertThat(removeProductFromCollectionService.removeProducts(cmd(List.of(notInCollection)))).isEqualTo(dto);
+    }
+
+    @Test
+    @DisplayName("throws BusinessException for an empty product list, and removes nothing")
+    void throwsException_whenProductListEmpty() {
+        when(storeRepository.existsByMerchantIdAndStoreId(merchantId, storeId)).thenReturn(true);
+        when(repository.existsByStoreIdAndId(storeId, collectionId)).thenReturn(true);
+
+        assertThatThrownBy(() -> removeProductFromCollectionService.removeProducts(cmd(List.of())))
                 .isInstanceOf(BusinessException.class);
 
-        verify(repository, never()).removeProducts(any(), anyList());
+        verify(repository, never()).removeProducts(any(), any(), anyList(), any());
     }
 
     @Test
     @DisplayName("throws ValidationException when a product id is null, and removes nothing")
     void throwsException_whenProductIdNull() {
         when(storeRepository.existsByMerchantIdAndStoreId(merchantId, storeId)).thenReturn(true);
-        when(repository.getByStoreIdAndId(storeId, collectionId)).thenReturn(Optional.of(collectionWith(product)));
+        when(repository.existsByStoreIdAndId(storeId, collectionId)).thenReturn(true);
 
         assertThatThrownBy(() -> removeProductFromCollectionService.removeProducts(cmd(Arrays.asList(ProductId.of(null), product))))
                 .isInstanceOf(ValidationException.class);
 
-        verify(repository, never()).removeProducts(any(), anyList());
+        verify(repository, never()).removeProducts(any(), any(), anyList(), any());
     }
 
     @Test
@@ -133,8 +148,8 @@ class RemoveProductFromCollectionServiceTest {
                 .build();
 
         when(storeRepository.existsByMerchantIdAndStoreId(merchantId, storeId)).thenReturn(true);
-        when(repository.getByStoreIdAndId(storeId, collectionId)).thenReturn(Optional.of(collection));
-        when(repository.removeProducts(collection, List.of(product))).thenReturn(updatedCollection);
+        when(repository.existsByStoreIdAndId(storeId, collectionId)).thenReturn(true);
+        when(repository.removeProducts(eq(storeId), eq(collectionId), eq(List.of(product)), any(Instant.class))).thenReturn(updatedCollection);
         when(mapper.toCollectionDto(updatedCollection)).thenReturn(expectedDto);
 
         StoreCollectionDto result = removeProductFromCollectionService.removeProducts(cmd(List.of(product)));
