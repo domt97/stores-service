@@ -28,6 +28,19 @@ Postgres DB `store`, schema `store` (owns `merchants`); files in S3. Port **8048
 
 Areas used across packages: `merchant`, `store`, `storeconfig`, `storeproduct`, `collection`, `impex`.
 
+## Logging (MDC)
+
+Every log line carries the MDC (`logging.pattern.correlation: "[%X] "`): `requestId` (from `X-Request-Id` or generated,
+echoed in the response) and the request values listed in `app.logging.mdc.fields` (oms-core `MdcProperties`; defaults:
+`merchantId`, `storeId`, `productId`, `inventoryId`, `collectionId`, `storeAvailabilityId` as UUID path variables), set by oms-core
+(`RequestIdFilter`, `MdcRequestFieldsInterceptor`). To log another path/query value (e.g. `sku`), add it under
+`app.logging.mdc.fields` in `application.yaml` with a format (`uuid`, `code` or `pattern`; query values are chosen by
+the caller, so never take a tenant id from the query); prefer `<thing>Id` path
+variables over `{id}` so the defaults apply. Outbox rows are logged at DEBUG with their `eventId`
+(`OutboxEventPersistenceAdapter`; enable with `logging.level.com.dotran.oms.store.infrastructure.persistence.OutboxEventPersistenceAdapter: DEBUG`),
+which inventory's consumer logs too. In application code only `MdcScope` writes the MDC (the oms-core filter and interceptor manage their own keys); a new executor
+or `@Async` needs a `TaskDecorator` that copies it (none today).
+
 ## Adding a use case — checklist
 
 1. **Domain**: put the rule in the aggregate method (e.g. `Store.close()` throws `StoreAlreadyClosedException`). No Spring, no setters from outside; aggregates reference others by typed ID.
