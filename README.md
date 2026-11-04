@@ -229,35 +229,10 @@ GRANT SELECT ON ALL TABLES IN SCHEMA store TO debezium;
 ALTER DEFAULT PRIVILEGES IN SCHEMA store GRANT SELECT ON TABLES TO debezium;
 ```
 
-Register the connector (Kafka Connect REST on `:9084` in the `development` stack). This matches the
-connector running locally:
-
-```json
-{
-  "name": "postgres-cdc",
-  "config": {
-    "connector.class": "io.debezium.connector.postgresql.PostgresConnector",
-    "database.hostname": "postgres",
-    "database.port": "5432",
-    "database.user": "postgres",
-    "database.password": "postgres",
-    "database.dbname": "store",
-    "topic.prefix": "store",
-    "plugin.name": "pgoutput",
-    "slot.name": "debezium_store_v2_slot",
-    "publication.name": "debezium_store_v2_publication",
-    "publication.autocreate.mode": "filtered",
-    "table.include.list": "store.outbox_events",
-    "tombstones.on.delete": "false",
-    "transforms": "outbox",
-    "transforms.outbox.type": "io.debezium.transforms.outbox.EventRouter",
-    "transforms.outbox.route.by.field": "event_type",
-    "transforms.outbox.route.topic.replacement": "${routedByValue}",
-    "transforms.outbox.table.field.event.key": "aggregate_id",
-    "transforms.outbox.table.field.event.payload": "payload"
-  }
-}
-```
+Register the connector with the `development` repo: the config is `docker/kafka-connect/connectors/postgres-cdc.json`,
+applied by `docker/kafka-connect/register-connectors.sh` (credentials come from a git-ignored secrets file, never
+from this README or the config). See `development/docs/connectors.md`, including the order to follow when the
+outbox table gains a column that the connector places in a header (e.g. `correlation_context`, V9).
 
 `route.topic.replacement=${routedByValue}` makes the **topic name equal to `event_type`**
 (`ProductCreated`), keyed by `aggregate_id`. Without it Debezium would publish to

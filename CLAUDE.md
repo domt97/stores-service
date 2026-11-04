@@ -36,7 +36,9 @@ echoed in the response) and the request values listed in `app.logging.mdc.fields
 (`RequestIdFilter`, `MdcRequestFieldsInterceptor`). To log another path/query value (e.g. `sku`), add it under
 `app.logging.mdc.fields` in `application.yaml` with a format (`uuid`, `code` or `pattern`; query values are chosen by
 the caller, so never take a tenant id from the query); prefer `<thing>Id` path
-variables over `{id}` so the defaults apply. Outbox rows are logged at DEBUG with their `eventId`
+variables over `{id}` so the defaults apply. Every outbox row stores the request's propagated MDC keys in `correlation_context` (`OutboxEventPersistenceAdapter` via
+oms-core `MdcPropagation.capture()`; V9); Debezium sends it as the Kafka header `correlationContext`, so inventory's
+consumer logs under the same `requestId` (ADR 0004). Outbox rows are also logged at DEBUG with their `eventId`
 (`OutboxEventPersistenceAdapter`; enable with `logging.level.com.dotran.oms.store.infrastructure.persistence.OutboxEventPersistenceAdapter: DEBUG`),
 which inventory's consumer logs too. In application code only `MdcScope` writes the MDC (the oms-core filter and interceptor manage their own keys); a new executor
 or `@Async` needs a `TaskDecorator` that copies it (none today).
@@ -69,6 +71,8 @@ Infra from the `development` repo (Postgres with `wal_level=logical`, Kafka, Kaf
 `./gradlew bootRun --args='--spring.profiles.active=localdev'` → Swagger at `http://localhost:8048/swagger-ui.html`.
 
 ## Pitfalls
+
+- Adding an outbox column that the Debezium connector places (header or envelope) needs the order in the `development` repo's `docs/connectors.md`: migration first, wait until the slot passes it, then the connector config. The other order fails the connector task and stops every event.
 
 - `ProductCreatedEvent` and `ProductUpdatedEvent` are also defined in inventory-service (`infrastructure/message/dto`); the contract is `oms-workspace/architecture/contracts/events/*.schema.json`. Changing fields here breaks the consumer — change the schema and both sides, keep backward compatible.
 - `ProductCreated` (version 0) and `ProductUpdated` (version ≥ 1, full catalog snapshot) are published; closing a store does **not** notify anyone yet.
