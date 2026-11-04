@@ -68,7 +68,7 @@ Branch **from `develop`** and open PRs **into `develop`** (`feature/...`, `fix/.
 
 oms-core: locally `../oms-core` next to this repo is used as a composite build (`oms-workspace/scripts/sync-repos.sh`);
 CI and releases use the pinned `coreVersion` (`gradle.properties`) from GitHub Packages (ADR 0005). To take an oms-core
-change: release oms-core (tag `vX.Y.Z`), then bump `coreVersion` in a PR. Without `../oms-core` a local build needs
+change: merge it into oms-core `master` with its `version` bumped (published automatically), then bump `coreVersion` in a PR. Without `../oms-core` a local build needs
 `gpr.user`/`gpr.key` (classic token, `read:packages`) in `~/.gradle/gradle.properties`. Never merge an `-rc` pin (`core-pin` check).
 Infra from the `development` repo (Postgres with `wal_level=logical`, Kafka, Kafka Connect, LocalStack).
 `./gradlew bootRun --args='--spring.profiles.active=localdev'` → Swagger at `http://localhost:8048/swagger-ui.html`.
