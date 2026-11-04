@@ -149,11 +149,11 @@ No polling from the application — Debezium pushes changes from the WAL, guaran
 | Migrations | Flyway |
 | Excel Import | Apache POI 5.4 |
 | Build | Gradle |
-| Shared Kernel | `oms-core` (composite build) |
+| Shared Kernel | `oms-core` (pinned `coreVersion` from GitHub Packages; local composite build when `../oms-core` exists) |
 
 ### oms-core Shared Kernel
 
-`oms-core` is a local Gradle composite build shared across all OMS microservices. It provides:
+`oms-core` is the shared kernel of all OMS microservices, published to GitHub Packages and pinned per service (`coreVersion`); locally a sibling `../oms-core` is used as a composite build instead. It provides:
 - **Typed IDs** — `StoreId`, `ProductId`, `MerchantId`, `CustomerId`, `SKU`, ...
 - **Base classes** — `AggregateRoot`, `BaseDomain`
 - **Cross-context VOs** — `Address`, `Money`, `PriceRange`

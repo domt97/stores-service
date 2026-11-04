@@ -1,7 +1,10 @@
 rootProject.name = 'stores-service'
 
+// Local development: when ../oms-core exists (oms-workspace/repos layout) it is used as a composite build and
+// coreVersion is ignored. CI and releases have no sibling and resolve coreVersion from GitHub Packages (ADR 0005).
 def coreDir = file('../oms-core')
 
 if (coreDir.isDirectory()) {
     includeBuild(coreDir)
+    logger.lifecycle("oms-core: using the local ../oms-core (composite build); coreVersion in gradle.properties is ignored")
 }
