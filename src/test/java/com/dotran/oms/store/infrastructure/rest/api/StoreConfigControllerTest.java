@@ -39,7 +39,7 @@ class StoreConfigControllerTest {
     @Test
     @DisplayName("updateBusinessHour: maps requests, calls use case, maps response")
     void updateBusinessHour_delegatesAndReturnsResponse() {
-        UUID tenantId = UUID.randomUUID();
+        UUID merchantId = UUID.randomUUID();
         UUID storeId = UUID.randomUUID();
         BusinessHourRequest hourRequest = mock(BusinessHourRequest.class);
         UpdateBusinessHourCmd cmd = mock(UpdateBusinessHourCmd.class);
@@ -47,10 +47,10 @@ class StoreConfigControllerTest {
         StoreDetailResponse response = mock(StoreDetailResponse.class);
 
         when(storeRestMapper.fromListRequestToUpdateBusinessHourCmd(List.of(hourRequest))).thenReturn(List.of(cmd));
-        when(settingStoreBusinessHourUseCase.setupBusinessHour(eq(tenantId), eq(storeId), any())).thenReturn(dto);
+        when(settingStoreBusinessHourUseCase.setupBusinessHour(eq(merchantId), eq(storeId), any())).thenReturn(dto);
         when(storeRestMapper.toStoreDetailResponse(dto)).thenReturn(response);
 
-        StoreDetailResponse result = controller.updateBusinessHour(tenantId, storeId, List.of(hourRequest));
+        StoreDetailResponse result = controller.updateBusinessHour(merchantId, storeId, List.of(hourRequest));
 
         assertThat(result).isEqualTo(response);
     }
@@ -58,7 +58,7 @@ class StoreConfigControllerTest {
     @Test
     @DisplayName("updateBaseConfig: maps request, calls use case, maps response")
     void updateBaseConfig_delegatesAndReturnsResponse() {
-        UUID tenantId = UUID.randomUUID();
+        UUID merchantId = UUID.randomUUID();
         UUID storeId = UUID.randomUUID();
         UpdateStoreConfigRequest request = mock(UpdateStoreConfigRequest.class);
         UpdateStoreConfigCmd cmd = mock(UpdateStoreConfigCmd.class);
@@ -66,10 +66,10 @@ class StoreConfigControllerTest {
         StoreDetailResponse response = mock(StoreDetailResponse.class);
 
         when(storeRestMapper.fromUpdateStoreConfigToCmd(request)).thenReturn(cmd);
-        when(settingStoreConfigUseCase.setupStoreConfig(tenantId, storeId, cmd)).thenReturn(dto);
+        when(settingStoreConfigUseCase.setupStoreConfig(merchantId, storeId, cmd)).thenReturn(dto);
         when(storeRestMapper.toStoreDetailResponse(dto)).thenReturn(response);
 
-        StoreDetailResponse result = controller.updateBaseConfig(tenantId, storeId, request);
+        StoreDetailResponse result = controller.updateBaseConfig(merchantId, storeId, request);
 
         assertThat(result).isEqualTo(response);
     }

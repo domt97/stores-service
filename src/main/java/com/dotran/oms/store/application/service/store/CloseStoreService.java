@@ -21,7 +21,7 @@ public class CloseStoreService implements CloseStoreUseCase {
     @Override
     @Transactional
     public StoreDetailDto close(CloseStoreCmd cmd) {
-        Store store = storeRepository.findByTenantIdAndStoreId(cmd.getTenantId(), cmd.getStoreId())
+        Store store = storeRepository.findByMerchantIdAndStoreId(cmd.getMerchantId(), cmd.getStoreId())
                 .orElseThrow(StoreNotFoundException::new);
 
         store.close();

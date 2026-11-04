@@ -1,12 +1,13 @@
 package com.dotran.oms.store.application.service.collection;
 
 import com.dotran.oms.core.domain.id.StoreId;
-import com.dotran.oms.core.domain.id.TenantId;
+import com.dotran.oms.core.domain.id.MerchantId;
 import com.dotran.oms.core.exception.NotFoundException;
 import com.dotran.oms.store.application.command.collection.GetCollectionDetailCmd;
 import com.dotran.oms.store.application.dto.StoreCollectionDto;
 import com.dotran.oms.store.application.mapper.StoreCollectionMapper;
 import com.dotran.oms.store.application.repository.StoreCollectionRepository;
+import com.dotran.oms.store.application.repository.StoreRepository;
 import com.dotran.oms.store.common.id.StoreCollectionId;
 import com.dotran.oms.store.domain.enums.CollectionStatus;
 import com.dotran.oms.store.domain.model.StoreCollection;
@@ -23,6 +24,8 @@ import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -30,38 +33,48 @@ import static org.mockito.Mockito.when;
 class GetStoreCollectionServiceTest {
 
     @Mock private StoreCollectionRepository repository;
+    @Mock private StoreRepository storeRepository;
     @Mock private StoreCollectionMapper mapper;
 
     @InjectMocks
     private GetStoreCollectionService getStoreCollectionService;
 
-    @Test
-    @DisplayName("throws NotFoundException when collection does not exist")
-    void throwsException_whenNotFound() {
-        StoreCollectionId collectionId = StoreCollectionId.generateId();
-        GetCollectionDetailCmd cmd = GetCollectionDetailCmd.builder()
-                .tenantId(TenantId.newTenantId())
-                .storeId(StoreId.newStoreId())
-                .storeCollectionId(collectionId)
-                .build();
+    private final MerchantId merchantId = MerchantId.newMerchantId();
+    private final StoreId storeId = StoreId.newStoreId();
+    private final StoreCollectionId collectionId = StoreCollectionId.generateId();
 
-        when(repository.getById(collectionId)).thenReturn(Optional.empty());
+    private final GetCollectionDetailCmd cmd = GetCollectionDetailCmd.builder()
+            .merchantId(merchantId)
+            .storeId(storeId)
+            .storeCollectionId(collectionId)
+            .build();
+
+    @Test
+    @DisplayName("throws NotFoundException when the store does not belong to the merchant")
+    void throwsException_whenStoreNotOwnedByMerchant() {
+        when(storeRepository.existsByMerchantIdAndStoreId(merchantId, storeId)).thenReturn(false);
 
         assertThatThrownBy(() -> getStoreCollectionService.getCollectionById(cmd))
-                .isInstanceOf(NotFoundException.class);
+                .isInstanceOf(NotFoundException.class)
+                .hasMessage("Store not found");
+
+        verifyNoInteractions(repository);
     }
 
     @Test
-    @DisplayName("returns mapped DTO when collection exists")
-    void returnsDto_whenFound() {
-        StoreId storeId = StoreId.newStoreId();
-        StoreCollectionId collectionId = StoreCollectionId.generateId();
-        GetCollectionDetailCmd cmd = GetCollectionDetailCmd.builder()
-                .tenantId(TenantId.newTenantId())
-                .storeId(storeId)
-                .storeCollectionId(collectionId)
-                .build();
+    @DisplayName("throws NotFoundException when the collection is not in this store")
+    void throwsException_whenNotFound() {
+        when(storeRepository.existsByMerchantIdAndStoreId(merchantId, storeId)).thenReturn(true);
+        when(repository.getByStoreIdAndId(eq(storeId), eq(collectionId))).thenReturn(Optional.empty());
 
+        assertThatThrownBy(() -> getStoreCollectionService.getCollectionById(cmd))
+                .isInstanceOf(NotFoundException.class)
+                .hasMessage("Collection not found");
+    }
+
+    @Test
+    @DisplayName("returns mapped DTO when collection exists in the store")
+    void returnsDto_whenFound() {
         StoreCollection collection = StoreCollection.builder()
                 .id(collectionId)
                 .storeId(storeId)
@@ -75,7 +88,8 @@ class GetStoreCollectionServiceTest {
                 .name("Winter Collection")
                 .build();
 
-        when(repository.getById(collectionId)).thenReturn(Optional.of(collection));
+        when(storeRepository.existsByMerchantIdAndStoreId(merchantId, storeId)).thenReturn(true);
+        when(repository.getByStoreIdAndId(storeId, collectionId)).thenReturn(Optional.of(collection));
         when(mapper.toCollectionDto(collection)).thenReturn(expectedDto);
 
         StoreCollectionDto result = getStoreCollectionService.getCollectionById(cmd);

@@ -1,5 +1,6 @@
 package com.dotran.oms.store.infrastructure.rest.api;
 
+import com.dotran.oms.core.domain.id.MerchantId;
 import com.dotran.oms.store.application.command.store.AddStoreAvailabilityCmd;
 import com.dotran.oms.store.application.command.store.CreateStoreCmd;
 import com.dotran.oms.store.application.dto.StoreAvailabilityDto;
@@ -48,7 +49,7 @@ class StoreControllerTest {
     @Test
     @DisplayName("createStore: maps request, calls use case, maps response")
     void createStore_delegatesAndReturnsResponse() {
-        UUID tenantId = UUID.randomUUID();
+        UUID merchantId = UUID.randomUUID();
         CreateStoreRequest request = mock(CreateStoreRequest.class);
         CreateStoreCmd cmd = mock(CreateStoreCmd.class);
         StoreDetailDto dto = mock(StoreDetailDto.class);
@@ -58,23 +59,24 @@ class StoreControllerTest {
         when(createStoreUseCase.create(cmd)).thenReturn(dto);
         when(storeRestMapper.toStoreDetailResponse(dto)).thenReturn(response);
 
-        StoreDetailResponse result = controller.createStore(tenantId, request);
+        StoreDetailResponse result = controller.createStore(merchantId, request);
 
         assertThat(result).isEqualTo(response);
+        verify(cmd).setMerchantId(MerchantId.of(merchantId)); // merchant comes from the path, not the body
     }
 
     @Test
     @DisplayName("getStore: builds command, calls use case, maps response")
     void getStore_delegatesAndReturnsResponse() {
-        UUID tenantId = UUID.randomUUID();
+        UUID merchantId = UUID.randomUUID();
         UUID storeId = UUID.randomUUID();
         StoreDetailDto dto = mock(StoreDetailDto.class);
         StoreDetailResponse response = mock(StoreDetailResponse.class);
 
-        when(getStoreUseCase.getStoreByTenantIdAndStoreId(any())).thenReturn(dto);
+        when(getStoreUseCase.getStoreByMerchantIdAndStoreId(any())).thenReturn(dto);
         when(storeRestMapper.toStoreDetailResponse(dto)).thenReturn(response);
 
-        StoreDetailResponse result = controller.getStore(tenantId, storeId);
+        StoreDetailResponse result = controller.getStore(merchantId, storeId);
 
         assertThat(result).isEqualTo(response);
     }
@@ -82,16 +84,16 @@ class StoreControllerTest {
     @Test
     @DisplayName("closeStore: maps command, calls use case, maps response")
     void closeStore_delegatesAndReturnsResponse() {
-        UUID tenantId = UUID.randomUUID();
+        UUID merchantId = UUID.randomUUID();
         UUID storeId = UUID.randomUUID();
         StoreDetailDto dto = mock(StoreDetailDto.class);
         StoreDetailResponse response = mock(StoreDetailResponse.class);
 
-        when(storeRestMapper.fromRequestToCloseStoreCmd(tenantId, storeId)).thenReturn(mock(com.dotran.oms.store.application.command.store.CloseStoreCmd.class));
+        when(storeRestMapper.fromRequestToCloseStoreCmd(merchantId, storeId)).thenReturn(mock(com.dotran.oms.store.application.command.store.CloseStoreCmd.class));
         when(closeStoreUseCase.close(any())).thenReturn(dto);
         when(storeRestMapper.toStoreDetailResponse(dto)).thenReturn(response);
 
-        StoreDetailResponse result = controller.closeStore(tenantId, storeId);
+        StoreDetailResponse result = controller.closeStore(merchantId, storeId);
 
         assertThat(result).isEqualTo(response);
     }
@@ -99,7 +101,7 @@ class StoreControllerTest {
     @Test
     @DisplayName("reopenStore: builds command, calls use case, maps response")
     void reopenStore_delegatesAndReturnsResponse() {
-        UUID tenantId = UUID.randomUUID();
+        UUID merchantId = UUID.randomUUID();
         UUID storeId = UUID.randomUUID();
         StoreDetailDto dto = mock(StoreDetailDto.class);
         StoreDetailResponse response = mock(StoreDetailResponse.class);
@@ -107,7 +109,7 @@ class StoreControllerTest {
         when(reopenStoreUseCase.reopen(any())).thenReturn(dto);
         when(storeRestMapper.toStoreDetailResponse(dto)).thenReturn(response);
 
-        StoreDetailResponse result = controller.reopenStore(tenantId, storeId);
+        StoreDetailResponse result = controller.reopenStore(merchantId, storeId);
 
         assertThat(result).isEqualTo(response);
     }
@@ -115,7 +117,7 @@ class StoreControllerTest {
     @Test
     @DisplayName("addStoreAvailability: maps request, enriches cmd, calls use case, maps response")
     void addStoreAvailability_delegatesAndReturnsResponse() {
-        UUID tenantId = UUID.randomUUID();
+        UUID merchantId = UUID.randomUUID();
         UUID storeId = UUID.randomUUID();
         AddStoreAvailabilityRequest request = mock(AddStoreAvailabilityRequest.class);
         AddStoreAvailabilityCmd cmd = new AddStoreAvailabilityCmd();
@@ -126,7 +128,7 @@ class StoreControllerTest {
         when(addStoreAvailabilityUseCase.add(cmd)).thenReturn(dto);
         when(storeRestMapper.toStoreAvailabilityResponse(dto)).thenReturn(response);
 
-        StoreAvailabilityResponse result = controller.addStoreAvailability(tenantId, storeId, request);
+        StoreAvailabilityResponse result = controller.addStoreAvailability(merchantId, storeId, request);
 
         assertThat(result).isEqualTo(response);
     }
@@ -134,11 +136,11 @@ class StoreControllerTest {
     @Test
     @DisplayName("cancelStoreAvailability: delegates to use case with correct ids")
     void cancelStoreAvailability_delegatesToUseCase() {
-        UUID tenantId = UUID.randomUUID();
+        UUID merchantId = UUID.randomUUID();
         UUID storeId = UUID.randomUUID();
         UUID availabilityId = UUID.randomUUID();
 
-        controller.cancelStoreAvailability(tenantId, storeId, availabilityId);
+        controller.cancelStoreAvailability(merchantId, storeId, availabilityId);
 
         verify(cancelStoreAvailabilityUseCase).cancel(availabilityId, storeId);
     }

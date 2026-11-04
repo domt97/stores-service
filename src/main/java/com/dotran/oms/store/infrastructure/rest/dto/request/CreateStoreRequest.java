@@ -30,9 +30,6 @@ public class CreateStoreRequest {
     private String name;
 
     @NotNull
-    private UUID tenantId;
-
-    @NotNull
     private UUID ownerId;
 
     @Email

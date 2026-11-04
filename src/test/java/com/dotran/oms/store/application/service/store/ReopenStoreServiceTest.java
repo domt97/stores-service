@@ -1,7 +1,7 @@
 package com.dotran.oms.store.application.service.store;
 
 import com.dotran.oms.core.domain.id.StoreId;
-import com.dotran.oms.core.domain.id.TenantId;
+import com.dotran.oms.core.domain.id.MerchantId;
 import com.dotran.oms.core.exception.BusinessException;
 import com.dotran.oms.store.application.command.store.ReopenStoreCmd;
 import com.dotran.oms.store.application.dto.StoreDetailDto;
@@ -37,17 +37,17 @@ class ReopenStoreServiceTest {
     @InjectMocks
     private ReopenStoreService reopenStoreService;
 
-    private TenantId tenantId = TenantId.newTenantId();
+    private MerchantId merchantId = MerchantId.newMerchantId();
     private StoreId storeId = StoreId.newStoreId();
 
     private ReopenStoreCmd cmd() {
-        return ReopenStoreCmd.builder().tenantId(tenantId).storeId(storeId).build();
+        return ReopenStoreCmd.builder().merchantId(merchantId).storeId(storeId).build();
     }
 
     private Store buildStore(StoreStatus status) {
         return Store.builder()
                 .id(storeId)
-                .tenantId(tenantId)
+                .merchantId(merchantId)
                 .name("Test Store")
                 .status(status)
                 .businessHours(new ArrayList<>())
@@ -59,7 +59,7 @@ class ReopenStoreServiceTest {
     @Test
     @DisplayName("throws StoreNotFoundException when the store does not exist")
     void throwsException_whenStoreNotFound() {
-        when(storeRepository.findByTenantIdAndStoreId(tenantId, storeId)).thenReturn(Optional.empty());
+        when(storeRepository.findByMerchantIdAndStoreId(merchantId, storeId)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> reopenStoreService.reopen(cmd()))
                 .isInstanceOf(StoreNotFoundException.class);
@@ -68,7 +68,7 @@ class ReopenStoreServiceTest {
     @Test
     @DisplayName("throws BusinessException when store is not CLOSED")
     void throwsException_whenStoreNotClosed() {
-        when(storeRepository.findByTenantIdAndStoreId(tenantId, storeId))
+        when(storeRepository.findByMerchantIdAndStoreId(merchantId, storeId))
                 .thenReturn(Optional.of(buildStore(StoreStatus.ACTIVE)));
 
         assertThatThrownBy(() -> reopenStoreService.reopen(cmd()))
@@ -86,7 +86,7 @@ class ReopenStoreServiceTest {
                 .status(StoreStatus.ACTIVE)
                 .build();
 
-        when(storeRepository.findByTenantIdAndStoreId(tenantId, storeId))
+        when(storeRepository.findByMerchantIdAndStoreId(merchantId, storeId))
                 .thenReturn(Optional.of(closedStore));
         when(storeRepository.reopen(any(Store.class))).thenReturn(activeStore);
         when(storeDataMapper.toStoreDetailDto(activeStore)).thenReturn(expectedDto);

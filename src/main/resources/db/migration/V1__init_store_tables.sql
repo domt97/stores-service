@@ -1,6 +1,18 @@
+CREATE TABLE IF NOT EXISTS merchants (
+    id          UUID PRIMARY KEY,
+    code        VARCHAR(50)  NOT NULL,
+    name        VARCHAR(255) NOT NULL,
+    status      VARCHAR(30)  NOT NULL,
+    created_at  TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at  TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT uk_merchants_code UNIQUE (code),
+    CONSTRAINT ck_merchants_code CHECK (code ~ '^[A-Z0-9]{1,50}$')
+);
+
 CREATE TABLE IF NOT EXISTS stores (
     id          UUID PRIMARY KEY,
-    tenant_id   UUID         NOT NULL,
+    merchant_id UUID         NOT NULL,
     name        VARCHAR(255) NOT NULL,
     code        VARCHAR(50)  NOT NULL,
     owner_id    UUID         NOT NULL,
@@ -10,6 +22,8 @@ CREATE TABLE IF NOT EXISTS stores (
     created_at  TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at  TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
+    CONSTRAINT fk_stores_merchant
+    FOREIGN KEY(merchant_id) REFERENCES merchants(id),
     CONSTRAINT uk_stores_code UNIQUE(code)
 );
 
