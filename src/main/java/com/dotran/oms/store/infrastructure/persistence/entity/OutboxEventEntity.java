@@ -18,6 +18,8 @@ import lombok.Setter;
 import org.hibernate.annotations.CreationTimestamp;
 
 import java.time.Instant;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.UUID;
 
 @Entity
@@ -44,6 +46,11 @@ public class OutboxEventEntity {
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "payload", nullable = false, columnDefinition = "jsonb")
     private JsonNode payload;
+
+    /** Propagated MDC keys of the writing request (V9, ADR 0004); Debezium puts it in the correlationContext header. */
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "correlation_context", nullable = false, columnDefinition = "jsonb")
+    private Map<String, String> correlationContext = new HashMap<>();
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)

@@ -1,5 +1,6 @@
 package com.dotran.oms.store.infrastructure.persistence;
 
+import com.dotran.oms.core.logging.MdcPropagation;
 import com.dotran.oms.core.annotation.PersistenceAdapter;
 import com.dotran.oms.store.application.repository.OutboxEventRepository;
 import com.dotran.oms.store.domain.event.OutboxEvent;
@@ -9,7 +10,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @PersistenceAdapter
 @RequiredArgsConstructor
@@ -18,10 +21,11 @@ public class OutboxEventPersistenceAdapter implements OutboxEventRepository {
 
     private final SpringDataOutboxEventRepository repository;
     private final ObjectMapper objectMapper;
+    private final MdcPropagation mdcPropagation;
 
     @Override
     public void save(OutboxEvent outboxEvent) {
-        OutboxEventEntity entity = createOutboxEventEntity(outboxEvent);
+        OutboxEventEntity entity = createOutboxEventEntity(outboxEvent, mdcPropagation.capture());
 
         repository.save(entity);
         logQueued(outboxEvent);
@@ -29,7 +33,10 @@ public class OutboxEventPersistenceAdapter implements OutboxEventRepository {
 
     @Override
     public void saveAll(List<OutboxEvent> outboxEvents) {
-        List<OutboxEventEntity> entities = outboxEvents.stream().map(this::createOutboxEventEntity).toList();
+        Map<String, String> correlationContext = mdcPropagation.capture();
+        List<OutboxEventEntity> entities = outboxEvents.stream()
+                .map(event -> createOutboxEventEntity(event, correlationContext))
+                .toList();
 
         // Flush now: inside the import transaction a failing insert surfaces here, not later at commit.
         repository.saveAllAndFlush(entities);
@@ -45,7 +52,12 @@ public class OutboxEventPersistenceAdapter implements OutboxEventRepository {
                 outboxEvent.getEventType(), outboxEvent.getId().getValue(), outboxEvent.getAggregateId());
     }
 
-    private OutboxEventEntity createOutboxEventEntity(OutboxEvent outboxEvent) {
+    /**
+     * The correlation context is envelope metadata (like created_at), taken here from the writing thread's MDC: every
+     * outbox write runs on the request thread (no executor or @Async in this service). The application layer and
+     * OutboxEventHelper stay free of logging concerns (ADR 0004).
+     */
+    private OutboxEventEntity createOutboxEventEntity(OutboxEvent outboxEvent, Map<String, String> correlationContext) {
         OutboxEventEntity entity = new OutboxEventEntity();
 
         entity.setId(outboxEvent.getId().getValue());
@@ -56,6 +68,7 @@ public class OutboxEventPersistenceAdapter implements OutboxEventRepository {
         entity.setStatus(outboxEvent.getStatus());
         entity.setRetryCount(outboxEvent.getRetryCount());
         entity.setCreatedAt(outboxEvent.getCreatedAt());
+        entity.setCorrelationContext(new HashMap<>(correlationContext));
 
         return entity;
     }
