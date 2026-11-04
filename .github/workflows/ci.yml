@@ -1,0 +1,97 @@
+name: CI
+
+# Unit tests (JUnit 5 + Mockito, no Docker) on every PR and push to develop/master.
+# The service builds against oms-core as a Gradle composite build (settings.gradle: includeBuild('../oms-core')),
+# so oms-core is checked out as a sibling folder, the same layout as oms-workspace/repos.
+# oms-core ref: the branch with the same name as this PR's branch if oms-core has one (cross-repo changes:
+# name both branches the same), else master; a manual run can pick any ref.
+
+on:
+  pull_request:
+    branches: [develop, master]
+  push:
+    branches: [develop, master]
+  workflow_dispatch:
+    inputs:
+      oms-core-ref:
+        description: oms-core branch, tag or SHA (empty = same-named branch if any, else master)
+        required: false
+        default: ''
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  test:
+    name: Unit tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Check out stores-service
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+          path: stores-service
+
+      - name: Pick the oms-core ref
+        id: core
+        env:
+          MANUAL_REF: ${{ inputs.oms-core-ref }}
+          # PR: its head branch; manual run: the branch the run was started on; push: none (-> master).
+          BRANCH: ${{ github.head_ref || (github.event_name == 'workflow_dispatch' && github.ref_name || '') }}
+        run: |
+          ref="${MANUAL_REF:-}"
+          if [[ -z "$ref" && -n "${BRANCH:-}" ]]; then
+            set +e
+            git ls-remote --exit-code "https://github.com/domt97/oms-core.git" "refs/heads/$BRANCH" >/dev/null
+            rc=$?
+            set -e
+            case $rc in
+              0) ref="$BRANCH" ;;
+              2) ;;  # no oms-core branch with that name
+              *) echo "::error::Could not list oms-core branches (git exit $rc)"; exit 1 ;;
+            esac
+          fi
+          echo "ref=${ref:-master}" >> "$GITHUB_OUTPUT"
+          echo "Building against oms-core @ ${ref:-master}" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Check out oms-core (composite build sibling)
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+          repository: domt97/oms-core
+          ref: ${{ steps.core.outputs.ref }}
+          path: oms-core
+
+      - name: Check the composite-build layout
+        run: test -f oms-core/settings.gradle || { echo "::error::oms-core is not checked out next to the service"; exit 1; }
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Validate the Gradle wrapper
+        uses: gradle/actions/wrapper-validation@v6
+
+      - name: Set up Gradle (cache)
+        uses: gradle/actions/setup-gradle@v6
+
+      - name: Test
+        working-directory: stores-service
+        run: ./gradlew test --no-daemon --stacktrace
+
+      - name: Upload test reports
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: stores-service-test-reports
+          path: |
+            stores-service/build/reports/tests/
+            stores-service/build/test-results/
+          retention-days: 7
