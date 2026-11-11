@@ -14,7 +14,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * Contract test for the published ProductCreated payload, serialized the way the outbox adapter does
- * ({@code objectMapper.valueToTree}) with a real ObjectMapper close to Spring Boot's (unknown properties ignored, ISO dates).
+ * ({@code objectMapper.valueToTree}, then written as a string and cast to jsonb) with a real ObjectMapper close to Spring Boot's (unknown properties ignored, ISO dates).
  */
 @DisplayName("ProductCreatedEvent JSON contract")
 class ProductCreatedEventJsonTest {

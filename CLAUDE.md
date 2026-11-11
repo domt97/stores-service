@@ -51,7 +51,9 @@ or `@Async` needs a `TaskDecorator` that copies it (none today).
 4. **Event?** If other contexts must know: build with `OutboxEventHelper`, save with `OutboxEventRepository` **in the same transaction**. Never use a Kafka client. Topic = `eventType` (PascalCase, unique across OMS). Add the JSON Schema + row to `oms-workspace/architecture/`.
 5. **REST**: controller under `/v1/store/merchants/{merchantId}/stores/...`, request DTO with Jakarta validation, map Request → Cmd and Dto → Response in `infrastructure/rest/mapper`.
 6. **Errors**: domain exception → handler in `StoreExceptionHandler` (extends `oms-core` `GlobalExceptionHandler`); messages in `common/constants/Constants`.
-7. **Persistence**: Flyway migration `src/main/resources/db/migration/V<next>__<what>.sql` (latest is `V8`); never edit an applied migration. (Exception, decided 2026-10-29 while only local databases existed: `V3` was edited in place for update-product — `product_skus.store_id`/`removed_at`, `UNIQUE (store_id, sku)`, `store_products.version` — and local DBs were recreated. Don't repeat this once any shared environment exists.) Top-level tables carry `merchant_id`; child tables are scoped through `store_id`.
+7. **Persistence**: Flyway migration `src/main/resources/db/migration/V<next>__<what>.sql` (latest is `V10`); never edit an applied migration. (Exception, decided 2026-10-29 while only local databases existed: `V3` was edited in place for update-product — `product_skus.store_id`/`removed_at`, `UNIQUE (store_id, sku)`, `store_products.version` — and local DBs were recreated. Don't repeat this once any shared environment exists.) Top-level tables carry `merchant_id`; child tables are scoped through `store_id`. Exception: `store.debezium_heartbeat`
+   belongs to the connector setup (`development` repo `sql/store-outbox-cdc.sql`), has no `merchant_id` and is not managed by
+   Flyway today — do not add a migration for it while that script creates it (open question 55 in oms-workspace).
 8. **Tests** (mirror the package): domain model test, service test, controller test, adapter test.
 
 ## Tests
@@ -75,7 +77,9 @@ Infra from the `development` repo (Postgres with `wal_level=logical`, Kafka, Kaf
 
 ## Pitfalls
 
-- Adding an outbox column that the Debezium connector places (header or envelope) needs the order in the `development` repo's `docs/connectors.md`: migration first, wait until the slot passes it, then the connector config. The other order fails the connector task and stops every event.
+- **The outbox is always empty**: `OutboxEventPersistenceAdapter` inserts each row with `id = eventId` (native SQL, so the Kafka header `id` equals the payload `eventId`) and deletes it in the same transaction (`@Transactional(MANDATORY)`: every caller must already be in a transaction). Debezium publishes the INSERT from the WAL through an insert-only publication (`development` repo `sql/store-outbox-cdc.sql`). Never read `outbox_events` to find what was published, and never write it with JPA. A lost or recreated replication slot loses the events of the gap for good: `development` `docs/connectors.md`, *Runbook (postgres-cdc)*.
+- Payload JSON goes through `objectMapper.valueToTree` before the string (`OutboxEventPersistenceAdapter.payloadJson`): it strips BigDecimal trailing zeros, so `ProductUpdated` prices are published as before (`120000.00` → `120000`). Keep that step, or the published text changes.
+- Adding an outbox column that the Debezium connector places (header or envelope) needs the order in the `development` repo's `docs/connectors.md` (*Changing an outbox connector*): migration first, wait until the slot passes it (by WAL position: the table is empty), then the connector config. The other order fails the connector task and stops every event.
 
 - `ProductCreatedEvent` and `ProductUpdatedEvent` are also defined in inventory-service (`infrastructure/message/dto`); the contract is `oms-workspace/architecture/contracts/events/*.schema.json`. Changing fields here breaks the consumer — change the schema and both sides, keep backward compatible.
 - `ProductCreated` (version 0) and `ProductUpdated` (version ≥ 1, full catalog snapshot) are published; closing a store does **not** notify anyone yet.

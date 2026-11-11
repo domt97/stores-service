@@ -117,8 +117,9 @@ HTTP Request
     ▼
 CreateStoreProductUseCaseService  @Transactional
     ├── [1] storeProductRepository.create(product)   ──► PostgreSQL: store_products
-    └── [2] outboxEventRepository.save(outboxEvent)  ──► PostgreSQL: outbox_events
-              └── atomic — both writes in the same transaction
+    └── [2] outboxEventRepository.save(outboxEvent)  ──► PostgreSQL: INSERT outbox_events (id = eventId)
+                                                                       DELETE outbox_events (same ids)
+              └── atomic — all writes in the same transaction; the table stays empty
 
                     Debezium reads PostgreSQL WAL (no polling)
                                 │
@@ -129,7 +130,10 @@ CreateStoreProductUseCaseService  @Transactional
                     inventory-service  (consumes ProductCreated)
 ```
 
-No polling from the application — Debezium pushes changes from the WAL, guaranteeing **at-least-once delivery**.
+No polling from the application — Debezium pushes the INSERTs from the WAL, guaranteeing **at-least-once delivery**;
+its publication is insert-only, so the DELETEs never leave Postgres. The Kafka header `id` equals the payload `eventId`.
+Never read `outbox_events` to see what was published: it is always empty (check the topic instead). A lost replication
+slot loses the events of the gap for good (`development/docs/connectors.md`, *Runbook (postgres-cdc)*).
 
 ---
 
@@ -224,15 +228,19 @@ Outside local dev, use a dedicated replication user instead of `postgres`:
 
 ```sql
 CREATE USER debezium WITH REPLICATION LOGIN PASSWORD 'debezium';
+GRANT CONNECT ON DATABASE store TO debezium;
 GRANT USAGE ON SCHEMA store TO debezium;
-GRANT SELECT ON ALL TABLES IN SCHEMA store TO debezium;
-ALTER DEFAULT PRIVILEGES IN SCHEMA store GRANT SELECT ON TABLES TO debezium;
+GRANT SELECT ON store.outbox_events, store.debezium_heartbeat TO debezium;
+GRANT INSERT, DELETE ON store.debezium_heartbeat TO debezium;
+GRANT USAGE ON SEQUENCE store.debezium_heartbeat_id_seq TO debezium;
 ```
 
 Register the connector with the `development` repo: the config is `docker/kafka-connect/connectors/postgres-cdc.json`,
 applied by `docker/kafka-connect/register-connectors.sh` (credentials come from a git-ignored secrets file, never
 from this README or the config). See `development/docs/connectors.md`, including the order to follow when the
-outbox table gains a column that the connector places in a header (e.g. `correlation_context`, V9).
+outbox table gains a column that the connector places in a header (e.g. `correlation_context`, V9). The
+publication and the heartbeat table `store.debezium_heartbeat` come from `docker/kafka-connect/sql/store-outbox-cdc.sql`
+(run it after stores-service has started once and **before** V10 runs on a stack with the connector).
 
 `route.topic.replacement=${routedByValue}` makes the **topic name equal to `event_type`**
 (`ProductCreated`), keyed by `aggregate_id`. Without it Debezium would publish to

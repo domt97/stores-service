@@ -94,4 +94,12 @@ class OutboxEventHelperTest {
         OutboxEvent event = helper.createProductCreatedOutboxEvent(MerchantId.newMerchantId(), buildProduct(StoreId.newStoreId()));
         assertThat(event.getRetryCount()).isZero();
     }
+
+    @Test
+    @DisplayName("ProductCreated: the payload eventId is the outbox id (Kafka header id = eventId)")
+    void createsEvent_payloadEventIdEqualsOutboxId() {
+        OutboxEvent event = helper.createProductCreatedOutboxEvent(MerchantId.newMerchantId(), buildProduct(StoreId.newStoreId()));
+
+        assertThat(((ProductCreatedEvent) event.getPayload()).getEventId()).isEqualTo(event.getId().getValue());
+    }
 }
