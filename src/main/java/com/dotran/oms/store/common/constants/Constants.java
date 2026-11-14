@@ -53,6 +53,7 @@ public class Constants {
     public static final String ERROR_MSG_IMPORT_BUSY = "The server is busy with other imports; try again in %d seconds";
     public static final String ERROR_MSG_IMPORT_STORE_RUNNING = "An import for this store is already running; wait for it to finish";
     public static final String ERROR_MSG_IMPORT_FILE_NAME_INVALID = "fileName must be a plain file name of at most %d bytes, without / or \\, control characters, or . or ..";
+    public static final String ERROR_MSG_IMPORT_UPLOAD_SIZE_INVALID = "sizeBytes must be the file size, between 1 and %d bytes";
     public static final String ERROR_MSG_IMPORT_FILE_NOT_FOUND = "The import file %s was not found in this store's import folder";
     public static final String ERROR_MSG_IMPORT_FAILED = "The import failed because of an internal error; nothing was imported. Contact support if it persists.";
     public static final String ERROR_MSG_IMPORT_FIELD_TOO_LONG = "%s has at most %d characters (product reference %s)";
