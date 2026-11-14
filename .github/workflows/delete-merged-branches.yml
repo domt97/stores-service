@@ -1,4 +1,4 @@
-name: Delete merged feature branches
+name: Delete merged branches
 
 on:
   pull_request:
@@ -15,13 +15,13 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Delete merged feature branch
+      - name: Delete merged branch
         uses: actions/github-script@v7
         with:
           script: |
             const head = context.payload.pull_request.head.ref;
 
-            // List of protected branches that should not be deleted
+            // Protected branches that must never be deleted
             const protectedBranches = [
               "main",
               "master",
@@ -38,19 +38,7 @@ jobs:
               return;
             }
 
-            const deletablePrefixes = [
-              "feature/",
-              "bugfix/",
-              "hotfix/"
-            ];
-
-            const shouldDelete = deletablePrefixes.some(p => head.startsWith(p));
-
-            if (!shouldDelete) {
-              console.log(`Skip branch: ${head}`);
-              return;
-            }
-
+            // Delete any other merged branch regardless of naming convention
             await github.rest.git.deleteRef({
               owner: context.repo.owner,
               repo: context.repo.repo,

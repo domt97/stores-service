@@ -1,6 +1,7 @@
 package com.dotran.oms.store.infrastructure.rest.dto.request;
 
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -26,5 +27,5 @@ public class UpsertStoreCollectionRequest {
     @Size(max = 2000)
     private String description;
 
-    private List<UUID> productIds = new ArrayList<>();
+    private List<@NotNull UUID> productIds = new ArrayList<>();
 }

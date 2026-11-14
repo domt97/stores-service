@@ -5,6 +5,11 @@ spring:
   application:
     name: stores-service
 
+  # Shared settings of every OMS service (springdoc, AWS client): oms-core's application-core.yaml.
+  # A profile file wins over this file, so override those values with an environment variable or a later profile.
+  profiles:
+    include: core
+
   datasource:
     url: jdbc:postgresql://localhost:5432/store?currentSchema=store
     driver-class-name: org.postgresql.Driver
@@ -39,26 +44,41 @@ spring:
     password: ${DB_PASSWORD:postgres}
 
 aws:
-  # For local development with LocalStack
-  # endpoint: http://localhost:4566
-  region: ${AWS_REGION:eu-west-1}
-  endpoint: ${AWS_ENDPOINT:http://localhost:4566}
-  access-key: ${AWS_ACCESS_KEY:test}
-  secret-key: ${AWS_SECRET_KEY:test}
-
-  dynamodb:
-    table:
-      tenant-info: ${AWS_DYNAMODB_TABLE:tenant_info}
+  # region, endpoint, access-key and secret-key come from oms-core's application-core.yaml (profile `core`, included above).
   s3:
-    store-product-bucket: ${AWS_S3_STORE_PRODUCT_BUCKET:store-products}
+    # The only bucket the service reads product files from (BR-CAT-16); import files at {merchantId}/{storeId}/imports/{fileName}.
+    # No default: a missing setting fails the startup instead of reading a generic bucket name (sa-aws-platform rule 2).
+    store-product-bucket: ${AWS_S3_STORE_PRODUCT_BUCKET}
 
 app:
+  # Excel product import limits (BR-CAT-13); see ProductImportLimits for the meaning of each value.
+  import:
+    max-bytes: ${IMPORT_MAX_BYTES:5242880}
+    max-products: ${IMPORT_MAX_PRODUCTS:1000}
+    max-skus: ${IMPORT_MAX_SKUS:10000}
+    max-images: ${IMPORT_MAX_IMAGES:20000}
+    row-element-factor: 10
+    max-shared-strings: 200000
+    max-text-chars: 20000000
+    max-cell-chars: 10000
+    max-styles-bytes: 5242880
+    max-zip-entry-bytes: 16777216
+    min-inflate-ratio: 0.01
+    permits: ${IMPORT_PERMITS:0}            # 0 = from the heap: one slot per heap-per-import-bytes, one kept free
+    max-permits: ${IMPORT_MAX_PERMITS:4}
+    max-waiting: 20
+    heap-per-import-bytes: 134217728
+    slot-wait-seconds: 40
+    retry-after-seconds: 10
   swagger:
     title: Store Service API
     version: v1
     description: Store service REST API
 
 logging:
+  pattern:
+    # MDC (requestId, merchantId, storeId, ...) in front of every line; see oms-core MdcKeys.
+    correlation: "[%X] "
   level:
     root: INFO
     org:

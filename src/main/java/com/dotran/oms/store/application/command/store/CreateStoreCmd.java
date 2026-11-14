@@ -1,7 +1,7 @@
 package com.dotran.oms.store.application.command.store;
 
 import com.dotran.oms.core.domain.id.CustomerId;
-import com.dotran.oms.core.domain.id.TenantId;
+import com.dotran.oms.core.domain.id.MerchantId;
 import com.dotran.oms.store.application.command.common.AddressCmd;
 import com.dotran.oms.store.application.command.storeconfig.BusinessHourCmd;
 import com.dotran.oms.store.application.command.storeconfig.StoreConfigCmd;
@@ -14,7 +14,7 @@ import java.util.List;
 @Builder
 public class CreateStoreCmd {
 
-    private TenantId tenantId;
+    private MerchantId merchantId;
 
     private String code;
 

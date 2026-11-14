@@ -8,5 +8,5 @@ import java.util.UUID;
 
 public interface SettingStoreBusinessHourUseCase {
 
-    StoreDetailDto setupBusinessHour(UUID tenantId, UUID storeId, List<UpdateBusinessHourCmd> updateBusinessHourCmds);
+    StoreDetailDto setupBusinessHour(UUID merchantId, UUID storeId, List<UpdateBusinessHourCmd> updateBusinessHourCmds);
 }

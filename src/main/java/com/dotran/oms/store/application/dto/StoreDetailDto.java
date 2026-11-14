@@ -19,7 +19,7 @@ public class StoreDetailDto {
 
     private UUID id;
 
-    private String tenantId;
+    private String merchantId;
     private String name;
     private String code;
     private String ownerId;

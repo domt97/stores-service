@@ -2,7 +2,7 @@ package com.dotran.oms.store.domain.model;
 
 import com.dotran.oms.core.domain.id.CustomerId;
 import com.dotran.oms.core.domain.id.StoreId;
-import com.dotran.oms.core.domain.id.TenantId;
+import com.dotran.oms.core.domain.id.MerchantId;
 import com.dotran.oms.core.exception.BusinessException;
 import com.dotran.oms.store.domain.enums.StoreStatus;
 import com.dotran.oms.store.domain.exception.StoreAlreadyClosedException;
@@ -25,7 +25,7 @@ class StoreTest {
     private Store activeStore() {
         return Store.builder()
                 .id(StoreId.newStoreId())
-                .tenantId(TenantId.newTenantId())
+                .merchantId(MerchantId.newMerchantId())
                 .name("Test Store")
                 .code("TST001")
                 .ownerId(CustomerId.newCustomerId())
@@ -39,7 +39,7 @@ class StoreTest {
     private Store closedStore() {
         return Store.builder()
                 .id(StoreId.newStoreId())
-                .tenantId(TenantId.newTenantId())
+                .merchantId(MerchantId.newMerchantId())
                 .name("Test Store")
                 .code("TST001")
                 .ownerId(CustomerId.newCustomerId())
@@ -167,7 +167,7 @@ class StoreTest {
                     .build();
             return Store.builder()
                     .id(StoreId.newStoreId())
-                    .tenantId(TenantId.newTenantId())
+                    .merchantId(MerchantId.newMerchantId())
                     .name("Test Store")
                     .status(StoreStatus.ACTIVE)
                     .config(config)
@@ -242,19 +242,19 @@ class StoreTest {
         @Test
         @DisplayName("creates a store with ACTIVE status")
         void createsActiveStore() {
-            TenantId tenantId = TenantId.newTenantId();
-            Store store = Store.initStore(tenantId, "My Store", "STR001",
+            MerchantId merchantId = MerchantId.newMerchantId();
+            Store store = Store.initStore(merchantId, "My Store", "STR001",
                     CustomerId.newCustomerId(), "a@b.com", "0123456789");
 
             assertThat(store.getStatus()).isEqualTo(StoreStatus.ACTIVE);
-            assertThat(store.getTenantId()).isEqualTo(tenantId);
+            assertThat(store.getMerchantId()).isEqualTo(merchantId);
             assertThat(store.getId()).isNotNull();
         }
 
         @Test
         @DisplayName("initializes with an empty business hours list")
         void initializesWithEmptyBusinessHours() {
-            Store store = Store.initStore(TenantId.newTenantId(), "My Store", "STR001",
+            Store store = Store.initStore(MerchantId.newMerchantId(), "My Store", "STR001",
                     CustomerId.newCustomerId(), "a@b.com", "0123456789");
 
             assertThat(store.getBusinessHours()).isNotNull().isEmpty();

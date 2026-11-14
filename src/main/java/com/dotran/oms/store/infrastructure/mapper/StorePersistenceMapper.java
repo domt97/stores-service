@@ -36,7 +36,7 @@ public abstract class StorePersistenceMapper {
     //
 
     @Mapping(target = "id", source = "id.value")
-    @Mapping(target = "tenantId", source = "tenantId.value")
+    @Mapping(target = "merchantId", source = "merchantId.value")
     @Mapping(target = "ownerId", source = "ownerId.value")
     @Mapping(target = "address", ignore = true)
     @Mapping(target = "config", ignore = true)
@@ -44,7 +44,7 @@ public abstract class StorePersistenceMapper {
     public abstract StoreEntity fromStoreToEntity(Store store);
 
     @Mapping(target = "id", ignore = true)
-    @Mapping(target = "tenantId", source = "tenantId.value")
+    @Mapping(target = "merchantId", source = "merchantId.value")
     @Mapping(target = "ownerId", source = "ownerId.value")
     @Mapping(target = "address", ignore = true)
     @Mapping(target = "config", ignore = true)
@@ -110,7 +110,7 @@ public abstract class StorePersistenceMapper {
     //
 
     @Mapping(target = "id", expression = "java(idMapper.toStoreId(storeEntity.getId()))")
-    @Mapping(target = "tenantId", expression = "java(idMapper.toTenantId(storeEntity.getTenantId()))")
+    @Mapping(target = "merchantId", expression = "java(idMapper.toMerchantId(storeEntity.getMerchantId()))")
     @Mapping(target = "ownerId", expression = "java(idMapper.toCustomerId(storeEntity.getOwnerId()))")
     @Mapping(target = "address", source = "address", qualifiedByName = "fromStoreAddressEntityToAddress")
     @Mapping(target = "config", source = "config", qualifiedByName = "fromStoreConfigEntityToStoreConfig")

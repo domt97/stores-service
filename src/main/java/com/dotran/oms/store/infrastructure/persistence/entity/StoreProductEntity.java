@@ -9,6 +9,7 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.Id;
 import jakarta.persistence.OneToMany;
+import jakarta.persistence.OrderBy;
 import jakarta.persistence.Table;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
@@ -62,6 +63,7 @@ public class StoreProductEntity {
             orphanRemoval = true
     )
     @BatchSize(size = 50)
+    @OrderBy("sku ASC")
     private List<ProductSkuEntity> skus = new ArrayList<>();
 
     @OneToMany(
@@ -70,7 +72,12 @@ public class StoreProductEntity {
             orphanRemoval = true
     )
     @BatchSize(size = 50)
+    @OrderBy("displayOrder ASC, id ASC")
     private List<ProductImageEntity> images = new ArrayList<>();
+
+    /** Written only by the guarded native bump (update-product); never by Hibernate. Starts at the column default 0. */
+    @Column(name = "version", nullable = false, insertable = false, updatable = false)
+    private long version;
 
     @CreationTimestamp
     @Column(name = "created_at", nullable = false)

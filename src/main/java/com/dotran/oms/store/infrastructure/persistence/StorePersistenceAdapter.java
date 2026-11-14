@@ -2,7 +2,7 @@ package com.dotran.oms.store.infrastructure.persistence;
 
 import com.dotran.oms.core.annotation.PersistenceAdapter;
 import com.dotran.oms.core.domain.id.StoreId;
-import com.dotran.oms.core.domain.id.TenantId;
+import com.dotran.oms.core.domain.id.MerchantId;
 import com.dotran.oms.core.exception.NotFoundException;
 import com.dotran.oms.store.application.repository.StoreRepository;
 import com.dotran.oms.store.domain.model.Store;
@@ -37,7 +37,7 @@ public class StorePersistenceAdapter implements StoreRepository {
     @Override
     public Store update(Store store) {
         StoreEntity storeEntity = springDataStoreRepository
-                .findByTenantIdAndId(store.getTenantId().getValue(), store.getId().getValue())
+                .findByMerchantIdAndId(store.getMerchantId().getValue(), store.getId().getValue())
                 .orElseThrow(NotFoundException::new);
 
         this.updateStore(storeEntity, store);
@@ -48,15 +48,15 @@ public class StorePersistenceAdapter implements StoreRepository {
     }
 
     @Override
-    public Optional<Store> findByTenantIdAndStoreId(TenantId tenantId, StoreId storeId) {
-        return springDataStoreRepository.findByTenantIdAndId(tenantId.getValue(), storeId.getValue())
+    public Optional<Store> findByMerchantIdAndStoreId(MerchantId merchantId, StoreId storeId) {
+        return springDataStoreRepository.findByMerchantIdAndId(merchantId.getValue(), storeId.getValue())
                 .map(storePersistenceMapper::fromEntityToStore);
     }
 
     @Override
     public Store close(Store store) {
         StoreEntity storeEntity = springDataStoreRepository
-                .findByTenantIdAndId(store.getTenantId().getValue(), store.getId().getValue())
+                .findByMerchantIdAndId(store.getMerchantId().getValue(), store.getId().getValue())
                 .orElseThrow(NotFoundException::new);
 
         this.updateStore(storeEntity, store);
@@ -69,7 +69,7 @@ public class StorePersistenceAdapter implements StoreRepository {
     @Override
     public Store reopen(Store store) {
         StoreEntity storeEntity = springDataStoreRepository
-                .findByTenantIdAndId(store.getTenantId().getValue(), store.getId().getValue())
+                .findByMerchantIdAndId(store.getMerchantId().getValue(), store.getId().getValue())
                 .orElseThrow(NotFoundException::new);
 
         this.updateStore(storeEntity, store);
@@ -80,8 +80,8 @@ public class StorePersistenceAdapter implements StoreRepository {
     }
 
     @Override
-    public boolean existsByTenantIdAndStoreId(TenantId tenantId, StoreId storeId) {
-        return springDataStoreRepository.existsByTenantIdAndId(tenantId.getValue(), storeId.getValue());
+    public boolean existsByMerchantIdAndStoreId(MerchantId merchantId, StoreId storeId) {
+        return springDataStoreRepository.existsByMerchantIdAndId(merchantId.getValue(), storeId.getValue());
     }
 
     private void updateStore(StoreEntity storeEntity, Store store) {

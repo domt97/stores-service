@@ -1,11 +1,10 @@
 # stores-service
 
-Store Management microservice for the **Order Management System (OMS)** — a multi-tenant SaaS platform.
+Store Management microservice for the **Order Management System (OMS)** — a multi-merchant marketplace.
 
 [![Java](https://img.shields.io/badge/Java-17-blue)](https://openjdk.org/projects/jdk/17/)
 [![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.2.3-brightgreen)](https://spring.io/projects/spring-boot)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-blue)](https://www.postgresql.org/)
-[![DynamoDB](https://img.shields.io/badge/AWS-DynamoDB-orange)](https://aws.amazon.com/dynamodb/)
 
 ---
 
@@ -15,21 +14,21 @@ Store Management microservice for the **Order Management System (OMS)** — a mu
 
 ```
 ┌──────────────────────────── Order Management System ────────────────────────────┐
-│                                                                                  │
+│                                                                                 │
 │   ┌───────────────────┐   ProductCreated     ┌──────────────────────────────┐   │
 │   │                   │ ──── (Kafka) ──────► │                              │   │
 │   │  stores-service   │                      │  inventory-service           │   │
 │   │  [this service]   │ ◄──── REST ─────────►│                              │   │
 │   │                   │                      └──────────────────────────────┘   │
 │   └─────────┬─────────┘                                                         │
-│             │  reads tenant metadata                                             │
-│             ▼                                                                    │
+│             │  owns merchants (Postgres)                                        │
+│             ▼                                                                   │
 │   ┌──────────────────┐     ┌──────────────────────────────┐                     │
-│   │  DynamoDB        │     │  promotion-service           │                     │
-│   │  (TenantInfo)    │     │  (ACL via PromotionClient)   │                     │
+│   │  Postgres        │     │  promotion-service           │                     │
+│   │  (DB store)      │     │  (ACL via PromotionClient)   │                     │
 │   └──────────────────┘     └──────────────────────────────┘                     │
-│                                                                                  │
-└──────────────────────────────────────────────────────────────────────────────────┘
+│                                                                                 │
+└─────────────────────────────────────────────────────────────────────────────────┘
 ```
 
 ---
@@ -65,7 +64,7 @@ The service follows **Domain-Driven Design (DDD)** with **Hexagonal Architecture
                             ▲ implemented by
 ┌──────────────────────────────────────────────────────────────────┐
 │  SECONDARY ADAPTERS  (Driven Side)                               │
-│  JPA Persistence · DynamoDB · S3 · REST Clients                  │
+│  JPA Persistence · S3 · REST Clients                             │
 └──────────────────────────────────────────────────────────────────┘
 ```
 
@@ -103,8 +102,8 @@ StoreAvailability (Aggregate Root)
 **Key design decisions:**
 - Aggregates reference each other by **typed ID only** — never by object reference
 - Value Objects are **immutable** — `withUpdated()` returns a new instance; no setters
-- `TenantId` is a **first-class domain concept** threaded through all aggregates
-- Typed ID wrappers (`StoreId`, `ProductId`, `TenantId`) prevent primitive obsession
+- `MerchantId` is a **first-class domain concept** threaded through all aggregates
+- Typed ID wrappers (`StoreId`, `ProductId`, `MerchantId`) prevent primitive obsession
 
 ---
 
@@ -118,8 +117,9 @@ HTTP Request
     ▼
 CreateStoreProductUseCaseService  @Transactional
     ├── [1] storeProductRepository.create(product)   ──► PostgreSQL: store_products
-    └── [2] outboxEventRepository.save(outboxEvent)  ──► PostgreSQL: outbox_events
-              └── atomic — both writes in the same transaction
+    └── [2] outboxEventRepository.save(outboxEvent)  ──► PostgreSQL: INSERT outbox_events (id = eventId)
+                                                                       DELETE outbox_events (same ids)
+              └── atomic — all writes in the same transaction; the table stays empty
 
                     Debezium reads PostgreSQL WAL (no polling)
                                 │
@@ -130,7 +130,10 @@ CreateStoreProductUseCaseService  @Transactional
                     inventory-service  (consumes ProductCreated)
 ```
 
-No polling from the application — Debezium pushes changes from the WAL, guaranteeing **at-least-once delivery**.
+No polling from the application — Debezium pushes the INSERTs from the WAL, guaranteeing **at-least-once delivery**;
+its publication is insert-only, so the DELETEs never leave Postgres. The Kafka header `id` equals the payload `eventId`.
+Never read `outbox_events` to see what was published: it is always empty (check the topic instead). A lost replication
+slot loses the events of the gap for good (`development/docs/connectors.md`, *Runbook (postgres-cdc)*).
 
 ---
 
@@ -142,7 +145,7 @@ No polling from the application — Debezium pushes changes from the WAL, guaran
 | Framework | Spring Boot 3.2.3 |
 | ORM | Spring Data JPA · Hibernate 6.4 |
 | Primary DB | PostgreSQL 16 |
-| Tenant Store | AWS DynamoDB (Enhanced Client) |
+| Merchants | PostgreSQL (table `merchants`, owned by this service) |
 | File Storage | AWS S3 |
 | Mapping | MapStruct 1.6.3 |
 | Validation | Jakarta Validation · Hibernate Validator 8.0 |
@@ -150,12 +153,12 @@ No polling from the application — Debezium pushes changes from the WAL, guaran
 | Migrations | Flyway |
 | Excel Import | Apache POI 5.4 |
 | Build | Gradle |
-| Shared Kernel | `oms-core` (composite build) |
+| Shared Kernel | `oms-core` (pinned `coreVersion` from GitHub Packages; local composite build when `../oms-core` exists) |
 
 ### oms-core Shared Kernel
 
-`oms-core` is a local Gradle composite build shared across all OMS microservices. It provides:
-- **Typed IDs** — `StoreId`, `ProductId`, `TenantId`, `CustomerId`, `SKU`, ...
+`oms-core` is the shared kernel of all OMS microservices, published to GitHub Packages and pinned per service (`coreVersion`); locally a sibling `../oms-core` is used as a composite build instead. It provides:
+- **Typed IDs** — `StoreId`, `ProductId`, `MerchantId`, `CustomerId`, `SKU`, ...
 - **Base classes** — `AggregateRoot`, `BaseDomain`
 - **Cross-context VOs** — `Address`, `Money`, `PriceRange`
 - **Exceptions** — `BusinessException`, `NotFoundException`, `ValidationException`
@@ -169,7 +172,7 @@ No polling from the application — Debezium pushes changes from the WAL, guaran
 
 - Java 17+
 - PostgreSQL 12+
-- AWS credentials (for DynamoDB / S3; or LocalStack for local dev)
+- AWS credentials (for S3; or LocalStack for local dev)
 
 ### Database Setup
 
@@ -193,7 +196,8 @@ Flyway migrations run automatically on startup.
 ### Run
 
 ```bash
-./gradlew bootRun
+# Any other profile: the import bucket has no default, set it or startup fails
+AWS_S3_STORE_PRODUCT_BUCKET=<bucket> ./gradlew bootRun
 ```
 
 ```bash
@@ -225,40 +229,19 @@ Outside local dev, use a dedicated replication user instead of `postgres`:
 
 ```sql
 CREATE USER debezium WITH REPLICATION LOGIN PASSWORD 'debezium';
+GRANT CONNECT ON DATABASE store TO debezium;
 GRANT USAGE ON SCHEMA store TO debezium;
-GRANT SELECT ON ALL TABLES IN SCHEMA store TO debezium;
-ALTER DEFAULT PRIVILEGES IN SCHEMA store GRANT SELECT ON TABLES TO debezium;
+GRANT SELECT ON store.outbox_events, store.debezium_heartbeat TO debezium;
+GRANT INSERT, DELETE ON store.debezium_heartbeat TO debezium;
+GRANT USAGE ON SEQUENCE store.debezium_heartbeat_id_seq TO debezium;
 ```
 
-Register the connector (Kafka Connect REST on `:9084` in the `development` stack). This matches the
-connector running locally:
-
-```json
-{
-  "name": "postgres-cdc",
-  "config": {
-    "connector.class": "io.debezium.connector.postgresql.PostgresConnector",
-    "database.hostname": "postgres",
-    "database.port": "5432",
-    "database.user": "postgres",
-    "database.password": "postgres",
-    "database.dbname": "store",
-    "topic.prefix": "store",
-    "plugin.name": "pgoutput",
-    "slot.name": "debezium_store_v2_slot",
-    "publication.name": "debezium_store_v2_publication",
-    "publication.autocreate.mode": "filtered",
-    "table.include.list": "store.outbox_events",
-    "tombstones.on.delete": "false",
-    "transforms": "outbox",
-    "transforms.outbox.type": "io.debezium.transforms.outbox.EventRouter",
-    "transforms.outbox.route.by.field": "event_type",
-    "transforms.outbox.route.topic.replacement": "${routedByValue}",
-    "transforms.outbox.table.field.event.key": "aggregate_id",
-    "transforms.outbox.table.field.event.payload": "payload"
-  }
-}
-```
+Register the connector with the `development` repo: the config is `docker/kafka-connect/connectors/postgres-cdc.json`,
+applied by `docker/kafka-connect/register-connectors.sh` (credentials come from a git-ignored secrets file, never
+from this README or the config). See `development/docs/connectors.md`, including the order to follow when the
+outbox table gains a column that the connector places in a header (e.g. `correlation_context`, V9). The
+publication and the heartbeat table `store.debezium_heartbeat` come from `docker/kafka-connect/sql/store-outbox-cdc.sql`
+(run it after stores-service has started once and **before** V10 runs on a stack with the connector).
 
 `route.topic.replacement=${routedByValue}` makes the **topic name equal to `event_type`**
 (`ProductCreated`), keyed by `aggregate_id`. Without it Debezium would publish to
@@ -290,5 +273,5 @@ src/main/java/com/dotran/oms/store/
     ├── rest/           REST controllers, request/response DTOs
     ├── persistence/    JPA adapters, entities, Spring Data repos
     ├── mapper/         Persistence-layer MapStruct mappers
-    └── cloud/          AWS S3, DynamoDB adapters
+    └── cloud/          AWS S3 adapters
 ```

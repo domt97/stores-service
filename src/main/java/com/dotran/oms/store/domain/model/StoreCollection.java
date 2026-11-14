@@ -1,5 +1,6 @@
 package com.dotran.oms.store.domain.model;
 
+import com.dotran.oms.store.common.constants.Constants;
 import com.dotran.oms.core.domain.AggregateRoot;
 import com.dotran.oms.core.domain.id.ProductId;
 import com.dotran.oms.core.domain.id.StoreId;
@@ -46,44 +47,14 @@ public class StoreCollection extends AggregateRoot<StoreCollectionId> {
         this.updatedAt = Instant.now();
     }
 
-    public boolean canAddProductsToCollection(List<ProductId> newProductIds) {
-        if(null == newProductIds || newProductIds.isEmpty()) {
-            throw new BusinessException("Product list cannot be null or empty");
+    /**
+     * Adding or removing products is idempotent (BR-CAT-15): products already in (or not in) the collection are skipped
+     * by the write itself, which also makes concurrent requests safe. Only an empty request is refused.
+     */
+    public static void checkProductListChange(List<ProductId> productIds) {
+        if (productIds == null || productIds.isEmpty()) {
+            throw new BusinessException(Constants.ERROR_MSG_COLLECTION_PRODUCT_LIST_EMPTY);
         }
-
-        for(ProductId newProductId : newProductIds) {
-            if (this.productIds.contains(newProductId)) {
-                throw new BusinessException("Product already exists in the collection");
-            }
-        }
-
-        return true;
-    }
-
-    public boolean canRemoveProductsFromCollection(List<ProductId> productIdsToRemove) {
-        if(null == productIdsToRemove || productIdsToRemove.isEmpty()) {
-            throw new BusinessException("Product list cannot be null or empty");
-        }
-
-        for(ProductId productIdToRemove : productIdsToRemove) {
-            if (!this.productIds.contains(productIdToRemove)) {
-                throw new BusinessException("Product does not exist in the collection");
-            }
-        }
-
-        return true;
-    }
-
-    public void removeProduct(List<ProductId> productIdsToRemove) {
-        for(ProductId productId : productIdsToRemove) {
-            this.removeProduct(productId);
-        }
-        this.updatedAt = Instant.now();
-    }
-
-    public void removeProduct(ProductId productId) {
-        this.productIds.remove(productId);
-        this.updatedAt = Instant.now();
     }
 
     public void activate() {

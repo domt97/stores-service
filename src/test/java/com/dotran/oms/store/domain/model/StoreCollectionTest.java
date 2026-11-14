@@ -78,98 +78,20 @@ class StoreCollectionTest {
     }
 
     @Nested
-    @DisplayName("canAddProductsToCollection")
-    class CanAddProducts {
+    @DisplayName("checkProductListChange (BR-CAT-15: add/remove are idempotent, only an empty request is refused)")
+    class CheckProductListChange {
 
         @Test
-        @DisplayName("returns true for a valid list of new products")
-        void returnsTrue_forValidProducts() {
-            StoreCollection collection = emptyCollection();
-            assertThat(collection.canAddProductsToCollection(List.of(productA))).isTrue();
+        @DisplayName("throws BusinessException for a null or empty product list")
+        void throwsException_forNullOrEmptyList() {
+            assertThatThrownBy(() -> StoreCollection.checkProductListChange(null)).isInstanceOf(BusinessException.class);
+            assertThatThrownBy(() -> StoreCollection.checkProductListChange(List.of())).isInstanceOf(BusinessException.class);
         }
 
         @Test
-        @DisplayName("throws BusinessException for a null product list")
-        void throwsException_forNullList() {
-            StoreCollection collection = emptyCollection();
-            assertThatThrownBy(() -> collection.canAddProductsToCollection(null))
-                    .isInstanceOf(BusinessException.class);
-        }
-
-        @Test
-        @DisplayName("throws BusinessException for an empty product list")
-        void throwsException_forEmptyList() {
-            StoreCollection collection = emptyCollection();
-            assertThatThrownBy(() -> collection.canAddProductsToCollection(List.of()))
-                    .isInstanceOf(BusinessException.class);
-        }
-
-        @Test
-        @DisplayName("throws BusinessException when a product already exists in the collection")
-        void throwsException_forDuplicateProduct() {
-            StoreCollection collection = collectionWith(productA);
-            assertThatThrownBy(() -> collection.canAddProductsToCollection(List.of(productA)))
-                    .isInstanceOf(BusinessException.class)
-                    .hasMessageContaining("already exists");
-        }
-    }
-
-    @Nested
-    @DisplayName("canRemoveProductsFromCollection")
-    class CanRemoveProducts {
-
-        @Test
-        @DisplayName("returns true when all specified products exist in the collection")
-        void returnsTrue_forExistingProducts() {
-            StoreCollection collection = collectionWith(productA, productB);
-            assertThat(collection.canRemoveProductsFromCollection(List.of(productA))).isTrue();
-        }
-
-        @Test
-        @DisplayName("throws BusinessException for a null product list")
-        void throwsException_forNullList() {
-            StoreCollection collection = collectionWith(productA);
-            assertThatThrownBy(() -> collection.canRemoveProductsFromCollection(null))
-                    .isInstanceOf(BusinessException.class);
-        }
-
-        @Test
-        @DisplayName("throws BusinessException for an empty product list")
-        void throwsException_forEmptyList() {
-            StoreCollection collection = collectionWith(productA);
-            assertThatThrownBy(() -> collection.canRemoveProductsFromCollection(List.of()))
-                    .isInstanceOf(BusinessException.class);
-        }
-
-        @Test
-        @DisplayName("throws BusinessException when a product does not exist in the collection")
-        void throwsException_forNonExistingProduct() {
-            StoreCollection collection = collectionWith(productA);
-            ProductId notInCollection = ProductId.newProductId();
-            assertThatThrownBy(() -> collection.canRemoveProductsFromCollection(List.of(notInCollection)))
-                    .isInstanceOf(BusinessException.class)
-                    .hasMessageContaining("does not exist");
-        }
-    }
-
-    @Nested
-    @DisplayName("removeProduct")
-    class RemoveProduct {
-
-        @Test
-        @DisplayName("removes the specified products from the collection")
-        void removesProducts() {
-            StoreCollection collection = collectionWith(productA, productB);
-            collection.removeProduct(List.of(productA));
-            assertThat(collection.getProductIds()).containsExactly(productB);
-        }
-
-        @Test
-        @DisplayName("leaves other products intact after removal")
-        void leavesOtherProductsIntact() {
-            StoreCollection collection = collectionWith(productA, productB);
-            collection.removeProduct(productA);
-            assertThat(collection.getProductIds()).containsExactly(productB);
+        @DisplayName("accepts any non-empty list: products already in the collection (or not in it) are not an error")
+        void acceptsNonEmptyList() {
+            StoreCollection.checkProductListChange(List.of(productA, productB));
         }
     }
 

@@ -18,6 +18,7 @@ import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.Named;
 
+import java.util.ArrayList;
 import java.util.List;
 
 @Mapper(componentModel = "spring", uses = {InternalIdMapper.class})
@@ -35,6 +36,10 @@ public abstract class StoreProductMapper {
 
     @Named("fromProductSkuCmds")
     public List<ProductSku> fromProductSkuCmds(List<ProductSkuCmd> cmds) {
+        if (null == cmds) {
+            return new ArrayList<>();
+        }
+
         return cmds.stream()
                 .map(this::fromProductSkuCmd)
                 .peek(ProductSku::init)
@@ -43,6 +48,10 @@ public abstract class StoreProductMapper {
 
     @Named("fromProductImageCmds")
     public List<ProductImage> fromProductImageCmds(List<ProductImageCmd> cmds) {
+        if (null == cmds) {
+            return new ArrayList<>();
+        }
+
         return cmds.stream()
                 .map(this::fromProductImageCmd)
                 .peek(ProductImage::init)
