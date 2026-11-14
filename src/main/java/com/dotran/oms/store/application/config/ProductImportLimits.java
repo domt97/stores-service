@@ -1,12 +1,17 @@
 package com.dotran.oms.store.application.config;
 
+import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.PositiveOrZero;
 import lombok.Getter;
 import lombok.Setter;
+import org.hibernate.validator.constraints.time.DurationMax;
+import org.hibernate.validator.constraints.time.DurationMin;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.validation.annotation.Validated;
+
+import java.time.Duration;
 
 /**
  * Limits of the Excel product import (BR-CAT-13). Business limits (size, rows) are what a seller sees; the technical
@@ -23,6 +28,12 @@ public class ProductImportLimits {
     /** File size: 5 MB. */
     @Positive
     private long maxBytes = 5L * 1024 * 1024;
+
+    /** How long a presigned upload URL stays valid (BR-CAT-17: 15 minutes); capped at 1 hour. */
+    @NotNull
+    @DurationMin(seconds = 1)
+    @DurationMax(hours = 1)
+    private Duration uploadUrlTtl = Duration.ofMinutes(15);
 
     /** Counted (non-blank) rows per sheet, header excluded. */
     @Positive

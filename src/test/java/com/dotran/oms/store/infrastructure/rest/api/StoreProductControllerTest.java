@@ -1,5 +1,13 @@
 package com.dotran.oms.store.infrastructure.rest.api;
 
+import com.dotran.oms.store.application.dto.impex.ImportUploadDto;
+import com.dotran.oms.store.application.usecase.impex.CreateImportUploadUseCase;
+import com.dotran.oms.store.infrastructure.rest.dto.request.CreateImportUploadRequest;
+import com.dotran.oms.store.infrastructure.rest.dto.response.ImportUploadResponse;
+import org.springframework.http.ResponseEntity;
+import java.math.BigDecimal;
+import java.time.Instant;
+import java.util.Map;
 import com.dotran.oms.core.domain.id.StoreId;
 import com.dotran.oms.core.domain.id.MerchantId;
 import com.dotran.oms.core.domain.id.ProductId;
@@ -53,6 +61,7 @@ class StoreProductControllerTest {
     @Mock private GetStoreProductDetailUseCase getStoreProductDetailUseCase;
     @Mock private SearchProductUseCase searchProductUseCase;
     @Mock private ImportStoreProductUseCase importStoreProductUseCase;
+    @Mock private CreateImportUploadUseCase createImportUploadUseCase;
     @Mock private StoreProductRestMapper storeProductRestMapper;
 
     @InjectMocks
@@ -185,5 +194,25 @@ class StoreProductControllerTest {
         assertThat(cmd.getMerchantId()).isEqualTo(MerchantId.of(merchantId));
         assertThat(cmd.getStoreId()).isEqualTo(StoreId.of(storeId));
         assertThat(cmd.getProductId()).isEqualTo(ProductId.of(productId));
+    }
+
+    @Test
+    @DisplayName("createImportUpload: path merchant and store and the exact size go to the use case; response mapped, not cached")
+    void createImportUpload_mapsAndDisablesCaching() {
+        UUID merchantId = UUID.randomUUID();
+        UUID storeId = UUID.randomUUID();
+        ImportUploadDto dto = new ImportUploadDto("f.xlsx", "http://s3/url", "PUT", Map.of("content-type", "t"),
+                Instant.parse("2026-11-14T10:15:00Z"), 5242880L);
+        when(createImportUploadUseCase.create(any())).thenReturn(dto);
+
+        ResponseEntity<ImportUploadResponse> response = controller.createImportUpload(merchantId, storeId,
+                CreateImportUploadRequest.builder().sizeBytes(new BigDecimal("1234")).build());
+
+        verify(createImportUploadUseCase).create(argThat(cmd -> cmd.merchantId().equals(MerchantId.of(merchantId))
+                && cmd.storeId().equals(StoreId.of(storeId)) && cmd.sizeBytes() == 1234L));
+        assertThat(response.getStatusCode().value()).isEqualTo(200);
+        assertThat(response.getHeaders().getCacheControl()).isEqualTo("no-store");
+        assertThat(response.getBody()).isEqualTo(new ImportUploadResponse("f.xlsx", "http://s3/url", "PUT",
+                Map.of("content-type", "t"), Instant.parse("2026-11-14T10:15:00Z"), 5242880L));
     }
 }
