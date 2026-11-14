@@ -13,7 +13,7 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 public class ImportStoreProductCmd {
 
-    private String path;
+    /** Name of the file in the store's import folder (BR-CAT-16); checked by ImportFileName. */
     private String fileName;
     private MerchantId merchantId;
     private StoreId storeId;

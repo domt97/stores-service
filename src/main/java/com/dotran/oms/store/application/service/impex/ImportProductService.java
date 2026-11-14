@@ -9,6 +9,7 @@ import com.dotran.oms.store.application.command.impex.ImportStoreProductCmd;
 import com.dotran.oms.store.application.config.ProductImportLimits;
 import com.dotran.oms.store.application.impex.parser.StoreProductImportReader;
 import com.dotran.oms.store.application.impex.product.ImportBusyException;
+import com.dotran.oms.store.application.impex.product.ImportFileName;
 import com.dotran.oms.store.application.impex.product.ProductImportContext;
 import com.dotran.oms.store.application.impex.product.ProductImportData;
 import com.dotran.oms.store.application.impex.product.StoreImportRunningException;
@@ -29,7 +30,8 @@ import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 
 /**
- * Excel product import. Order: merchant and store checked (404) → one import per store (409 if this store already
+ * Excel product import. Order: file name checked (400, BR-CAT-16: a plain name inside the store's import folder,
+ * before any lookup) → merchant and store checked (404) → one import per store (409 if this store already
  * imports) → a server slot (waits up to {@code slotWaitSeconds}; 503 if the server stays saturated) → the
  * file read and checked against the limits (BR-CAT-13; 400/422/500, no transaction) → the handler validates the rows
  * and writes the products and their ProductCreated outbox rows in ONE transaction (TransactionTemplate in its
@@ -41,7 +43,8 @@ import java.util.concurrent.TimeUnit;
  * <p>
  * What the client sees:
  * <ul>
- *   <li>404 — merchant not found, or store not found for this merchant;</li>
+ *   <li>400 — fileName is not a plain file name (BR-CAT-16);</li>
+ *   <li>404 — merchant not found, or store not found for this merchant, or the file is not in the store's import folder;</li>
  *   <li>409 — an import for this store is already running (other stores are not affected);</li>
  *   <li>503 — every server slot stayed taken for the whole wait (Retry-After): capacity, not the client;</li>
  *   <li>400 / 422 / 500 — from the reader (see ProductExcelReader);</li>
@@ -80,6 +83,7 @@ public class ImportProductService implements ImportStoreProductUseCase {
     @Override
     public ImportResult execute(ImportStoreProductCmd importCmd) {
         log.info("Import Store Product - START");
+        ImportFileName fileName = ImportFileName.of(importCmd.getFileName());
         if (!merchantRepository.existsById(importCmd.getMerchantId())) {
             throw new NotFoundException(Constants.ERROR_MSG_MERCHANT_NOT_FOUND);
         }
@@ -94,7 +98,7 @@ public class ImportProductService implements ImportStoreProductUseCase {
         try {
             acquireSlot(importCmd);
             try {
-                return importFile(importCmd);
+                return importFile(importCmd, fileName);
             } finally {
                 slots.release();
             }
@@ -124,10 +128,10 @@ public class ImportProductService implements ImportStoreProductUseCase {
         }
     }
 
-    private ImportResult importFile(ImportStoreProductCmd importCmd) {
+    private ImportResult importFile(ImportStoreProductCmd importCmd, ImportFileName fileName) {
         Instant startTime = Instant.now();
         ProductImportData productImportData =
-                storeProductImportReader.read(importCmd.getPath(), importCmd.getFileName());
+                storeProductImportReader.read(importCmd.getMerchantId(), importCmd.getStoreId(), fileName);
 
         ProductImportContext context = ProductImportContext.builder()
                 .merchantId(importCmd.getMerchantId())
