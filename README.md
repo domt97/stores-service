@@ -196,7 +196,8 @@ Flyway migrations run automatically on startup.
 ### Run
 
 ```bash
-./gradlew bootRun
+# Any other profile: the import bucket has no default, set it or startup fails
+AWS_S3_STORE_PRODUCT_BUCKET=<bucket> ./gradlew bootRun
 ```
 
 ```bash

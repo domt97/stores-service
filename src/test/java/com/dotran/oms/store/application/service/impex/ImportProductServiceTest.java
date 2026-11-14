@@ -10,6 +10,7 @@ import com.dotran.oms.store.application.command.impex.ImportStoreProductCmd;
 import com.dotran.oms.store.application.config.ProductImportLimits;
 import com.dotran.oms.store.application.impex.parser.StoreProductImportReader;
 import com.dotran.oms.store.application.impex.product.ImportBusyException;
+import com.dotran.oms.store.application.impex.product.ImportFileName;
 import com.dotran.oms.store.application.impex.product.ProductImportContext;
 import com.dotran.oms.store.application.impex.product.ProductImportData;
 import com.dotran.oms.store.application.impex.product.StoreImportRunningException;
@@ -24,6 +25,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.InOrder;
@@ -50,6 +52,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -64,7 +67,6 @@ class ImportProductServiceTest {
     private final ProductImportLimits limits = new ProductImportLimits();
     private ImportProductService importProductService;
     private final ImportStoreProductCmd cmd = ImportStoreProductCmd.builder()
-            .path("bucket")
             .fileName("products.xlsx")
             .merchantId(MerchantId.newMerchantId())
             .storeId(StoreId.newStoreId())
@@ -89,7 +91,7 @@ class ImportProductServiceTest {
     void executesInOrder_andSetsTimestamps() {
         merchantAndStoreExist();
         ProductImportData data = mock(ProductImportData.class);
-        when(storeProductImportReader.read("bucket", "products.xlsx")).thenReturn(data);
+        when(storeProductImportReader.read(cmd.getMerchantId(), cmd.getStoreId(), ImportFileName.of("products.xlsx"))).thenReturn(data);
         when(productImportHandler.execute(any(ProductImportContext.class), eq(data)))
                 .thenReturn(ImportResult.builder().status(ImportResult.ImportStatus.SUCCESS).totalRecords(3).build());
 
@@ -102,7 +104,7 @@ class ImportProductServiceTest {
         InOrder order = inOrder(merchantRepository, storeRepository, storeProductImportReader, productImportHandler);
         order.verify(merchantRepository).existsById(cmd.getMerchantId());
         order.verify(storeRepository).existsByMerchantIdAndStoreId(cmd.getMerchantId(), cmd.getStoreId());
-        order.verify(storeProductImportReader).read("bucket", "products.xlsx");
+        order.verify(storeProductImportReader).read(cmd.getMerchantId(), cmd.getStoreId(), ImportFileName.of("products.xlsx"));
         order.verify(productImportHandler).execute(
                 argThat(ctx -> ctx.getMerchantId().equals(cmd.getMerchantId()) && ctx.getStoreId().equals(cmd.getStoreId())),
                 eq(data));
@@ -117,8 +119,26 @@ class ImportProductServiceTest {
                 .isInstanceOf(NotFoundException.class).hasMessage(Constants.ERROR_MSG_MERCHANT_NOT_FOUND);
 
         verify(storeRepository, never()).existsByMerchantIdAndStoreId(any(), any());
-        verify(storeProductImportReader, never()).read(any(), any());
+        verify(storeProductImportReader, never()).read(any(), any(), any());
         verify(productImportHandler, never()).execute(any(), any());
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"a/b.xlsx", "..", "x\\y.xlsx", "line\nbreak.xlsx"})
+    @DisplayName("a fileName that is not a plain name → 400 before anything else: no lookup, no slot, file never read")
+    void invalidFileName_400_nothingTouched(String fileName) {
+        ImportStoreProductCmd bad = ImportStoreProductCmd.builder().fileName(fileName)
+                .merchantId(cmd.getMerchantId()).storeId(cmd.getStoreId()).build();
+
+        assertThatThrownBy(() -> importProductService.execute(bad)).isInstanceOf(ValidationException.class);
+
+        verifyNoInteractions(merchantRepository, storeRepository, storeProductImportReader, productImportHandler);
+        // the store was never marked as importing: a valid import of it runs
+        merchantAndStoreExist();
+        when(storeProductImportReader.read(any(), any(), any())).thenReturn(mock(ProductImportData.class));
+        when(productImportHandler.execute(any(), any()))
+                .thenReturn(ImportResult.builder().status(ImportResult.ImportStatus.SUCCESS).build());
+        assertThat(importProductService.execute(cmd).getStatus()).isEqualTo(ImportResult.ImportStatus.SUCCESS);
     }
 
     @Test
@@ -130,7 +150,19 @@ class ImportProductServiceTest {
         assertThatThrownBy(() -> importProductService.execute(cmd))
                 .isInstanceOf(NotFoundException.class).hasMessage(Constants.ERROR_MSG_STORE_NOT_FOUND);
 
-        verify(storeProductImportReader, never()).read(any(), any());
+        verify(storeProductImportReader, never()).read(any(), any(), any());
+        verify(productImportHandler, never()).execute(any(), any());
+    }
+
+    @Test
+    @DisplayName("file not in the store's folder → the reader's 404 propagates (not 200 FAILED), the import never starts")
+    void fileNotFound_404_propagates() {
+        merchantAndStoreExist();
+        when(storeProductImportReader.read(any(), any(), any()))
+                .thenThrow(new NotFoundException("The import file products.xlsx was not found in this store's import folder"));
+
+        assertThatThrownBy(() -> importProductService.execute(cmd)).isInstanceOf(NotFoundException.class);
+
         verify(productImportHandler, never()).execute(any(), any());
     }
 
@@ -138,7 +170,7 @@ class ImportProductServiceTest {
     @DisplayName("a reader error propagates (keeps its HTTP status), the import never starts and the slot is released")
     void readerError_propagates_slotReleased() {
         merchantAndStoreExist();
-        when(storeProductImportReader.read("bucket", "products.xlsx"))
+        when(storeProductImportReader.read(cmd.getMerchantId(), cmd.getStoreId(), ImportFileName.of("products.xlsx")))
                 .thenThrow(new ValidationException("too large"))
                 .thenReturn(mock(ProductImportData.class));
         when(productImportHandler.execute(any(), any()))
@@ -155,7 +187,7 @@ class ImportProductServiceTest {
     @DisplayName("the slot is released when the handler fails")
     void handlerError_slotReleased() {
         merchantAndStoreExist();
-        when(storeProductImportReader.read(any(), any())).thenReturn(mock(ProductImportData.class));
+        when(storeProductImportReader.read(any(), any(), any())).thenReturn(mock(ProductImportData.class));
         when(productImportHandler.execute(any(), any()))
                 .thenThrow(new IllegalStateException("boom"))
                 .thenReturn(ImportResult.builder().status(ImportResult.ImportStatus.SUCCESS).build());
@@ -165,7 +197,7 @@ class ImportProductServiceTest {
     }
 
     private ImportStoreProductCmd otherStore() {
-        ImportStoreProductCmd other = ImportStoreProductCmd.builder().path("bucket").fileName("other.xlsx")
+        ImportStoreProductCmd other = ImportStoreProductCmd.builder().fileName("other.xlsx")
                 .merchantId(cmd.getMerchantId()).storeId(StoreId.newStoreId()).build();
         when(storeRepository.existsByMerchantIdAndStoreId(other.getMerchantId(), other.getStoreId())).thenReturn(true);
         return other;
@@ -175,7 +207,7 @@ class ImportProductServiceTest {
     private ExecutorService startBlockedImport(CountDownLatch release) throws InterruptedException {
         CountDownLatch reading = new CountDownLatch(1);
         ProductImportData data = mock(ProductImportData.class);
-        when(storeProductImportReader.read(eq("bucket"), eq("products.xlsx"))).thenAnswer(inv -> {
+        when(storeProductImportReader.read(eq(cmd.getMerchantId()), eq(cmd.getStoreId()), eq(ImportFileName.of("products.xlsx")))).thenAnswer(inv -> {
             reading.countDown();
             assertThat(release.await(10, TimeUnit.SECONDS)).isTrue();
             return data;
@@ -196,14 +228,14 @@ class ImportProductServiceTest {
         ExecutorService first = startBlockedImport(release);
         try {
             assertThatThrownBy(() -> importProductService.execute(cmd)).isInstanceOf(StoreImportRunningException.class);
-            verify(storeProductImportReader, times(1)).read(any(), any());
+            verify(storeProductImportReader, times(1)).read(any(), any(), any());
         } finally {
             release.countDown();
             first.shutdown();
             assertThat(first.awaitTermination(5, TimeUnit.SECONDS)).isTrue();
         }
         // the store is free again once its import ended
-        when(storeProductImportReader.read(any(), any())).thenReturn(mock(ProductImportData.class));
+        when(storeProductImportReader.read(any(), any(), any())).thenReturn(mock(ProductImportData.class));
         assertThat(importProductService.execute(cmd).getStatus()).isEqualTo(ImportResult.ImportStatus.SUCCESS);
     }
 
@@ -212,7 +244,7 @@ class ImportProductServiceTest {
     void otherStore_waitsForSlot_thenRuns() throws Exception {
         merchantAndStoreExist();
         ImportStoreProductCmd other = otherStore();
-        when(storeProductImportReader.read(eq("bucket"), eq("other.xlsx"))).thenReturn(mock(ProductImportData.class));
+        when(storeProductImportReader.read(eq(other.getMerchantId()), eq(other.getStoreId()), eq(ImportFileName.of("other.xlsx")))).thenReturn(mock(ProductImportData.class));
         CountDownLatch release = new CountDownLatch(1);
         ExecutorService first = startBlockedImport(release); // permits = 1: the only slot is taken
         ExecutorService second = Executors.newSingleThreadExecutor();
@@ -220,7 +252,7 @@ class ImportProductServiceTest {
             Future<ImportResult> waiting = second.submit(() -> importProductService.execute(other));
             Thread.sleep(300);
             assertThat(waiting.isDone()).isFalse(); // waiting for the slot, not rejected
-            verify(storeProductImportReader, never()).read("bucket", "other.xlsx");
+            verify(storeProductImportReader, never()).read(other.getMerchantId(), other.getStoreId(), ImportFileName.of("other.xlsx"));
 
             release.countDown();
             assertThat(waiting.get(5, TimeUnit.SECONDS).getStatus()).isEqualTo(ImportResult.ImportStatus.SUCCESS);
@@ -243,14 +275,14 @@ class ImportProductServiceTest {
             assertThatThrownBy(() -> importProductService.execute(other))
                     .isInstanceOf(ImportBusyException.class)
                     .satisfies(e -> assertThat(((ImportBusyException) e).getRetryAfterSeconds()).isEqualTo(7));
-            verify(storeProductImportReader, never()).read("bucket", "other.xlsx");
+            verify(storeProductImportReader, never()).read(other.getMerchantId(), other.getStoreId(), ImportFileName.of("other.xlsx"));
         } finally {
             release.countDown();
             first.shutdown();
             assertThat(first.awaitTermination(5, TimeUnit.SECONDS)).isTrue();
         }
         // the other store was not left marked as importing
-        when(storeProductImportReader.read(eq("bucket"), eq("other.xlsx"))).thenReturn(mock(ProductImportData.class));
+        when(storeProductImportReader.read(eq(other.getMerchantId()), eq(other.getStoreId()), eq(ImportFileName.of("other.xlsx")))).thenReturn(mock(ProductImportData.class));
         assertThat(importProductService.execute(other).getStatus()).isEqualTo(ImportResult.ImportStatus.SUCCESS);
     }
 
@@ -266,7 +298,7 @@ class ImportProductServiceTest {
             long start = System.nanoTime();
             assertThatThrownBy(() -> importProductService.execute(other)).isInstanceOf(ImportBusyException.class);
             assertThat(TimeUnit.NANOSECONDS.toSeconds(System.nanoTime() - start)).isLessThan(2); // slot wait is 5 s
-            verify(storeProductImportReader, never()).read("bucket", "other.xlsx");
+            verify(storeProductImportReader, never()).read(other.getMerchantId(), other.getStoreId(), ImportFileName.of("other.xlsx"));
         } finally {
             release.countDown();
             first.shutdown();
@@ -285,14 +317,14 @@ class ImportProductServiceTest {
             Thread.currentThread().interrupt();
             assertThatThrownBy(() -> importProductService.execute(other)).isInstanceOf(ImportBusyException.class);
             assertThat(Thread.interrupted()).isTrue(); // flag kept (and cleared here)
-            verify(storeProductImportReader, never()).read("bucket", "other.xlsx");
+            verify(storeProductImportReader, never()).read(other.getMerchantId(), other.getStoreId(), ImportFileName.of("other.xlsx"));
         } finally {
             release.countDown();
             first.shutdown();
             assertThat(first.awaitTermination(5, TimeUnit.SECONDS)).isTrue();
         }
         // permits = 1: the store is free again and exactly one slot exists (a leaked permit would let two run)
-        when(storeProductImportReader.read(eq("bucket"), eq("other.xlsx"))).thenReturn(mock(ProductImportData.class));
+        when(storeProductImportReader.read(eq(other.getMerchantId()), eq(other.getStoreId()), eq(ImportFileName.of("other.xlsx")))).thenReturn(mock(ProductImportData.class));
         assertThat(importProductService.execute(other).getStatus()).isEqualTo(ImportResult.ImportStatus.SUCCESS);
     }
 
@@ -310,7 +342,7 @@ class ImportProductServiceTest {
     @DisplayName("FAILED keeps the message of a rule the file broke")
     void failed_keepsRuleMessage(RuntimeException error) {
         merchantAndStoreExist();
-        when(storeProductImportReader.read(any(), any())).thenReturn(mock(ProductImportData.class));
+        when(storeProductImportReader.read(any(), any(), any())).thenReturn(mock(ProductImportData.class));
         when(productImportHandler.execute(any(), any())).thenThrow(error);
 
         ImportResult result = importProductService.execute(cmd);
@@ -335,7 +367,7 @@ class ImportProductServiceTest {
     @DisplayName("FAILED shows a generic message for an internal error, never its text (no SQL)")
     void failed_genericMessage_forInternalErrors(RuntimeException error) {
         merchantAndStoreExist();
-        when(storeProductImportReader.read(any(), any())).thenReturn(mock(ProductImportData.class));
+        when(storeProductImportReader.read(any(), any(), any())).thenReturn(mock(ProductImportData.class));
         when(productImportHandler.execute(any(), any())).thenThrow(error);
 
         ImportResult result = importProductService.execute(cmd);

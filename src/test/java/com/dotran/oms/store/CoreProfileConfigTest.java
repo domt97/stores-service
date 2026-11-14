@@ -40,7 +40,15 @@ class CoreProfileConfigTest {
         runner.run(context -> {
             Environment env = context.getEnvironment();
             assertThat(env.getProperty("spring.application.name")).isEqualTo("stores-service");
-            assertThat(env.getProperty("aws.s3.store-product-bucket")).isNotBlank();
+            // aws.s3.store-product-bucket has no default outside localdev: see localdevBucketMatchesTerraform
         });
+    }
+
+    @Test
+    @DisplayName("localdev reads the import bucket Terraform creates (development repo: ${profile}-store-products)")
+    void localdevBucketMatchesTerraform() {
+        runner.withPropertyValues("spring.profiles.active=localdev").run(context ->
+                assertThat(context.getEnvironment().getProperty("aws.s3.store-product-bucket"))
+                        .isEqualTo("localdev-store-products"));
     }
 }

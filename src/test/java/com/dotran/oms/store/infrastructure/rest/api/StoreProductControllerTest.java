@@ -38,7 +38,9 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
@@ -146,20 +148,21 @@ class StoreProductControllerTest {
     }
 
     @Test
-    @DisplayName("importProducts: builds cmd, calls use case, returns result")
+    @DisplayName("importProducts: cmd carries the path merchant and store and the file name only; returns the result")
     void importProducts_delegatesAndReturnsImportResult() {
         UUID merchantId = UUID.randomUUID();
         UUID storeId = UUID.randomUUID();
         ImportStoreProductsRequest request = mock(ImportStoreProductsRequest.class);
         ImportResult importResult = mock(ImportResult.class);
 
-        when(request.getPath()).thenReturn("bucket");
         when(request.getFileName()).thenReturn("file.xlsx");
         when(importStoreProductUseCase.execute(any())).thenReturn(importResult);
 
         ImportResult result = controller.importProducts(merchantId, storeId, request);
 
         assertThat(result).isEqualTo(importResult);
+        verify(importStoreProductUseCase).execute(argThat(cmd -> cmd.getMerchantId().equals(MerchantId.of(merchantId))
+                && cmd.getStoreId().equals(StoreId.of(storeId)) && cmd.getFileName().equals("file.xlsx")));
     }
 
     @Test

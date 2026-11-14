@@ -1,13 +1,19 @@
 package com.dotran.oms.store.infrastructure.excel;
 
 import com.dotran.oms.core.cloud.s3.S3ObjectStorageReader;
+import com.dotran.oms.core.domain.id.MerchantId;
+import com.dotran.oms.core.domain.id.StoreId;
+import com.dotran.oms.core.exception.AWSException;
+import com.dotran.oms.core.exception.NotFoundException;
 import com.dotran.oms.core.exception.BusinessException;
 import com.dotran.oms.core.exception.ValidationException;
 import com.dotran.oms.store.application.config.ProductImportLimits;
+import com.dotran.oms.store.application.impex.product.ImportFileName;
 import com.dotran.oms.store.application.impex.product.ProductImportData;
 import com.dotran.oms.store.application.impex.product.column.ProductImageColumn;
 import com.dotran.oms.store.application.impex.product.column.ProductImportColumn;
 import com.dotran.oms.store.application.impex.product.column.ProductSKUColumn;
+import com.dotran.oms.store.infrastructure.cloud.s3.S3Properties;
 import org.apache.poi.openxml4j.util.ZipSecureFile;
 import org.apache.poi.ss.usermodel.CellStyle;
 import org.apache.poi.ss.usermodel.Row;
@@ -28,6 +34,7 @@ import software.amazon.awssdk.core.ResponseInputStream;
 import software.amazon.awssdk.http.Abortable;
 import software.amazon.awssdk.http.AbortableInputStream;
 import software.amazon.awssdk.services.s3.model.GetObjectResponse;
+import software.amazon.awssdk.services.s3.model.NoSuchKeyException;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -45,6 +52,9 @@ import java.util.zip.ZipOutputStream;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -58,6 +68,18 @@ class ProductExcelReaderTest {
     private long zipMaxEntrySize;
     private double zipMinInflateRatio;
     private ProductImportLimits limits;
+
+    private static final String BUCKET = "test-store-products";
+    private static final MerchantId MERCHANT = MerchantId.of(UUID.fromString("11111111-1111-1111-1111-111111111111"));
+    private static final StoreId STORE = StoreId.of(UUID.fromString("22222222-2222-2222-2222-222222222222"));
+    private static final ImportFileName FILE = ImportFileName.of("file.xlsx");
+    /** BR-CAT-16: the configured bucket, {merchantId}/{storeId}/imports/{fileName}. */
+    private static final String KEY =
+            "11111111-1111-1111-1111-111111111111/22222222-2222-2222-2222-222222222222/imports/file.xlsx";
+
+    private ProductExcelReader reader() {
+        return new ProductExcelReader(s3ObjectStorageReader, limits, new S3Properties(BUCKET));
+    }
 
     @BeforeEach
     void setUp() {
@@ -77,8 +99,8 @@ class ProductExcelReaderTest {
     }
 
     private ProductImportData read(byte[] file) {
-        when(s3ObjectStorageReader.read("bucket", "file.xlsx")).thenReturn(new ByteArrayInputStream(file));
-        return new ProductExcelReader(s3ObjectStorageReader, limits).read("bucket", "file.xlsx");
+        when(s3ObjectStorageReader.read(BUCKET, KEY)).thenReturn(new ByteArrayInputStream(file));
+        return reader().read(MERCHANT, STORE, FILE);
     }
 
     private void assertRejected(byte[] file, String messagePart) {
@@ -253,9 +275,9 @@ class ProductExcelReaderTest {
         InputStream body = new ByteArrayInputStream(new byte[10]);
         ResponseInputStream<GetObjectResponse> response = new ResponseInputStream<>(
                 GetObjectResponse.builder().contentLength(5000L).build(), AbortableInputStream.create(body, abortable));
-        when(s3ObjectStorageReader.read("bucket", "file.xlsx")).thenReturn(response);
+        when(s3ObjectStorageReader.read(BUCKET, KEY)).thenReturn(response);
 
-        assertThatThrownBy(() -> new ProductExcelReader(s3ObjectStorageReader, limits).read("bucket", "file.xlsx"))
+        assertThatThrownBy(() -> reader().read(MERCHANT, STORE, FILE))
                 .isInstanceOf(ValidationException.class).hasMessageContaining("larger than");
         verify(abortable).abort();
     }
@@ -266,9 +288,9 @@ class ProductExcelReaderTest {
         limits.setMaxBytes(1000);
         ResponseInputStream<GetObjectResponse> response = new ResponseInputStream<>(
                 GetObjectResponse.builder().build(), AbortableInputStream.create(new ByteArrayInputStream(new byte[5000]), abortable));
-        when(s3ObjectStorageReader.read("bucket", "file.xlsx")).thenReturn(response);
+        when(s3ObjectStorageReader.read(BUCKET, KEY)).thenReturn(response);
 
-        assertThatThrownBy(() -> new ProductExcelReader(s3ObjectStorageReader, limits).read("bucket", "file.xlsx"))
+        assertThatThrownBy(() -> reader().read(MERCHANT, STORE, FILE))
                 .isInstanceOf(ValidationException.class).hasMessageContaining("larger than");
         verify(abortable).abort();
     }
@@ -477,9 +499,41 @@ class ProductExcelReaderTest {
                 throw new IOException("connection reset");
             }
         };
-        when(s3ObjectStorageReader.read("bucket", "file.xlsx")).thenReturn(broken);
+        when(s3ObjectStorageReader.read(BUCKET, KEY)).thenReturn(broken);
 
-        assertThatThrownBy(() -> new ProductExcelReader(s3ObjectStorageReader, limits).read("bucket", "file.xlsx"))
+        assertThatThrownBy(() -> reader().read(MERCHANT, STORE, FILE))
                 .isInstanceOf(UncheckedIOException.class);
+    }
+
+    @Test
+    @DisplayName("location: reads only the configured bucket and this store's import folder; another store's folder is never read")
+    void location_configuredBucket_storeFolderOnly() {
+        when(s3ObjectStorageReader.read(BUCKET, KEY)).thenReturn(new ByteArrayInputStream(workbook(1)));
+
+        reader().read(MERCHANT, STORE, FILE);
+
+        verify(s3ObjectStorageReader).read(BUCKET, KEY);
+        verify(s3ObjectStorageReader, never()).read(anyString(),
+                eq("11111111-1111-1111-1111-111111111111/33333333-3333-3333-3333-333333333333/imports/file.xlsx"));
+        verify(s3ObjectStorageReader, never()).read(eq("file.xlsx"), anyString());
+        verify(s3ObjectStorageReader, never()).read(anyString(), eq("file.xlsx"));
+    }
+
+    @Test
+    @DisplayName("missing file in the store's folder (NoSuchKey) → 404 naming the file (temp file cleanup: @AfterEach)")
+    void missingFile_404() {
+        when(s3ObjectStorageReader.read(BUCKET, KEY)).thenThrow(NoSuchKeyException.builder().message("no key").build());
+
+        assertThatThrownBy(() -> reader().read(MERCHANT, STORE, FILE))
+                .isInstanceOf(NotFoundException.class)
+                .hasMessage("The import file file.xlsx was not found in this store's import folder");
+    }
+
+    @Test
+    @DisplayName("missing bucket (AWSException) is not the client's fault → propagates unchanged (500)")
+    void missingBucket_propagates() {
+        when(s3ObjectStorageReader.read(BUCKET, KEY)).thenThrow(new AWSException("Bucket test-store-products does not exist"));
+
+        assertThatThrownBy(() -> reader().read(MERCHANT, STORE, FILE)).isInstanceOf(AWSException.class);
     }
 }

@@ -46,7 +46,9 @@ spring:
 aws:
   # region, endpoint, access-key and secret-key come from oms-core's application-core.yaml (profile `core`, included above).
   s3:
-    store-product-bucket: ${AWS_S3_STORE_PRODUCT_BUCKET:store-products}
+    # The only bucket the service reads product files from (BR-CAT-16); import files at {merchantId}/{storeId}/imports/{fileName}.
+    # No default: a missing setting fails the startup instead of reading a generic bucket name (sa-aws-platform rule 2).
+    store-product-bucket: ${AWS_S3_STORE_PRODUCT_BUCKET}
 
 app:
   # Excel product import limits (BR-CAT-13); see ProductImportLimits for the meaning of each value.

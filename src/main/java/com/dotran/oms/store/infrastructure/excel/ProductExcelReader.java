@@ -2,11 +2,15 @@ package com.dotran.oms.store.infrastructure.excel;
 
 import com.dotran.oms.core.cloud.s3.S3ObjectStorageReader;
 import com.dotran.oms.core.domain.id.CategoryId;
+import com.dotran.oms.core.domain.id.MerchantId;
 import com.dotran.oms.core.domain.id.SKU;
+import com.dotran.oms.core.domain.id.StoreId;
+import com.dotran.oms.core.exception.NotFoundException;
 import com.dotran.oms.core.exception.BusinessException;
 import com.dotran.oms.core.exception.ValidationException;
 import com.dotran.oms.store.application.config.ProductImportLimits;
 import com.dotran.oms.store.application.impex.parser.StoreProductImportReader;
+import com.dotran.oms.store.application.impex.product.ImportFileName;
 import com.dotran.oms.store.application.impex.product.ProductImageImportRow;
 import com.dotran.oms.store.application.impex.product.ProductImportData;
 import com.dotran.oms.store.application.impex.product.ProductImportRow;
@@ -15,6 +19,7 @@ import com.dotran.oms.store.application.impex.product.column.ProductImageColumn;
 import com.dotran.oms.store.application.impex.product.column.ProductImportColumn;
 import com.dotran.oms.store.application.impex.product.column.ProductSKUColumn;
 import com.dotran.oms.store.common.constants.Constants;
+import com.dotran.oms.store.infrastructure.cloud.s3.S3Properties;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.poi.ooxml.POIXMLException;
 import org.apache.poi.openxml4j.exceptions.OpenXML4JException;
@@ -34,6 +39,7 @@ import org.xml.sax.SAXException;
 import org.xml.sax.XMLReader;
 import software.amazon.awssdk.core.ResponseInputStream;
 import software.amazon.awssdk.services.s3.model.GetObjectResponse;
+import software.amazon.awssdk.services.s3.model.NoSuchKeyException;
 
 import javax.xml.parsers.ParserConfigurationException;
 import java.io.ByteArrayInputStream;
@@ -50,14 +56,18 @@ import java.util.UUID;
 import java.util.function.Function;
 
 /**
- * Reads the product import workbook from S3 without loading it into memory (BR-CAT-13): the object is copied to a temp
+ * Reads the product import workbook from the store's import folder (BR-CAT-16: the configured bucket, key
+ * {@code {merchantId}/{storeId}/imports/{fileName}}, see {@link S3Properties}) without loading it into memory (BR-CAT-13):
+ * the object is copied to a temp
  * file (at most {@code maxBytes}), opened lazily, and only the Product, Product SKU and Product Image sheets are
  * streamed, with row caps and a text budget. What the client sees:
  * <ul>
  *   <li>400 — file too large, too many rows, too much text or formatting, missing sheet, bad header, a cell that is not
  *       a valid number / id (sheet and row named);</li>
  *   <li>422 — not an Excel (xlsx) file, corrupt file, zip bomb;</li>
- *   <li>500 — bucket or key missing, temp storage or network failure (not the client's file).</li>
+ *   <li>404 — no such file in the store's import folder (S3 {@code NoSuchKey}; the role needs {@code s3:ListBucket} on
+ *       the prefix, otherwise S3 answers 403 for a missing key and the import ends in 500);</li>
+ *   <li>500 — bucket missing, access denied, temp storage or network failure (not the client's file).</li>
  * </ul>
  */
 @Component
@@ -71,18 +81,22 @@ public class ProductExcelReader implements StoreProductImportReader {
 
     private final S3ObjectStorageReader s3ObjectStorageReader;
     private final ProductImportLimits limits;
+    private final S3Properties s3Properties;
 
-    public ProductExcelReader(S3ObjectStorageReader s3ObjectStorageReader, ProductImportLimits limits) {
+    public ProductExcelReader(S3ObjectStorageReader s3ObjectStorageReader, ProductImportLimits limits,
+                              S3Properties s3Properties) {
         this.s3ObjectStorageReader = s3ObjectStorageReader;
         this.limits = limits;
+        this.s3Properties = s3Properties;
         // JVM-wide POI settings (only this reader uses POI): inflated size of any zip entry, and the inflation ratio.
         ZipSecureFile.setMaxEntrySize(limits.getMaxZipEntryBytes());
         ZipSecureFile.setMinInflateRatio(limits.getMinInflateRatio());
     }
 
     @Override
-    public ProductImportData read(String path, String fileName) {
-        Path file = download(path, fileName);
+    public ProductImportData read(MerchantId merchantId, StoreId storeId, ImportFileName fileName) {
+        Path file = download(s3Properties.getStoreProductBucket(), s3Properties.importKey(merchantId, storeId, fileName),
+                fileName);
         try {
             return parse(file);
         } finally {
@@ -90,7 +104,7 @@ public class ProductExcelReader implements StoreProductImportReader {
         }
     }
 
-    private Path download(String bucket, String key) {
+    private Path download(String bucket, String key, ImportFileName fileName) {
         Path file;
         try {
             file = Files.createTempFile("product-import-", ".xlsx");
@@ -110,6 +124,9 @@ public class ProductExcelReader implements StoreProductImportReader {
                 throw fileTooLarge();
             }
             return file;
+        } catch (NoSuchKeyException e) {
+            deleteQuietly(file);
+            throw new NotFoundException(String.format(Constants.ERROR_MSG_IMPORT_FILE_NOT_FOUND, fileName.value()));
         } catch (IOException e) {
             deleteQuietly(file);
             throw new UncheckedIOException("Could not download the import file", e);
