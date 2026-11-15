@@ -1,5 +1,7 @@
 package com.dotran.oms.store.infrastructure.rest.api;
 
+import com.dotran.oms.store.common.id.StoreAvailabilityId;
+import com.dotran.oms.store.application.command.store.CancelStoreAvailabilityCmd;
 import com.dotran.oms.core.annotation.WebAdapter;
 import com.dotran.oms.core.domain.id.StoreId;
 import com.dotran.oms.core.domain.id.MerchantId;
@@ -140,7 +142,7 @@ public class StoreController {
             @ApiResponse(responseCode = "201", description = "Availability added successfully",
                     content = @Content(mediaType = "application/json", schema = @Schema(implementation = StoreAvailabilityResponse.class))),
             @ApiResponse(responseCode = "400", description = "Invalid request body", content = @Content),
-            @ApiResponse(responseCode = "404", description = "Store not found", content = @Content)
+            @ApiResponse(responseCode = "404", description = "Merchant not found, or store not found for this merchant", content = @Content)
     })
     @PostMapping("/merchants/{merchantId}/stores/{storeId}/availability")
     @ResponseStatus(HttpStatus.CREATED)
@@ -163,7 +165,8 @@ public class StoreController {
     @Operation(summary = "Cancel store availability", description = "Cancels an existing availability schedule")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "204", description = "Availability cancelled successfully", content = @Content),
-            @ApiResponse(responseCode = "404", description = "Store or availability not found", content = @Content)
+            @ApiResponse(responseCode = "404", description = "Merchant not found, store not found for this merchant, or availability not found", content = @Content),
+            @ApiResponse(responseCode = "422", description = "Availability already cancelled", content = @Content)
     })
     @PostMapping("/merchants/{merchantId}/stores/{storeId}/availability/{storeAvailabilityId}/cancel")
     @ResponseStatus(HttpStatus.NO_CONTENT)
@@ -172,7 +175,11 @@ public class StoreController {
             @Parameter(description = "Store ID", required = true) @PathVariable("storeId") UUID id,
             @Parameter(description = "Store Availability ID", required = true) @PathVariable UUID storeAvailabilityId) {
         log.info("StoreController - cancelStoreAvailability: START for storeId={}", id);
-        cancelStoreAvailabilityUseCase.cancel(storeAvailabilityId, id);
+        cancelStoreAvailabilityUseCase.cancel(CancelStoreAvailabilityCmd.builder()
+                .merchantId(MerchantId.of(merchantId))
+                .storeId(StoreId.of(id))
+                .storeAvailabilityId(StoreAvailabilityId.of(storeAvailabilityId))
+                .build());
         log.info("StoreController - cancelStoreAvailability: END");
     }
 }

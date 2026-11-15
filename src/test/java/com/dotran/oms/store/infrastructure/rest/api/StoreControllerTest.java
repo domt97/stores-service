@@ -1,5 +1,8 @@
 package com.dotran.oms.store.infrastructure.rest.api;
 
+import com.dotran.oms.core.domain.id.StoreId;
+import com.dotran.oms.store.common.id.StoreAvailabilityId;
+import com.dotran.oms.store.application.command.store.CancelStoreAvailabilityCmd;
 import com.dotran.oms.core.domain.id.MerchantId;
 import com.dotran.oms.store.application.command.store.AddStoreAvailabilityCmd;
 import com.dotran.oms.store.application.command.store.CreateStoreCmd;
@@ -131,6 +134,9 @@ class StoreControllerTest {
         StoreAvailabilityResponse result = controller.addStoreAvailability(merchantId, storeId, request);
 
         assertThat(result).isEqualTo(response);
+        // the service checks the store against this merchant: the cmd must carry the path ids
+        assertThat(cmd.getMerchantId()).isEqualTo(MerchantId.of(merchantId));
+        assertThat(cmd.getStoreId()).isEqualTo(StoreId.of(storeId));
     }
 
     @Test
@@ -142,6 +148,7 @@ class StoreControllerTest {
 
         controller.cancelStoreAvailability(merchantId, storeId, availabilityId);
 
-        verify(cancelStoreAvailabilityUseCase).cancel(availabilityId, storeId);
+        verify(cancelStoreAvailabilityUseCase).cancel(new CancelStoreAvailabilityCmd(
+                MerchantId.of(merchantId), StoreId.of(storeId), StoreAvailabilityId.of(availabilityId)));
     }
 }
