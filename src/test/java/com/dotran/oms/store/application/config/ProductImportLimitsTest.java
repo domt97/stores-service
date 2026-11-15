@@ -8,6 +8,8 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
+import java.time.Duration;
+
 import static org.assertj.core.api.Assertions.assertThat;
 
 @DisplayName("ProductImportLimits")
@@ -60,8 +62,26 @@ class ProductImportLimitsTest {
         bad.setMaxBytes(0);
         bad.setMaxPermits(0);
         bad.setMinInflateRatio(0);
+        bad.setUploadUrlTtl(Duration.ZERO);
 
         assertThat(validator.validate(bad)).extracting(v -> v.getPropertyPath().toString())
-                .containsExactlyInAnyOrder("permits", "heapPerImportBytes", "maxBytes", "maxPermits", "minInflateRatio");
+                .containsExactlyInAnyOrder("permits", "heapPerImportBytes", "maxBytes", "maxPermits", "minInflateRatio", "uploadUrlTtl");
+    }
+
+    @Test
+    @DisplayName("upload URL lifetime: 15 min by default (BR-CAT-17), 1 s to 1 h accepted, more than 1 h or none rejected")
+    void uploadUrlTtl_bounds() {
+        assertThat(new ProductImportLimits().getUploadUrlTtl()).isEqualTo(Duration.ofMinutes(15));
+        for (Duration ok : new Duration[] {Duration.ofSeconds(1), Duration.ofHours(1)}) {
+            ProductImportLimits limits = new ProductImportLimits();
+            limits.setUploadUrlTtl(ok);
+            assertThat(validator.validate(limits)).as(ok.toString()).isEmpty();
+        }
+        for (Duration bad : new Duration[] {Duration.ofHours(1).plusSeconds(1), null, Duration.ofSeconds(-1)}) {
+            ProductImportLimits limits = new ProductImportLimits();
+            limits.setUploadUrlTtl(bad);
+            assertThat(validator.validate(limits)).as(String.valueOf(bad))
+                    .extracting(v -> v.getPropertyPath().toString()).containsExactly("uploadUrlTtl");
+        }
     }
 }

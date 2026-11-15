@@ -11,7 +11,10 @@ import com.dotran.oms.core.domain.id.MerchantId;
 import com.dotran.oms.core.domain.page.DomainPageRequest;
 import com.dotran.oms.core.domain.page.PagedResult;
 import com.dotran.oms.core.io.template.imp.ImportResult;
+import com.dotran.oms.store.application.command.impex.CreateImportUploadCmd;
 import com.dotran.oms.store.application.command.impex.ImportStoreProductCmd;
+import com.dotran.oms.store.application.dto.impex.ImportUploadDto;
+import com.dotran.oms.store.application.usecase.impex.CreateImportUploadUseCase;
 import com.dotran.oms.store.application.command.storeproduct.CreateStoreProductCmd;
 import com.dotran.oms.store.application.command.storeproduct.SearchProductCmd;
 import com.dotran.oms.store.application.dto.StoreProductDetailDto;
@@ -21,7 +24,9 @@ import com.dotran.oms.store.application.usecase.storeproduct.CreateStoreProductU
 import com.dotran.oms.store.application.usecase.storeproduct.GetStoreProductDetailUseCase;
 import com.dotran.oms.store.application.usecase.storeproduct.SearchProductUseCase;
 import com.dotran.oms.store.infrastructure.rest.dto.request.CreateStoreProductRequest;
+import com.dotran.oms.store.infrastructure.rest.dto.request.CreateImportUploadRequest;
 import com.dotran.oms.store.infrastructure.rest.dto.request.ImportStoreProductsRequest;
+import com.dotran.oms.store.infrastructure.rest.dto.response.ImportUploadResponse;
 import com.dotran.oms.store.infrastructure.rest.dto.response.StoreProductPreviewResponse;
 import com.dotran.oms.store.infrastructure.rest.dto.response.StoreProductResponse;
 import com.dotran.oms.store.infrastructure.rest.mapper.StoreProductRestMapper;
@@ -35,7 +40,9 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.CacheControl;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -62,6 +69,7 @@ public class StoreProductController {
     private final GetStoreProductDetailUseCase getStoreProductDetailUseCase;
     private final SearchProductUseCase searchProductUseCase;
     private final ImportStoreProductUseCase importStoreProductUseCase;
+    private final CreateImportUploadUseCase createImportUploadUseCase;
     private final StoreProductRestMapper storeProductRestMapper;
 
     @Operation(summary = "Create a new product", description = "Creates a new product in the specified store with SKUs and images")
@@ -210,5 +218,36 @@ public class StoreProductController {
                 .build();
 
         return importStoreProductUseCase.execute(importStoreProductCmd);
+    }
+
+    @Operation(summary = "Get a presigned upload for an import file",
+            description = "Returns a URL valid for 15 minutes (BR-CAT-17) to PUT one .xlsx file of exactly sizeBytes "
+                    + "straight to the store's import folder in S3, with the returned headers; then call the import "
+                    + "with the returned fileName. 200, not 201: nothing is stored by this call. Uploaded files are "
+                    + "deleted after 7 days.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Upload URL, headers to send, file name and expiry",
+                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = ImportUploadResponse.class))),
+            @ApiResponse(responseCode = "400", description = "sizeBytes missing, not a whole number, below 1 or above the "
+                    + "import limit (5 MB, BR-CAT-13)", content = @Content),
+            @ApiResponse(responseCode = "404", description = "Merchant not found, or store not found for this merchant",
+                    content = @Content)
+    })
+    @PostMapping("/merchants/{merchantId}/stores/{storeId}/products/import-uploads")
+    public ResponseEntity<ImportUploadResponse> createImportUpload(
+            @Parameter(description = "Merchant id") @PathVariable UUID merchantId,
+            @Parameter(description = "Store id (must belong to the merchant)") @PathVariable UUID storeId,
+            @Valid @RequestBody CreateImportUploadRequest request) {
+
+        ImportUploadDto upload = createImportUploadUseCase.create(CreateImportUploadCmd.builder()
+                .merchantId(MerchantId.of(merchantId))
+                .storeId(StoreId.of(storeId))
+                .sizeBytes(request.getSizeBytes().longValueExact())
+                .build());
+
+        return ResponseEntity.ok()
+                .cacheControl(CacheControl.noStore())
+                .body(new ImportUploadResponse(upload.fileName(), upload.uploadUrl(), upload.method(), upload.headers(),
+                        upload.expiresAt(), upload.maxBytes()));
     }
 }

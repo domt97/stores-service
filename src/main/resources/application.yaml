@@ -54,6 +54,7 @@ app:
   # Excel product import limits (BR-CAT-13); see ProductImportLimits for the meaning of each value.
   import:
     max-bytes: ${IMPORT_MAX_BYTES:5242880}
+    upload-url-ttl: ${IMPORT_UPLOAD_URL_TTL:15m}   # presigned upload URL lifetime (BR-CAT-17), at most 1h
     max-products: ${IMPORT_MAX_PRODUCTS:1000}
     max-skus: ${IMPORT_MAX_SKUS:10000}
     max-images: ${IMPORT_MAX_IMAGES:20000}
