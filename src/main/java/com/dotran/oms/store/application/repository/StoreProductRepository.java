@@ -12,6 +12,7 @@ import com.dotran.oms.store.domain.model.StoreProduct;
 
 import java.time.Instant;
 import java.util.Collection;
+import com.dotran.oms.store.application.dto.orderquote.SkuQuoteRow;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -47,6 +48,9 @@ public interface StoreProductRepository {
 
     /** SKU codes among {@code codes} already used in the store, removed SKUs included. Empty input → no query. */
     Set<SKU> findSkuCodesInStore(StoreId storeId, Collection<SKU> codes);
+
+    /** The store's SKUs among {@code codes} that are not removed, with their product (order quote; one query). */
+    List<SkuQuoteRow> findSkuQuoteRows(StoreId storeId, Collection<SKU> codes);
 
     /** As {@link #findSkuCodesInStore}, but leaving out the product's own SKUs. */
     Set<SKU> findSkuCodesOfOtherProducts(StoreId storeId, ProductId productId, Collection<SKU> codes);

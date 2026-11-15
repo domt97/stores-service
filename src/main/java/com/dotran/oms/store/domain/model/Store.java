@@ -1,5 +1,14 @@
 package com.dotran.oms.store.domain.model;
 
+import java.util.Optional;
+import java.util.EnumSet;
+import java.time.ZonedDateTime;
+import java.time.ZoneId;
+import java.time.LocalDate;
+import java.time.DateTimeException;
+import com.dotran.oms.store.domain.valueobject.OpenStatus;
+import com.dotran.oms.store.domain.enums.OpenReason;
+import com.dotran.oms.store.domain.enums.AvailabilityType;
 import com.dotran.oms.core.domain.AggregateRoot;
 import com.dotran.oms.core.domain.id.CustomerId;
 import com.dotran.oms.core.domain.id.StoreId;
@@ -133,5 +142,55 @@ public class Store extends AggregateRoot<StoreId> {
 
     public boolean isOpen(Instant now) {
         return config.isOpen(now, businessHours);
+    }
+
+    /**
+     * Whether the store takes orders at {@code now} (BR-STO-02, BR-STO-04): ACTIVE, inside today's business hours in its
+     * time zone, and not covered by an availability window. {@code coveringWindows} are the windows already selected as
+     * covering {@code now} (not cancelled, started, not ended); each one is reported. Every reason is collected. A time
+     * zone or a business day that cannot be read gives {@link OpenReason#INVALID_SCHEDULE} (closed), never an exception.
+     */
+    public OpenStatus openAt(Instant now, List<StoreAvailability> coveringWindows) {
+        EnumSet<OpenReason> reasons = EnumSet.noneOf(OpenReason.class);
+        if (status != StoreStatus.ACTIVE) {
+            reasons.add(OpenReason.STORE_NOT_ACTIVE);
+        }
+        Optional<ZoneId> zone = zone();
+        if (zone.isEmpty()) {
+            reasons.add(OpenReason.INVALID_SCHEDULE);
+        } else {
+            ZonedDateTime local = now.atZone(zone.get());
+            BusinessHour today = businessHours == null ? null : businessHours.stream()
+                    .filter(h -> h.getDayOfWeek() == local.getDayOfWeek())
+                    .findFirst().orElse(null);
+            if (today == null || today.isClosed()) {
+                reasons.add(OpenReason.OUTSIDE_HOURS);
+            } else if (today.getOpeningTime() == null || today.getClosingTime() == null) {
+                reasons.add(OpenReason.INVALID_SCHEDULE);
+            } else if (!today.isOpen(local.toLocalTime())) {
+                reasons.add(OpenReason.OUTSIDE_HOURS);
+            }
+        }
+        List<AvailabilityType> windowTypes = coveringWindows.stream().map(StoreAvailability::getType).toList();
+        if (!windowTypes.isEmpty()) {
+            reasons.add(OpenReason.CLOSED_WINDOW);
+        }
+        return new OpenStatus(reasons.isEmpty(), reasons, windowTypes);
+    }
+
+    /** The store's local date at {@code now}, or empty when its time zone cannot be read. */
+    public Optional<LocalDate> localDate(Instant now) {
+        return zone().map(z -> now.atZone(z).toLocalDate());
+    }
+
+    private Optional<ZoneId> zone() {
+        if (config == null || config.getTimeZone() == null) {
+            return Optional.empty();
+        }
+        try {
+            return Optional.of(ZoneId.of(config.getTimeZone()));
+        } catch (DateTimeException e) {
+            return Optional.empty();
+        }
     }
 }

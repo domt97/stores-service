@@ -1,5 +1,6 @@
 package com.dotran.oms.store.infrastructure.persistence;
 
+import com.dotran.oms.store.application.dto.orderquote.SkuQuoteRow;
 import com.dotran.oms.core.annotation.PersistenceAdapter;
 import com.dotran.oms.core.domain.id.SKU;
 import com.dotran.oms.core.exception.NotFoundException;
@@ -197,6 +198,14 @@ public class StoreProductPersistenceAdapter implements StoreProductRepository {
         }
         return repository.findSkuCodesInStore(storeId.getValue(), codes.stream().map(SKU::getValue).toList())
                 .stream().map(SKU::of).collect(Collectors.toSet());
+    }
+
+    @Override
+    public List<SkuQuoteRow> findSkuQuoteRows(StoreId storeId, Collection<SKU> codes) {
+        if (CollectionUtils.isEmpty(codes)) {
+            return List.of();
+        }
+        return repository.findSkuQuoteRows(storeId.getValue(), codes.stream().map(SKU::getValue).toList());
     }
 
     @Override

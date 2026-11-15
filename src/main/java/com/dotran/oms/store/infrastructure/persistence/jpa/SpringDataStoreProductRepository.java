@@ -1,5 +1,6 @@
 package com.dotran.oms.store.infrastructure.persistence.jpa;
 
+import com.dotran.oms.store.application.dto.orderquote.SkuQuoteRow;
 import com.dotran.oms.store.infrastructure.persistence.entity.StoreProductEntity;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -57,6 +58,12 @@ public interface SpringDataStoreProductRepository extends JpaRepository<StorePro
     /** SKU codes used in the store, removed SKUs included (index uk_product_skus_store_sku). */
     @Query("select s.sku from ProductSkuEntity s where s.storeId = :storeId and s.sku in :codes")
     Set<String> findSkuCodesInStore(@Param("storeId") UUID storeId, @Param("codes") Collection<String> codes);
+
+    /** Order quote: the store's SKUs among the codes that are not removed, with their product (uk_product_skus_store_sku). */
+    @Query("select new com.dotran.oms.store.application.dto.orderquote.SkuQuoteRow(s.sku, p.id, p.name, s.name, s.price, "
+            + "s.currency, s.status, p.status) from ProductSkuEntity s join s.product p "
+            + "where s.storeId = :storeId and s.sku in :codes and s.removedAt is null")
+    List<SkuQuoteRow> findSkuQuoteRows(@Param("storeId") UUID storeId, @Param("codes") Collection<String> codes);
 
     @Query("select s.sku from ProductSkuEntity s where s.storeId = :storeId and s.product.id <> :productId and s.sku in :codes")
     Set<String> findSkuCodesOfOtherProducts(@Param("storeId") UUID storeId,
