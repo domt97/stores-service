@@ -1,8 +1,8 @@
 package com.dotran.oms.store.application.usecase.store;
 
-import java.util.UUID;
+import com.dotran.oms.store.application.command.store.CancelStoreAvailabilityCmd;
 
 public interface CancelStoreAvailabilityUseCase {
 
-    void cancel(UUID storeAvailabilityId, UUID storeId);
+    void cancel(CancelStoreAvailabilityCmd cmd);
 }
