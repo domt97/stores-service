@@ -2,7 +2,7 @@ package com.dotran.oms.store.application.service.storeconfig;
 
 import com.dotran.oms.core.annotation.UseCase;
 import com.dotran.oms.core.domain.id.StoreId;
-import com.dotran.oms.core.domain.id.TenantId;
+import com.dotran.oms.core.domain.id.MerchantId;
 import com.dotran.oms.store.application.command.storeconfig.UpdateStoreConfigCmd;
 import com.dotran.oms.store.application.dto.StoreDetailDto;
 import com.dotran.oms.store.application.mapper.StoreDataMapper;
@@ -24,11 +24,11 @@ public class SettingStoreConfigService implements SettingStoreConfigUseCase {
 
     @Override
     @Transactional
-    public StoreDetailDto setupStoreConfig(UUID tenantIdString, UUID storeIdString, UpdateStoreConfigCmd cmd) {
-        TenantId tenantId = TenantId.of(tenantIdString);
+    public StoreDetailDto setupStoreConfig(UUID merchantIdString, UUID storeIdString, UpdateStoreConfigCmd cmd) {
+        MerchantId merchantId = MerchantId.of(merchantIdString);
         StoreId storeId = StoreId.of(storeIdString);
 
-        Store store = storeRepository.findByTenantIdAndStoreId(tenantId, storeId)
+        Store store = storeRepository.findByMerchantIdAndStoreId(merchantId, storeId)
                 .orElseThrow(StoreNotFoundException::new);
 
         store.updateConfig(

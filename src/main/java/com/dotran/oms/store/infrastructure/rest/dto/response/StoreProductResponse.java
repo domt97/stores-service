@@ -23,6 +23,8 @@ public class StoreProductResponse {
     private ProductStatus status;
     private List<ProductSkuDto> skus;
     private List<ProductImageDto> images;
+    /** Send back in the update-product PUT. */
+    private long version;
     private Instant createdAt;
     private Instant updatedAt;
 }

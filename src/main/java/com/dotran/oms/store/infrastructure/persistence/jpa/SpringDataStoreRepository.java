@@ -14,11 +14,11 @@ import java.util.UUID;
 public interface SpringDataStoreRepository extends JpaRepository<StoreEntity, UUID> {
 
     @EntityGraph(attributePaths = {"address", "config", "businessHours"})
-    Optional<StoreEntity> findByTenantIdAndId(UUID tenantId, UUID id);
+    Optional<StoreEntity> findByMerchantIdAndId(UUID merchantId, UUID id);
 
     @Modifying
-    @Query("UPDATE StoreEntity s SET s.status = :status WHERE s.tenantId = :tenantId and s.id = :storeId")
-    int updateStoreStatus(@Param("tenantId") UUID tenantId, @Param("storeId") UUID storeId, @Param("status") StoreStatus status);
+    @Query("UPDATE StoreEntity s SET s.status = :status WHERE s.merchantId = :merchantId and s.id = :storeId")
+    int updateStoreStatus(@Param("merchantId") UUID merchantId, @Param("storeId") UUID storeId, @Param("status") StoreStatus status);
 
-    boolean existsByTenantIdAndId(UUID tenantId, UUID id);
+    boolean existsByMerchantIdAndId(UUID merchantId, UUID id);
 }

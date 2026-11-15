@@ -27,13 +27,13 @@ public abstract class StoreRestMapper {
     @Autowired
     protected InternalIdMapper idMapper;
 
-    @Mapping(target = "tenantId", expression = "java(idMapper.toTenantId(request.getTenantId()))")
+    @Mapping(target = "merchantId", ignore = true) // taken from the path by the controller
     @Mapping(target = "ownerId", expression = "java(idMapper.toCustomerId(request.getOwnerId()))")
     public abstract CreateStoreCmd fromRequestToCmd(CreateStoreRequest request);
 
     @Mapping(target = "storeId", expression = "java(idMapper.toStoreId(storeId))")
-    @Mapping(target = "tenantId", expression = "java(idMapper.toTenantId(tenantId))")
-    public abstract CloseStoreCmd fromRequestToCloseStoreCmd(UUID tenantId, UUID storeId);
+    @Mapping(target = "merchantId", expression = "java(idMapper.toMerchantId(merchantId))")
+    public abstract CloseStoreCmd fromRequestToCloseStoreCmd(UUID merchantId, UUID storeId);
 
     public abstract UpdateBusinessHourCmd fromRequestToUpdateBusinessHourCmd(BusinessHourRequest request);
 

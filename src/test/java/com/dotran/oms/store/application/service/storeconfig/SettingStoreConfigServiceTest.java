@@ -1,7 +1,7 @@
 package com.dotran.oms.store.application.service.storeconfig;
 
 import com.dotran.oms.core.domain.id.StoreId;
-import com.dotran.oms.core.domain.id.TenantId;
+import com.dotran.oms.core.domain.id.MerchantId;
 import com.dotran.oms.store.application.command.storeconfig.UpdateStoreConfigCmd;
 import com.dotran.oms.store.application.dto.StoreDetailDto;
 import com.dotran.oms.store.application.mapper.StoreDataMapper;
@@ -53,7 +53,7 @@ class SettingStoreConfigServiceTest {
 
         return Store.builder()
                 .id(StoreId.newStoreId())
-                .tenantId(TenantId.newTenantId())
+                .merchantId(MerchantId.newMerchantId())
                 .name("Test Store")
                 .status(StoreStatus.ACTIVE)
                 .config(config)
@@ -66,7 +66,7 @@ class SettingStoreConfigServiceTest {
     @Test
     @DisplayName("throws StoreNotFoundException when store does not exist")
     void throwsException_whenStoreNotFound() {
-        UUID tenantId = UUID.randomUUID();
+        UUID merchantId = UUID.randomUUID();
         UUID storeId = UUID.randomUUID();
         UpdateStoreConfigCmd cmd = UpdateStoreConfigCmd.builder()
                 .autoAcceptOrder(true)
@@ -76,16 +76,16 @@ class SettingStoreConfigServiceTest {
                 .currency("USD")
                 .build();
 
-        when(storeRepository.findByTenantIdAndStoreId(any(), any())).thenReturn(Optional.empty());
+        when(storeRepository.findByMerchantIdAndStoreId(any(), any())).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> settingStoreConfigService.setupStoreConfig(tenantId, storeId, cmd))
+        assertThatThrownBy(() -> settingStoreConfigService.setupStoreConfig(merchantId, storeId, cmd))
                 .isInstanceOf(StoreNotFoundException.class);
     }
 
     @Test
     @DisplayName("updates store config and returns updated DTO")
     void updatesConfig_andReturnsDto() {
-        UUID tenantId = UUID.randomUUID();
+        UUID merchantId = UUID.randomUUID();
         UUID storeId = UUID.randomUUID();
         Store store = storeWithConfig();
 
@@ -106,11 +106,11 @@ class SettingStoreConfigServiceTest {
                 .status(StoreStatus.ACTIVE)
                 .build();
 
-        when(storeRepository.findByTenantIdAndStoreId(any(), any())).thenReturn(Optional.of(store));
+        when(storeRepository.findByMerchantIdAndStoreId(any(), any())).thenReturn(Optional.of(store));
         when(storeRepository.update(any(Store.class))).thenReturn(store);
         when(storeDataMapper.toStoreDetailDto(store)).thenReturn(expectedDto);
 
-        StoreDetailDto result = settingStoreConfigService.setupStoreConfig(tenantId, storeId, cmd);
+        StoreDetailDto result = settingStoreConfigService.setupStoreConfig(merchantId, storeId, cmd);
 
         assertThat(result).isEqualTo(expectedDto);
         verify(storeRepository).update(store);

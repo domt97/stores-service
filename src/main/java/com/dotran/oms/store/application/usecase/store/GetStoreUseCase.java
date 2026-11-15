@@ -5,5 +5,5 @@ import com.dotran.oms.store.application.dto.StoreDetailDto;
 
 public interface GetStoreUseCase {
 
-    StoreDetailDto getStoreByTenantIdAndStoreId(GetStoreCmd getStoreCmd);
+    StoreDetailDto getStoreByMerchantIdAndStoreId(GetStoreCmd getStoreCmd);
 }

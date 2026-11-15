@@ -1,0 +1,82 @@
+name: CI
+
+# Unit tests (JUnit 5 + Mockito, no Docker) on every PR and push to develop/master.
+# oms-core is the version pinned in gradle.properties (coreVersion), downloaded from GitHub Packages (ADR 0005):
+# no oms-core checkout here, so the build is exactly what a release builds.
+# core-pin fails while coreVersion is a pre-release (-rc.N): an rc may be used on a PR for feedback, never merged.
+
+on:
+  pull_request:
+    branches: [develop, master]
+  push:
+    branches: [develop, master]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  test:
+    name: Unit tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Check that the pinned oms-core is used
+        run: |
+          if [ -e ../oms-core ]; then echo "::error::../oms-core exists: the build would use it instead of coreVersion"; exit 1; fi
+          echo "Building against oms-core $(sed -n 's/^coreVersion=//p' gradle.properties) (GitHub Packages)" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Validate the Gradle wrapper
+        uses: gradle/actions/wrapper-validation@v6
+
+      - name: Set up Gradle (cache)
+        uses: gradle/actions/setup-gradle@v6
+
+      - name: Test
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}   # reads com.dotran.oms:oms-core from GitHub Packages
+        run: ./gradlew test --no-daemon --stacktrace
+
+      - name: Upload test reports
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: stores-service-test-reports
+          path: |
+            build/reports/tests/
+            build/test-results/
+          retention-days: 7
+
+  core-pin:
+    name: core-pin
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: coreVersion is a release, not an rc
+        run: |
+          v=$(sed -n 's/^coreVersion=//p' gradle.properties)
+          if [ -z "$v" ]; then echo "::error::coreVersion missing in gradle.properties"; exit 1; fi
+          if [[ "$v" == *-* ]]; then
+            echo "::error::coreVersion=$v is a pre-release: fine to test a PR, never to merge. Release oms-core and pin the release."
+            exit 1
+          fi
+          echo "coreVersion=$v"

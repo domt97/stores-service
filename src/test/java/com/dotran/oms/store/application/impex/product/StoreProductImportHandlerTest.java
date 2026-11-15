@@ -1,35 +1,41 @@
 package com.dotran.oms.store.application.impex.product;
 
-import com.dotran.oms.core.domain.TenantInfo;
 import com.dotran.oms.core.domain.id.SKU;
 import com.dotran.oms.core.domain.id.StoreId;
-import com.dotran.oms.core.domain.id.TenantId;
-import com.dotran.oms.core.exception.NotFoundException;
+import com.dotran.oms.core.domain.id.MerchantId;
 import com.dotran.oms.core.exception.ValidationException;
 import com.dotran.oms.core.io.template.imp.ImportResult;
 import com.dotran.oms.store.application.event.OutboxEventHelper;
 import com.dotran.oms.store.application.repository.OutboxEventRepository;
 import com.dotran.oms.store.application.repository.StoreProductRepository;
-import com.dotran.oms.store.application.repository.StoreRepository;
-import com.dotran.oms.store.application.repository.TenantRepository;
 import com.dotran.oms.store.domain.event.OutboxEvent;
 import com.dotran.oms.store.domain.model.StoreProduct;
+import com.dotran.oms.store.domain.exception.SkuCodeInUseException;
+import org.mockito.InOrder;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
+import static org.mockito.Mockito.inOrder;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -38,27 +44,32 @@ import static org.mockito.Mockito.when;
 @DisplayName("StoreProductImportHandler")
 class StoreProductImportHandlerTest {
 
-    @Mock private TenantRepository tenantRepository;
-    @Mock private StoreRepository storeRepository;
     @Mock private StoreProductRepository storeProductRepository;
     @Mock private OutboxEventRepository outboxEventRepository;
     @Mock private OutboxEventHelper outboxEventHelper;
+    @Mock private PlatformTransactionManager transactionManager;
 
-    @InjectMocks
     private StoreProductImportHandler handler;
 
-    private final TenantId tenantId = TenantId.newTenantId();
-    private final StoreId storeId = StoreId.newStoreId();
-
-    private TenantInfo tenantInfo() {
-        return TenantInfo.builder().id(tenantId).code("ACME").name("ACME Corp").status("ACTIVE").build();
+    @BeforeEach
+    void setUp() {
+        handler = new StoreProductImportHandler(storeProductRepository,
+                outboxEventRepository, outboxEventHelper, new TransactionTemplate(transactionManager));
     }
 
+    private final MerchantId merchantId = MerchantId.newMerchantId();
+    private final StoreId storeId = StoreId.newStoreId();
+
+
     private ProductImportContext context() {
-        return ProductImportContext.builder().tenantId(tenantId).storeId(storeId).build();
+        return ProductImportContext.builder().merchantId(merchantId).storeId(storeId).build();
     }
 
     private ProductImportData validData() {
+        return dataWithSku("VND", new BigDecimal("10.00"));
+    }
+
+    private ProductImportData dataWithSku(String currency, BigDecimal price) {
         ProductImportRow product = ProductImportRow.builder()
                 .reference("REF-001")
                 .name("Product One")
@@ -68,8 +79,8 @@ class StoreProductImportHandlerTest {
                 .productRef("REF-001")
                 .sku(SKU.of("SKU-001"))
                 .name("Variant")
-                .price(new BigDecimal("10.00"))
-                .currency("USD")
+                .price(price)
+                .currency(currency)
                 .build();
         ProductImageImportRow image = ProductImageImportRow.builder()
                 .productRef("REF-001")
@@ -86,30 +97,163 @@ class StoreProductImportHandlerTest {
     @DisplayName("validate")
     class Validate {
 
-        @Test
-        @DisplayName("throws NotFoundException when tenant not found")
-        void throwsException_whenTenantNotFound() {
-            when(tenantRepository.findByTenantId(tenantId)).thenReturn(Optional.empty());
+        private ProductImportData data(List<ProductImportRow> products, List<ProductSKUImportRow> skus, List<ProductImageImportRow> images) {
+            return ProductImportData.builder().products(products).skus(skus).images(images).build();
+        }
 
-            assertThatThrownBy(() -> handler.execute(context(), validData()))
-                    .isInstanceOf(NotFoundException.class);
+        private ProductSKUImportRow skuRow(String ref, String code) {
+            return ProductSKUImportRow.builder().productRef(ref).sku(SKU.of(code)).price(new BigDecimal("10000")).currency("VND").build();
+        }
+
+        private ProductImageImportRow imageRow(String ref) {
+            return ProductImageImportRow.builder().productRef(ref).imageUrl("https://example.com/img.jpg").build();
+        }
+
+        private void merchantAndStoreExist() {
         }
 
         @Test
-        @DisplayName("throws NotFoundException when store not found")
-        void throwsException_whenStoreNotFound() {
-            when(tenantRepository.findByTenantId(tenantId)).thenReturn(Optional.of(tenantInfo()));
-            when(storeRepository.existsByTenantIdAndStoreId(tenantId, storeId)).thenReturn(false);
+        @DisplayName("rejects a product reference used twice in the Product sheet, before anything is saved")
+        void rejectsDuplicateProductReference() {
+            merchantAndStoreExist();
+            ProductImportRow p = ProductImportRow.builder().reference("REF-001").name("P1").build();
 
-            assertThatThrownBy(() -> handler.execute(context(), validData()))
-                    .isInstanceOf(NotFoundException.class);
+            assertThatThrownBy(() -> handler.execute(context(), data(List.of(p, p), List.of(skuRow("REF-001", "A")), List.of(imageRow("REF-001")))))
+                    .isInstanceOf(ValidationException.class)
+                    .hasMessageContaining("REF-001");
+
+            verify(storeProductRepository, never()).findSkuCodesInStore(any(), any());
+            verify(storeProductRepository, never()).saveAll(any());
+            verify(outboxEventRepository, never()).saveAll(any());
+        }
+
+        @Test
+        @DisplayName("rejects a blank product reference in any of the three sheets, before anything is saved")
+        void rejectsBlankReferences() {
+            merchantAndStoreExist();
+            ProductImportRow p = ProductImportRow.builder().reference("REF-001").name("P1").build();
+            ProductImportRow blank = ProductImportRow.builder().reference(" ").name("P2").build();
+
+            assertThatThrownBy(() -> handler.execute(context(), data(List.of(p, blank), List.of(skuRow("REF-001", "A")), List.of(imageRow("REF-001")))))
+                    .isInstanceOf(ValidationException.class).hasMessageContaining("Product sheet");
+            ProductImportRow nullRef = ProductImportRow.builder().reference(null).name("P3").build();
+            assertThatThrownBy(() -> handler.execute(context(), data(List.of(p, nullRef), List.of(skuRow("REF-001", "A")), List.of(imageRow("REF-001")))))
+                    .isInstanceOf(ValidationException.class).hasMessageContaining("Product sheet");
+            assertThatThrownBy(() -> handler.execute(context(), data(List.of(p), List.of(skuRow("REF-001", "A"), skuRow(null, "B")), List.of(imageRow("REF-001")))))
+                    .isInstanceOf(ValidationException.class).hasMessageContaining("Product SKU");
+            assertThatThrownBy(() -> handler.execute(context(), data(List.of(p), List.of(skuRow("REF-001", "A")), List.of(imageRow("REF-001"), imageRow("")))))
+                    .isInstanceOf(ValidationException.class).hasMessageContaining("Product Image");
+
+            verify(storeProductRepository, never()).saveAll(any());
+            verify(outboxEventRepository, never()).saveAll(any());
+        }
+
+        @Test
+        @DisplayName("SKU and image rows without a product row are skipped (logged), the import still succeeds")
+        void orphanRows_skipped() {
+            merchantAndStoreExist();
+            when(storeProductRepository.saveAll(any())).thenAnswer(inv -> inv.getArgument(0));
+            when(outboxEventHelper.createProductCreatedOutboxEvents(any(), any())).thenReturn(List.of());
+            ProductImportRow p = ProductImportRow.builder().reference("REF-001").name("P1").build();
+
+            ImportResult result = handler.execute(context(), data(List.of(p),
+                    List.of(skuRow("REF-001", "A"), skuRow("REF-ORPHAN", "B")), List.of(imageRow("REF-001"), imageRow("REF-ORPHAN"))));
+
+            assertThat(result.getStatus()).isEqualTo(ImportResult.ImportStatus.SUCCESS);
+            assertThat(result.getTotalRecords()).isEqualTo(1);
+            ArgumentCaptor<List<StoreProduct>> saved = ArgumentCaptor.forClass(List.class);
+            verify(storeProductRepository).saveAll(saved.capture());
+            assertThat(saved.getValue()).hasSize(1);
+            StoreProduct product = saved.getValue().get(0);
+            assertThat(product.getSkus()).extracting(s -> s.getSku().getValue()).containsExactly("A");
+            assertThat(product.getImages()).hasSize(1);
+        }
+
+        @Test
+        @DisplayName("a failing outbox write propagates out of execute (nothing swallows it, so the transaction rolls back)")
+        void outboxFailure_propagates() {
+            merchantAndStoreExist();
+            when(storeProductRepository.saveAll(any())).thenAnswer(inv -> inv.getArgument(0));
+            when(outboxEventHelper.createProductCreatedOutboxEvents(any(), any())).thenReturn(List.of());
+            doThrow(new IllegalStateException("outbox down")).when(outboxEventRepository).saveAll(any());
+
+            assertThatThrownBy(() -> handler.execute(context(), validData())).hasMessage("outbox down");
+
+            // products and outbox rows were in the same transaction, and it is rolled back
+            verify(transactionManager).getTransaction(any());
+            verify(transactionManager).rollback(any());
+            verify(transactionManager, never()).commit(any());
+        }
+
+        @Test
+        @DisplayName("a failing product save rolls back and writes no outbox rows")
+        void productSaveFailure_rollsBack_noOutbox() {
+            merchantAndStoreExist();
+            when(storeProductRepository.saveAll(any())).thenThrow(new IllegalStateException("db down"));
+
+            assertThatThrownBy(() -> handler.execute(context(), validData())).hasMessage("db down");
+
+            verify(transactionManager).rollback(any());
+            verify(transactionManager, never()).commit(any());
+            verify(outboxEventRepository, never()).saveAll(any());
+        }
+
+        @Test
+        @DisplayName("rejects values the database would refuse with a clear message, before any transaction (thumbnail/SKU name > 255, blank image URL, bad weight or dimensions)")
+        void rejectsColumnSizes_beforeTransaction() {
+            String longText = "x".repeat(256);
+            ProductImportRow p = ProductImportRow.builder().reference("REF-001").name("P1").build();
+            ProductImportRow longThumb = ProductImportRow.builder().reference("REF-001").name("P1").thumbnailUrl(longText).build();
+            ProductSKUImportRow longSkuName = ProductSKUImportRow.builder().productRef("REF-001").sku(SKU.of("A")).name(longText)
+                    .price(new BigDecimal("10000")).currency("VND").build();
+            ProductImageImportRow blankUrl = ProductImageImportRow.builder().productRef("REF-001").imageUrl(" ").build();
+
+            assertThatThrownBy(() -> handler.execute(context(), data(List.of(longThumb), List.of(skuRow("REF-001", "A")), List.of(imageRow("REF-001")))))
+                    .isInstanceOf(ValidationException.class).hasMessageContaining("Thumbnail URL");
+            assertThatThrownBy(() -> handler.execute(context(), data(List.of(p), List.of(longSkuName), List.of(imageRow("REF-001")))))
+                    .isInstanceOf(ValidationException.class).hasMessageContaining("SKU name");
+            assertThatThrownBy(() -> handler.execute(context(), data(List.of(p), List.of(skuRow("REF-001", "A")), List.of(blankUrl))))
+                    .isInstanceOf(ValidationException.class).hasMessageContaining("URL");
+            for (String[] bad : new String[][]{{"weight", "-1"}, {"weight", "1.005"}, {"length", "100000000"}}) {
+                ProductSKUImportRow.ProductSKUImportRowBuilder sku = ProductSKUImportRow.builder().productRef("REF-001").sku(SKU.of("A"))
+                        .price(new BigDecimal("10000")).currency("VND");
+                if (bad[0].equals("weight")) sku.weight(new BigDecimal(bad[1])); else sku.length(new BigDecimal(bad[1]));
+                assertThatThrownBy(() -> handler.execute(context(), data(List.of(p), List.of(sku.build()), List.of(imageRow("REF-001")))))
+                        .as(bad[0] + "=" + bad[1]).isInstanceOf(ValidationException.class).hasMessageContaining("10^8");
+            }
+
+            verify(transactionManager, never()).getTransaction(any());
+            verify(storeProductRepository, never()).saveAll(any());
+        }
+
+        @Test
+        @DisplayName("accepts the largest values the columns hold (255 characters, 99999999.99)")
+        void acceptsColumnMaximums() {
+            when(storeProductRepository.saveAll(any())).thenAnswer(inv -> inv.getArgument(0));
+            when(outboxEventHelper.createProductCreatedOutboxEvents(any(), any())).thenReturn(List.of());
+            String max = "x".repeat(255);
+            ProductImportRow p = ProductImportRow.builder().reference("REF-001").name(max).thumbnailUrl(max).build();
+            ProductSKUImportRow sku = ProductSKUImportRow.builder().productRef("REF-001").sku(SKU.of("A")).name(max)
+                    .price(new BigDecimal("10000")).currency("VND").weight(new BigDecimal("99999999.99")).height(BigDecimal.ZERO).build();
+
+            ImportResult result = handler.execute(context(), data(List.of(p), List.of(sku), List.of(imageRow("REF-001"))));
+
+            assertThat(result.getStatus()).isEqualTo(ImportResult.ImportStatus.SUCCESS);
+        }
+
+        @Test
+        @DisplayName("a validation failure never opens a transaction")
+        void validationFailure_noTransaction() {
+            ProductImportData empty = ProductImportData.builder().products(List.of()).skus(List.of()).images(List.of()).build();
+
+            assertThatThrownBy(() -> handler.execute(context(), empty)).isInstanceOf(ValidationException.class);
+
+            verify(transactionManager, never()).getTransaction(any());
         }
 
         @Test
         @DisplayName("throws ValidationException when product list is empty")
         void throwsException_whenProductsEmpty() {
-            when(tenantRepository.findByTenantId(tenantId)).thenReturn(Optional.of(tenantInfo()));
-            when(storeRepository.existsByTenantIdAndStoreId(tenantId, storeId)).thenReturn(true);
             ProductImportData emptyData = ProductImportData.builder()
                     .products(List.of())
                     .skus(List.of())
@@ -123,8 +267,6 @@ class StoreProductImportHandlerTest {
         @Test
         @DisplayName("throws ValidationException when a product has no matching SKU")
         void throwsException_whenMissingSku() {
-            when(tenantRepository.findByTenantId(tenantId)).thenReturn(Optional.of(tenantInfo()));
-            when(storeRepository.existsByTenantIdAndStoreId(tenantId, storeId)).thenReturn(true);
             ProductImportData dataWithNoSku = ProductImportData.builder()
                     .products(List.of(ProductImportRow.builder().reference("REF-001").name("P1").build()))
                     .skus(List.of())
@@ -139,12 +281,10 @@ class StoreProductImportHandlerTest {
         @Test
         @DisplayName("throws ValidationException when a product has no matching image")
         void throwsException_whenMissingImage() {
-            when(tenantRepository.findByTenantId(tenantId)).thenReturn(Optional.of(tenantInfo()));
-            when(storeRepository.existsByTenantIdAndStoreId(tenantId, storeId)).thenReturn(true);
             ProductImportData dataWithNoImage = ProductImportData.builder()
                     .products(List.of(ProductImportRow.builder().reference("REF-001").name("P1").build()))
                     .skus(List.of(ProductSKUImportRow.builder().productRef("REF-001")
-                            .sku(SKU.of("SKU-001")).name("V").price(BigDecimal.TEN).currency("USD").build()))
+                            .sku(SKU.of("SKU-001")).name("V").price(BigDecimal.TEN).currency("VND").build()))
                     .images(List.of())
                     .build();
 
@@ -158,11 +298,70 @@ class StoreProductImportHandlerTest {
     @DisplayName("execute (full pipeline)")
     class Execute {
 
+        private ProductImportData dataWithSkuCodes(String... codes) {
+            ProductImportData base = validData();
+            List<ProductSKUImportRow> skus = Arrays.stream(codes)
+                    .map(code -> ProductSKUImportRow.builder().productRef("REF-001").sku(code == null ? null : SKU.of(code))
+                            .price(new BigDecimal("10000")).currency("VND").build())
+                    .toList();
+            return ProductImportData.builder().products(base.getProducts()).skus(skus).images(base.getImages()).build();
+        }
+
+        @Test
+        @DisplayName("rejects a blank, missing or too long SKU code, and a code repeated in the file, before anything is saved")
+        void rejectsBadSkuCodes() {
+
+            assertThatThrownBy(() -> handler.execute(context(), dataWithSkuCodes(" "))).isInstanceOf(ValidationException.class);
+            assertThatThrownBy(() -> handler.execute(context(), dataWithSkuCodes((String) null))).isInstanceOf(ValidationException.class);
+            assertThatThrownBy(() -> handler.execute(context(), dataWithSkuCodes("X".repeat(101)))).isInstanceOf(ValidationException.class);
+            assertThatThrownBy(() -> handler.execute(context(), dataWithSkuCodes("A", "A"))).isInstanceOf(ValidationException.class);
+
+            verify(storeProductRepository, never()).saveAll(any());
+            verify(storeProductRepository, never()).findSkuCodesInStore(any(), any());
+        }
+
+        @Test
+        @DisplayName("rejects a SKU code already used in the store (removed SKUs included) before anything is saved")
+        void rejectsCodeInUse() {
+            when(storeProductRepository.findSkuCodesInStore(eq(storeId), any())).thenReturn(Set.of(SKU.of("B")));
+
+            assertThatThrownBy(() -> handler.execute(context(), dataWithSkuCodes("A", "B")))
+                    .isInstanceOf(SkuCodeInUseException.class)
+                    .hasMessageContaining("B");
+
+            verify(storeProductRepository, never()).saveAll(any());
+            verify(outboxEventRepository, never()).saveAll(any());
+        }
+
+        @Test
+        @DisplayName("rejects an invalid currency code or a fractional VND price before anything is saved")
+        void rejectsInvalidSkuRow_beforeSaving() {
+
+            assertThatThrownBy(() -> handler.execute(context(), dataWithSku("US", new BigDecimal("10.00"))))
+                    .isInstanceOf(ValidationException.class);
+            assertThatThrownBy(() -> handler.execute(context(), dataWithSku("VND", new BigDecimal("10.50"))))
+                    .isInstanceOf(ValidationException.class);
+
+            verify(storeProductRepository, never()).saveAll(any());
+            verify(outboxEventRepository, never()).saveAll(any());
+        }
+
+        @Test
+        @DisplayName("normalises a lower-case currency from the file to VND")
+        void normalisesCurrency_fromFile() {
+            when(storeProductRepository.saveAll(any())).thenAnswer(inv -> inv.getArgument(0));
+            when(outboxEventHelper.createProductCreatedOutboxEvents(any(), any())).thenReturn(List.of());
+
+            handler.execute(context(), dataWithSku(" vnd ", new BigDecimal("10000")));
+
+            ArgumentCaptor<List<StoreProduct>> captor = ArgumentCaptor.forClass(List.class);
+            verify(storeProductRepository).saveAll(captor.capture());
+            assertThat(captor.getValue().get(0).getSkus().get(0).getCurrency()).isEqualTo("VND");
+        }
+
         @Test
         @DisplayName("processes valid data and returns SUCCESS result")
         void returnsSuccess_forValidData() {
-            when(tenantRepository.findByTenantId(tenantId)).thenReturn(Optional.of(tenantInfo()));
-            when(storeRepository.existsByTenantIdAndStoreId(tenantId, storeId)).thenReturn(true);
             when(storeProductRepository.saveAll(any())).thenAnswer(inv -> inv.getArgument(0));
             when(outboxEventHelper.createProductCreatedOutboxEvents(any(), any())).thenReturn(List.of());
 
@@ -171,11 +370,15 @@ class StoreProductImportHandlerTest {
             assertThat(result.getStatus()).isEqualTo(ImportResult.ImportStatus.SUCCESS);
             assertThat(result.getTotalRecords()).isEqualTo(1);
             verify(storeProductRepository).saveAll(any());
+            // one transaction for products + outbox, committed once
+            verify(transactionManager).getTransaction(any());
+            verify(transactionManager).commit(any());
+            verify(transactionManager, never()).rollback(any());
         }
 
         @Test
-        @DisplayName("creates outbox events for imported products in postImport")
-        void createsOutboxEvents_inPostImport() {
+        @DisplayName("writes ProductCreated outbox events for the saved products, after saving them")
+        void createsOutboxEvents_afterSavingProducts() {
             List<StoreProduct> savedProducts = new ArrayList<>();
             StoreProduct sp = StoreProduct.builder()
                     .id(com.dotran.oms.core.domain.id.ProductId.newProductId())
@@ -184,25 +387,24 @@ class StoreProductImportHandlerTest {
                     .skus(new ArrayList<>())
                     .images(new ArrayList<>())
                     .build();
-            sp.initState();
             savedProducts.add(sp);
 
-            when(tenantRepository.findByTenantId(tenantId)).thenReturn(Optional.of(tenantInfo()));
-            when(storeRepository.existsByTenantIdAndStoreId(tenantId, storeId)).thenReturn(true);
             when(storeProductRepository.saveAll(any())).thenReturn(savedProducts);
             when(outboxEventHelper.createProductCreatedOutboxEvents(any(), any())).thenReturn(List.of());
 
             handler.execute(context(), validData());
 
-            verify(outboxEventHelper).createProductCreatedOutboxEvents(any(), any());
-            verify(outboxEventRepository).saveAll(any());
+            InOrder order = inOrder(transactionManager, storeProductRepository, outboxEventRepository);
+            order.verify(transactionManager).getTransaction(any());
+            order.verify(storeProductRepository).saveAll(any());
+            order.verify(outboxEventRepository).saveAll(any());
+            order.verify(transactionManager).commit(any());
+            verify(outboxEventHelper).createProductCreatedOutboxEvents(merchantId, savedProducts);
         }
 
         @Test
         @DisplayName("skips outbox creation when no products were saved")
         void skipsOutboxCreation_whenNoProductsSaved() {
-            when(tenantRepository.findByTenantId(tenantId)).thenReturn(Optional.of(tenantInfo()));
-            when(storeRepository.existsByTenantIdAndStoreId(tenantId, storeId)).thenReturn(true);
             when(storeProductRepository.saveAll(any())).thenReturn(List.of());
 
             handler.execute(context(), validData());

@@ -7,5 +7,5 @@ import java.util.UUID;
 
 public interface SettingStoreConfigUseCase {
 
-    StoreDetailDto setupStoreConfig(UUID tenantId, UUID storeId, UpdateStoreConfigCmd cmd);
+    StoreDetailDto setupStoreConfig(UUID merchantId, UUID storeId, UpdateStoreConfigCmd cmd);
 }

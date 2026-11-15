@@ -6,5 +6,5 @@ import java.util.UUID;
 
 public interface GetStoreProductDetailUseCase {
 
-    StoreProductDetailDto getProductById(UUID tenantId, UUID storeId, UUID productId);
+    StoreProductDetailDto getProductById(UUID merchantId, UUID storeId, UUID productId);
 }

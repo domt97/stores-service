@@ -33,6 +33,7 @@ public abstract class StoreProductPersistenceMapper {
     @Mapping(target = "categoryId", source = "storeProduct.categoryId.value")
     @Mapping(target = "skus", ignore = true)
     @Mapping(target = "images", ignore = true)
+    @Mapping(target = "version", ignore = true)
     public abstract StoreProductEntity fromStoreProduct(StoreProduct storeProduct);
 
     @Mapping(target = "id", source = "productSku.id.value")
@@ -41,6 +42,8 @@ public abstract class StoreProductPersistenceMapper {
     @Mapping(target = "status", source = "productSku.status")
     @Mapping(target = "createdAt", source = "productSku.createdAt")
     @Mapping(target = "updatedAt", source = "productSku.updatedAt")
+    @Mapping(target = "removedAt", source = "productSku.removedAt")
+    @Mapping(target = "storeId", source = "product.storeId")
     @Mapping(target = "product", source = "product")
     public abstract ProductSkuEntity fromProductSku(ProductSku productSku, StoreProductEntity product);
 

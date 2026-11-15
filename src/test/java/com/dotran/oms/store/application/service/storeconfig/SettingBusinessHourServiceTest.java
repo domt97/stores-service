@@ -1,7 +1,7 @@
 package com.dotran.oms.store.application.service.storeconfig;
 
 import com.dotran.oms.core.domain.id.StoreId;
-import com.dotran.oms.core.domain.id.TenantId;
+import com.dotran.oms.core.domain.id.MerchantId;
 import com.dotran.oms.core.exception.BusinessException;
 import com.dotran.oms.store.application.command.storeconfig.UpdateBusinessHourCmd;
 import com.dotran.oms.store.application.dto.StoreDetailDto;
@@ -42,13 +42,13 @@ class SettingBusinessHourServiceTest {
     @InjectMocks
     private SettingBusinessHourService settingBusinessHourService;
 
-    private final TenantId tenantId = TenantId.newTenantId();
+    private final MerchantId merchantId = MerchantId.newMerchantId();
     private final StoreId storeId = StoreId.newStoreId();
 
     private Store storeWithDefaultBusinessHours() {
         return Store.builder()
                 .id(storeId)
-                .tenantId(tenantId)
+                .merchantId(merchantId)
                 .name("Test Store")
                 .status(StoreStatus.ACTIVE)
                 .businessHours(BusinessHour.defaultConfig())
@@ -71,11 +71,11 @@ class SettingBusinessHourServiceTest {
     @Test
     @DisplayName("throws StoreNotFoundException when the store does not exist")
     void throwsException_whenStoreNotFound() {
-        when(storeRepository.findByTenantIdAndStoreId(any(TenantId.class), any(StoreId.class)))
+        when(storeRepository.findByMerchantIdAndStoreId(any(MerchantId.class), any(StoreId.class)))
                 .thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> settingBusinessHourService
-                .setupBusinessHour(tenantId.getValue(), storeId.getValue(), cmdsForAllDays()))
+                .setupBusinessHour(merchantId.getValue(), storeId.getValue(), cmdsForAllDays()))
                 .isInstanceOf(StoreNotFoundException.class);
     }
 
@@ -83,7 +83,7 @@ class SettingBusinessHourServiceTest {
     @DisplayName("throws BusinessException when a day from the store's hours is missing from the command")
     void throwsException_whenMissingDayConfig() {
         Store store = storeWithDefaultBusinessHours(); // has all 7 days
-        when(storeRepository.findByTenantIdAndStoreId(any(TenantId.class), any(StoreId.class)))
+        when(storeRepository.findByMerchantIdAndStoreId(any(MerchantId.class), any(StoreId.class)))
                 .thenReturn(Optional.of(store));
 
         // Omit SUNDAY from the commands
@@ -98,7 +98,7 @@ class SettingBusinessHourServiceTest {
                 .collect(Collectors.toList());
 
         assertThatThrownBy(() -> settingBusinessHourService
-                .setupBusinessHour(tenantId.getValue(), storeId.getValue(), incompleteCmds))
+                .setupBusinessHour(merchantId.getValue(), storeId.getValue(), incompleteCmds))
                 .isInstanceOf(BusinessException.class);
     }
 
@@ -113,13 +113,13 @@ class SettingBusinessHourServiceTest {
                 .status(StoreStatus.ACTIVE)
                 .build();
 
-        when(storeRepository.findByTenantIdAndStoreId(any(TenantId.class), any(StoreId.class)))
+        when(storeRepository.findByMerchantIdAndStoreId(any(MerchantId.class), any(StoreId.class)))
                 .thenReturn(Optional.of(store));
         when(storeRepository.update(any(Store.class))).thenReturn(updatedStore);
         when(storeDataMapper.toStoreDetailDto(updatedStore)).thenReturn(expectedDto);
 
         StoreDetailDto result = settingBusinessHourService
-                .setupBusinessHour(tenantId.getValue(), storeId.getValue(), cmdsForAllDays());
+                .setupBusinessHour(merchantId.getValue(), storeId.getValue(), cmdsForAllDays());
 
         assertThat(result).isEqualTo(expectedDto);
     }

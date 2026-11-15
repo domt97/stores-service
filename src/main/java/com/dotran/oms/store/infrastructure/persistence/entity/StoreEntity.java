@@ -39,7 +39,7 @@ public class StoreEntity {
     private UUID id;
 
     @Column(nullable = false)
-    private UUID tenantId;
+    private UUID merchantId;
 
     @Column(nullable = false)
     private String name;

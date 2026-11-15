@@ -15,6 +15,27 @@ java {
 
 repositories {
 	mavenCentral()
+	// oms-core comes only from GitHub Packages, and GitHub Packages serves only oms-core (ADR 0005).
+	// Credentials are optional: a local build with ../oms-core uses the composite build and never asks this repository.
+	exclusiveContent {
+		forRepository {
+			maven {
+				name = 'GitHubPackages'
+				url = uri('https://maven.pkg.github.com/domt97/oms-core')
+				def gprUser = providers.gradleProperty('gpr.user').orElse(providers.environmentVariable('GITHUB_ACTOR')).getOrNull()
+				def gprKey = providers.gradleProperty('gpr.key').orElse(providers.environmentVariable('GITHUB_TOKEN')).getOrNull()
+				if (gprUser && gprKey) {
+					credentials {
+						username = gprUser
+						password = gprKey
+					}
+				}
+			}
+		}
+		filter {
+			includeGroup 'com.dotran.oms'
+		}
+	}
 }
 
 dependencies {
@@ -35,8 +56,6 @@ dependencies {
 	// AWS
 	implementation platform("software.amazon.awssdk:bom:2.31.76")
 	implementation 'software.amazon.awssdk:s3'
-	implementation "software.amazon.awssdk:dynamodb"
-	implementation "software.amazon.awssdk:dynamodb-enhanced"
 
 	// Swagger
 	implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:2.3.0") {

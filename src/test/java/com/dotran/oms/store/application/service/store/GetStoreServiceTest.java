@@ -1,7 +1,7 @@
 package com.dotran.oms.store.application.service.store;
 
 import com.dotran.oms.core.domain.id.StoreId;
-import com.dotran.oms.core.domain.id.TenantId;
+import com.dotran.oms.core.domain.id.MerchantId;
 import com.dotran.oms.store.application.command.store.GetStoreCmd;
 import com.dotran.oms.store.application.dto.StoreDetailDto;
 import com.dotran.oms.store.application.mapper.StoreDataMapper;
@@ -36,30 +36,30 @@ class GetStoreServiceTest {
     @Test
     @DisplayName("throws StoreNotFoundException when store does not exist")
     void throwsException_whenStoreNotFound() {
-        TenantId tenantId = TenantId.newTenantId();
+        MerchantId merchantId = MerchantId.newMerchantId();
         StoreId storeId = StoreId.newStoreId();
-        GetStoreCmd cmd = GetStoreCmd.builder().tenantId(tenantId).storeId(storeId).build();
+        GetStoreCmd cmd = GetStoreCmd.builder().merchantId(merchantId).storeId(storeId).build();
 
-        when(storeRepository.findByTenantIdAndStoreId(tenantId, storeId)).thenReturn(Optional.empty());
+        when(storeRepository.findByMerchantIdAndStoreId(merchantId, storeId)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> getStoreService.getStoreByTenantIdAndStoreId(cmd))
+        assertThatThrownBy(() -> getStoreService.getStoreByMerchantIdAndStoreId(cmd))
                 .isInstanceOf(StoreNotFoundException.class);
     }
 
     @Test
     @DisplayName("returns StoreDetailDto when store exists")
     void returnsDto_whenStoreFound() {
-        TenantId tenantId = TenantId.newTenantId();
+        MerchantId merchantId = MerchantId.newMerchantId();
         StoreId storeId = StoreId.newStoreId();
-        GetStoreCmd cmd = GetStoreCmd.builder().tenantId(tenantId).storeId(storeId).build();
+        GetStoreCmd cmd = GetStoreCmd.builder().merchantId(merchantId).storeId(storeId).build();
 
         Store store = mock(Store.class);
         StoreDetailDto expectedDto = StoreDetailDto.builder().id(UUID.randomUUID()).name("My Store").build();
 
-        when(storeRepository.findByTenantIdAndStoreId(tenantId, storeId)).thenReturn(Optional.of(store));
+        when(storeRepository.findByMerchantIdAndStoreId(merchantId, storeId)).thenReturn(Optional.of(store));
         when(storeDataMapper.toStoreDetailDto(store)).thenReturn(expectedDto);
 
-        StoreDetailDto result = getStoreService.getStoreByTenantIdAndStoreId(cmd);
+        StoreDetailDto result = getStoreService.getStoreByMerchantIdAndStoreId(cmd);
 
         assertThat(result).isEqualTo(expectedDto);
     }
