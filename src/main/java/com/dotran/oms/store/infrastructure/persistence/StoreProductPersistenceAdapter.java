@@ -103,7 +103,7 @@ public class StoreProductPersistenceAdapter implements StoreProductRepository {
         Page<StoreProduct> storeProductPage = repository.findAll(specification, toSearchPageRequest(pageRequest))
                 .map(mapper::fromEntity);
 
-        return PagedResult.of(storeProductPage);
+        return toPagedResult(storeProductPage);
     }
 
     @Override
@@ -114,7 +114,7 @@ public class StoreProductPersistenceAdapter implements StoreProductRepository {
                         PageRequest.of(pageRequest.getPageNumber(), pageRequest.getPageSize()))
                 .map(mapper::fromEntity);
 
-        return PagedResult.of(page);
+        return toPagedResult(page);
     }
 
     /**
@@ -350,5 +350,20 @@ public class StoreProductPersistenceAdapter implements StoreProductRepository {
 
             return criteriaBuilder.and(predicates.toArray(new Predicate[0]));
         };
+    }
+
+    /**
+     * Spring Data page → domain {@link PagedResult}, built with the builder: {@code PagedResult.of(Page)} is removed in
+     * oms-core 2.0.0. Switch to {@code PageUtils.toPagedResult} once {@code coreVersion} is 2.0.0 or later.
+     */
+    private static <T> PagedResult<T> toPagedResult(Page<T> page) {
+        return PagedResult.<T>builder()
+                .content(page.getContent())
+                .pageNumber(page.getNumber())
+                .pageSize(page.getSize())
+                .totalElements(page.getTotalElements())
+                .totalPages(page.getTotalPages())
+                .isLast(page.isLast())
+                .build();
     }
 }
