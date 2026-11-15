@@ -44,6 +44,7 @@ import java.util.Set;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.RETURNS_DEEP_STUBS;
 import static org.mockito.Mockito.doReturn;
@@ -176,7 +177,8 @@ class StoreProductPersistenceAdapterTest {
         StoreProduct product = buildProduct();
         StoreProductEntity entity = mock(StoreProductEntity.class);
 
-        Page<StoreProductEntity> page = new PageImpl<>(List.of(entity), PageRequest.of(0, 10), 1);
+        // a middle page: page 1 of 4 (61 rows, 20 per page)
+        Page<StoreProductEntity> page = new PageImpl<>(List.of(entity), PageRequest.of(1, 20), 61);
         when(repository.findAll(any(Specification.class), any(org.springframework.data.domain.Pageable.class)))
                 .thenReturn(page);
         when(mapper.fromEntity(entity)).thenReturn(product);
@@ -184,7 +186,34 @@ class StoreProductPersistenceAdapterTest {
         PagedResult<StoreProduct> result = storeProductPersistenceAdapter.searchProducts(storeId, null, null, pageRequest);
 
         assertThat(result.getContent()).containsExactly(product);
-        assertThat(result.getTotalElements()).isEqualTo(1);
+        assertPaging(result, 1, 20, 61, 4, false);
+    }
+
+    @Test
+    @DisplayName("searchProducts: the last page and an empty page keep Spring's paging values")
+    void searchProducts_lastAndEmptyPage_mapPagingFields() {
+        StoreId storeId = StoreId.newStoreId();
+        DomainPageRequest pageRequest = DomainPageRequest.builder().pageNumber(3).pageSize(20).build();
+        StoreProductEntity entity = mock(StoreProductEntity.class);
+        when(mapper.fromEntity(entity)).thenReturn(buildProduct());
+        Page<StoreProductEntity> empty = Page.empty();
+        when(repository.findAll(any(Specification.class), any(org.springframework.data.domain.Pageable.class)))
+                .thenReturn(new PageImpl<>(List.of(entity), PageRequest.of(3, 20), 61))
+                .thenReturn(empty);
+
+        assertPaging(storeProductPersistenceAdapter.searchProducts(storeId, null, null, pageRequest), 3, 20, 61, 4, true);
+
+        PagedResult<StoreProduct> none = storeProductPersistenceAdapter.searchProducts(storeId, null, null, pageRequest);
+        assertThat(none.getContent()).isEmpty();
+        assertPaging(none, empty.getNumber(), empty.getSize(), 0, empty.getTotalPages(), true);
+    }
+
+    private static void assertPaging(PagedResult<?> result, int number, int size, long total, int pages, boolean last) {
+        assertThat(result.getPageNumber()).as("pageNumber").isEqualTo(number);
+        assertThat(result.getPageSize()).as("pageSize").isEqualTo(size);
+        assertThat(result.getTotalElements()).as("totalElements").isEqualTo(total);
+        assertThat(result.getTotalPages()).as("totalPages").isEqualTo(pages);
+        assertThat(result.isLast()).as("last").isEqualTo(last);
     }
 
     @Test
@@ -372,8 +401,30 @@ class StoreProductPersistenceAdapterTest {
                 DomainPageRequest.builder().pageNumber(1).pageSize(20).sortBy("ignored").build());
 
         assertThat(result.getContent()).containsExactly(product);
-        assertThat(result.getTotalElements()).isEqualTo(21);
-        assertThat(expected.getSort().isUnsorted()).isTrue();
+        // page 1 of 2 (21 rows, 20 per page) is the last one
+        assertPaging(result, 1, 20, 21, 2, true);
+        verify(repository).findInCollection(eq(storeId.getValue()), eq(collectionId.getValue()),
+                argThat(p -> p.getPageNumber() == 1 && p.getPageSize() == 20 && p.getSort().isUnsorted()));
+    }
+
+    @Test
+    @DisplayName("findInCollection: a middle page and an empty page keep Spring's paging values")
+    void findInCollection_middleAndEmptyPage_mapPagingFields() {
+        StoreId storeId = StoreId.newStoreId();
+        StoreCollectionId collectionId = StoreCollectionId.generateId();
+        StoreProductEntity entity = mock(StoreProductEntity.class);
+        when(mapper.fromEntity(entity)).thenReturn(buildProduct());
+        PageRequest pageable = PageRequest.of(0, 20);
+        when(repository.findInCollection(storeId.getValue(), collectionId.getValue(), pageable))
+                .thenReturn(new PageImpl<>(List.of(entity), pageable, 61))
+                .thenReturn(new PageImpl<>(List.of(), pageable, 0));
+        DomainPageRequest request = DomainPageRequest.builder().pageNumber(0).pageSize(20).build();
+
+        assertPaging(storeProductPersistenceAdapter.findInCollection(storeId, collectionId, request), 0, 20, 61, 4, false);
+
+        PagedResult<StoreProduct> none = storeProductPersistenceAdapter.findInCollection(storeId, collectionId, request);
+        assertThat(none.getContent()).isEmpty();
+        assertPaging(none, 0, 20, 0, 0, true);
     }
 
     @Test

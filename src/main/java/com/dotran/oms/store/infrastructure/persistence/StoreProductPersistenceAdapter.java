@@ -16,6 +16,7 @@ import com.dotran.oms.core.domain.page.DomainPageRequest;
 import com.dotran.oms.core.domain.page.PagedResult;
 import com.dotran.oms.core.exception.ValidationException;
 import com.dotran.oms.core.util.CollectionUtils;
+import com.dotran.oms.core.util.PageUtils;
 import com.dotran.oms.core.util.StringUtils;
 import com.dotran.oms.core.valueobject.PriceRange;
 import com.dotran.oms.store.application.repository.StoreProductRepository;
@@ -103,7 +104,7 @@ public class StoreProductPersistenceAdapter implements StoreProductRepository {
         Page<StoreProduct> storeProductPage = repository.findAll(specification, toSearchPageRequest(pageRequest))
                 .map(mapper::fromEntity);
 
-        return PagedResult.of(storeProductPage);
+        return PageUtils.toPagedResult(storeProductPage);
     }
 
     @Override
@@ -114,7 +115,7 @@ public class StoreProductPersistenceAdapter implements StoreProductRepository {
                         PageRequest.of(pageRequest.getPageNumber(), pageRequest.getPageSize()))
                 .map(mapper::fromEntity);
 
-        return PagedResult.of(page);
+        return PageUtils.toPagedResult(page);
     }
 
     /**
