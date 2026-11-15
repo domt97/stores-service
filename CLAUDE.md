@@ -27,10 +27,11 @@ Postgres DB `store`, schema `store` (owns `merchants`); files in S3. Port **8048
 | | `application/event/OutboxEventHelper` | Builds outbox events |
 | | `application/impex` | Excel import pipeline (built on `oms-core` `AbstractImportTemplate`) |
 | Infrastructure | `infrastructure/rest/{api,dto,mapper,exception}` | `@WebAdapter` controllers, `XxxRequest/XxxResponse`, `StoreExceptionHandler` |
+| | `infrastructure/rest/internal` | `@Hidden` controllers for other services under `/internal/v1/store/...` (not in the public OpenAPI, not proxied by oms-web) |
 | | `infrastructure/persistence/{entity,jpa}` | `@PersistenceAdapter` adapters, JPA entities, `SpringDataXxxRepository` |
 | | `infrastructure/mapper`, `cloud`, `excel`, `client`, `swagger` | Entity ↔ domain mappers; S3; Excel import reader (`ProductExcelReader`); stub clients for other services; OpenAPI groups |
 
-Areas used across packages: `merchant`, `store`, `storeconfig`, `storeproduct`, `collection`, `impex`.
+Areas used across packages: `merchant`, `store`, `storeconfig`, `storeproduct`, `collection`, `impex`, `orderquote`.
 
 ## Logging (MDC)
 
@@ -55,7 +56,7 @@ or `@Async` needs a `TaskDecorator` that copies it (none today).
 4. **Event?** If other contexts must know: build with `OutboxEventHelper`, save with `OutboxEventRepository` **in the same transaction**. Never use a Kafka client. Topic = `eventType` (PascalCase, unique across OMS). Add the JSON Schema + row to `oms-workspace/architecture/`.
 5. **REST**: controller under `/v1/store/merchants/{merchantId}/stores/...`, request DTO with Jakarta validation, map Request → Cmd and Dto → Response in `infrastructure/rest/mapper`.
 6. **Errors**: domain exception → handler in `StoreExceptionHandler` (extends `oms-core` `GlobalExceptionHandler`); messages in `common/constants/Constants`.
-7. **Persistence**: Flyway migration `src/main/resources/db/migration/V<next>__<what>.sql` (latest is `V10`); never edit an applied migration. (Exception, decided 2026-10-29 while only local databases existed: `V3` was edited in place for update-product — `product_skus.store_id`/`removed_at`, `UNIQUE (store_id, sku)`, `store_products.version` — and local DBs were recreated. Don't repeat this once any shared environment exists.) Top-level tables carry `merchant_id`; child tables are scoped through `store_id`. Exception: `store.debezium_heartbeat`
+7. **Persistence**: Flyway migration `src/main/resources/db/migration/V<next>__<what>.sql` (latest is `V11`); never edit an applied migration. (Exception, decided 2026-10-29 while only local databases existed: `V3` was edited in place for update-product — `product_skus.store_id`/`removed_at`, `UNIQUE (store_id, sku)`, `store_products.version` — and local DBs were recreated. Don't repeat this once any shared environment exists.) Top-level tables carry `merchant_id`; child tables are scoped through `store_id`. Exception: `store.debezium_heartbeat`
    belongs to the connector setup (`development` repo `sql/store-outbox-cdc.sql`), has no `merchant_id` and is not managed by
    Flyway today — do not add a migration for it while that script creates it (open question 55 in oms-workspace).
 8. **Tests** (mirror the package): domain model test, service test, controller test, adapter test.
@@ -98,6 +99,17 @@ Profile `core` is always included (`spring.profiles.include` in `application.yam
 - **Import upload (BR-CAT-17)**: `POST …/products/import-uploads` (`CreateImportUploadService`) checks the size (1..`max-bytes`, 400), merchant and store (404), picks `{uuid}.xlsx` and returns a presigned PUT from `S3ImportUploadSigner` (bucket and key from `S3Properties.importKey`, the same location the reader reads; signed content length, xlsx content type and tag `purpose=import-upload`, which the `development` lifecycle rule deletes after 7 days; valid `app.import.upload-url-ttl`, 15 min, at most 1 h). `sizeBytes` is the exact size (a `BigDecimal` with 18 digits at most, so 1.5 is a 400, not a 1-byte URL). The URL is a bearer link: never log it, never put it in a `toString` or an exception message; the response is `Cache-Control: no-store`. `S3PresignerConfig` copies the branches of oms-core `S3Config` (kept here because only this service presigns, system rule 6): change both together, move it to oms-core when a second context presigns. The signing role needs `s3:PutObject` and `s3:PutObjectTagging` on `*/*/imports/*`.
 - **Excel import limits (BR-CAT-13)** live in `ProductImportLimits` (`app.import.*`). `ProductExcelReader` streams the file: S3 object copied to a temp file (≤ 5 MB, download aborted beyond), opened lazily (`OPCPackage.open(File, READ)`), only the three import sheets read with SAX, row caps per sheet and a text/styles budget. Never go back to `XSSFWorkbook`/`WorkbookFactory` (they load every cell into heap). `java.io.tmpdir` must be writable. The zip's central directory is checked first (POI would otherwise read every entry into memory). Concurrency: one import per store (409); server slots = heap / `heap-per-import-bytes` − 1, at most `max-permits` (4, the database pool is 10), waiting up to `slot-wait-seconds` with at most `max-waiting` waiters (503 otherwise); the reader sets POI's `ZipSecureFile` max entry size and min inflate ratio JVM-wide. Measured at -Xmx512m: 3 imports at the budgets ≤ 367 MB heap.
 - **Collection membership (add/remove-products) is idempotent (BR-CAT-15)** and written with single native statements in `SpringDataStoreCollectionRepository`: `INSERT … SELECT … ORDER BY p.id ON CONFLICT DO NOTHING` and a `DELETE` that locks rows `ORDER BY product_id FOR UPDATE`. Always send every requested id (never filter against the loaded collection: it may be stale), never an empty list (native `IN ()`), keep the SQL ordering (overlapping requests would deadlock), and re-read after (`clearAutomatically`). A lock failure becomes 409 (`CollectionChangedConcurrentlyException`).
+- **Order quote (internal, ADR 0007)**: `POST /internal/v1/store/merchants/{merchantId}/stores/{storeId}/order-quote`
+  (`GetOrderQuoteService`) is read by order-service at placement and for a delivery quote. It is **advisory, not a
+  reservation**: statuses (store, merchant, SKU, product) and currencies are returned raw and order-service applies the
+  placement rules. Open = `Store.openAt` (BR-STO-02, BR-STO-04): ACTIVE, inside today's hours in the store's time zone, no
+  availability window covering now; every reason is reported, and an unreadable time zone or business day is
+  `INVALID_SCHEDULE` (closed, WARN log, never a 500). The "covering now" test is the JPQL in
+  `SpringDataStoreAvailabilityRepository.findActiveCovering` only (an `Instant` bound like the writes; never add a second
+  time filter on read-back values). SKUs: 0..100 codes (400 above or for no list), de-duplicated in request order, matched
+  exactly; unknown, removed, null, blank, > 100-character or NUL-containing codes → `found = false` (never a 400 for the whole store),
+  read with one JPQL projection (`findSkuQuoteRows`, no aggregate loaded). No authentication exists for `/internal/**`
+  yet: reachable only inside the network. "Now" comes from the `Clock` bean (`ClockConfig`).
 - `InventoryServiceClient` and `PromotionServiceClient` have only stub adapters (`infrastructure/client`: `checkItemDetail` returns `null`, the promotion client is empty) and no caller — don't rely on them.
 - Debezium delivers at least once; anything consuming our events must be idempotent.
 - SKU price rule (3-letter currency stored upper-case; price ≥ 0 with ≤ 2 decimals; VND whole đồng, BR-MER-01) lives in `ProductSku.normaliseForSale()` and runs from `StoreProduct.initState()` and `addSku()`. Any new path that creates or changes SKUs must call it; `StoreProduct.replace()` (update-product) applies it to every SKU in the body, so a legacy SKU that breaks the rule must be corrected when the product is edited. Products read from the DB are not re-validated.

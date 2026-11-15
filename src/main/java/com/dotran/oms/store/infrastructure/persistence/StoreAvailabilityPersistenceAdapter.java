@@ -10,6 +10,8 @@ import com.dotran.oms.store.infrastructure.persistence.entity.StoreAvailabilityE
 import com.dotran.oms.store.infrastructure.persistence.jpa.SpringDataStoreAvailabilityRepository;
 import lombok.RequiredArgsConstructor;
 
+import java.time.Instant;
+import java.util.List;
 import java.util.Optional;
 
 @PersistenceAdapter
@@ -25,6 +27,11 @@ public class StoreAvailabilityPersistenceAdapter implements StoreAvailabilityRep
         StoreAvailabilityEntity savedEntity = repository.save(entity);
 
         return mapper.fromEntityToDomain(savedEntity);
+    }
+
+    @Override
+    public List<StoreAvailability> findActiveCovering(StoreId storeId, Instant now) {
+        return repository.findActiveCovering(storeId.getValue(), now).stream().map(mapper::fromEntityToDomain).toList();
     }
 
     @Override
